@@ -18,13 +18,23 @@ A interface antiga mostra no topo a faixa **Interface antiga do NodeWatch**, com
 
 O painel não funciona aberto como arquivo (`interface/painel.html` com dois cliques): nesse caso a página explica como abri-lo pelo servidor. A visualização de análise de rede saiu do fluxo do analista e ficou na interface antiga; o processamento e os componentes de rede não foram alterados.
 
-## Identidade visual
+## Identidade visual e design system
 
-Tema escuro único (`interface/assets/painel.css`): azul-noite da interface anterior, ciano para ação e foco, e o vermelho da logo como cor da marca (só na logo e na linha do topo). Alerta usa vermelho-coral sempre junto de "⚠" e texto. Fontes do sistema, ícones em SVG embutido, nenhum recurso de CDN.
+Tema escuro único (`interface/assets/painel.css`, design system "Watch"): fundo azul-marinho profundo, superfícies grafite em quatro níveis (`--sup` → `--sup-4`), bordas de 1 px e sombras curtas. O vermelho da marca fica na logo (no "Watch"); o resto da interface usa cores semânticas, sempre acompanhadas de texto, ícone ou forma:
 
-Cores, espaçamento, tipografia, raios, sombras e tempos de transição são variáveis CSS em `:root`. A profundidade vem de camadas, cada tipo com um tratamento próprio: seções em vidro escuro com um fio de luz na borda superior, cartões planos um tom acima, campos rebaixados, botões em relevo e tabelas planas. O fundo tem luz ambiente localizada, uma trama de pontos e uma grade técnica bem fracas; tudo isso fica em pseudo-elementos atrás do conteúdo, sem cliques e sem conteúdo para leitores de tela. Os brilhos ficam reservados para o botão principal, o foco, a seleção e o progresso. Não há animação contínua além do indicador de carregamento e do reflexo da barra de progresso, e tudo para com `prefers-reduced-motion`.
+| cor | token | uso |
+|---|---|---|
+| vermelho-coral | `--alerta` | alerta, faixa alta, caminho com alerta (sempre com "⚠" e texto) |
+| âmbar | `--atencao` | atenção: resultado parcial, linhas recusadas, faixa intermediária |
+| verde | `--ok` | sucesso, etapa concluída, faixa baixa |
+| ciano | `--acao` | ação, seleção, conta em foco, progresso |
+| amarelo | `--foco` | contorno do foco do teclado |
 
-A logo é a oficial, `interface/NodeWatchlogo_transparente.png`. Os arquivos servidos são derivados dela só por recorte das margens e redução proporcional: `assets/nodewatch-logo.png` (cabeçalho) e `assets/nodewatch-simbolo.png` (tela estreita e ícone da aba). Capturas de antes e depois em `docs/ui/capturas/`.
+Todos os valores (cores, faixas do score, séries de gráfico, espaçamento em escala de 4 px, tipografia, raios, alturas de controle, elevação e tempos de transição) são variáveis CSS em `:root`. Tipografia: Inter quando instalada, senão a fonte do sistema (Segoe UI Variable no Windows); números com algarismos tabulares; identificadores de conta e transação em monoespaçada. Nenhum recurso externo: fontes do sistema, ícones em SVG embutido no estilo de traço único (`TRACOS` em `painel-base.js`), logo em `assets/`.
+
+Componentes padronizados: botões (padrão, primário — o único com brilho —, perigo, fantasma, pequeno, ícone), campos, selos de estado (com forma ● ◆ ▲ além da cor), chips de filtro, cartões de indicador, estatísticas em linha, acordeões, abas, tabelas, barras de progresso, medidor do score, esqueletos de carregamento, estados vazios, dicas (`data-dica`) e diálogos nativos. As animações são curtas (entrada da vista, abertura de diálogo e gaveta) e param com `prefers-reduced-motion`; em `forced-colors` os contornos voltam ao padrão do sistema.
+
+A logo é a oficial, `interface/NodeWatchlogo_transparente.png`. Os arquivos servidos são derivados dela só por recorte das margens e redução proporcional: `assets/nodewatch-logo.png` (navegação lateral) e `assets/nodewatch-simbolo.png` (topo em tela estreita e ícone da aba). Capturas de antes e depois em `docs/ui/capturas/` (o redesenho de 15/11/2026 em `docs/ui/capturas/redesign/`).
 
 ## Sessão da interface
 
@@ -64,15 +74,27 @@ O terminal confirma com `Origens extras liberadas (NODEWATCH_ORIGENS): null` e m
 
 ## Fluxo de uso
 
-1. **Dataset e análise.** Envie um `.csv` (ou `.zip` com um CSV) ou escolha um dataset já disponível. Sem dataset escolhido, o bloco de escolha resume a própria lista: quantos datasets há, quantos foram enviados e quantos estão no servidor, e quantos em cada situação. O servidor valida o arquivo e mostra nome, tamanho, linhas, período, colunas reconhecidas, moedas e formatos de pagamento. Cada problema traz coluna, linha de exemplo e o que corrigir.
+A navegação lateral (gaveta abaixo de 1024 px, aberta pelo botão ☰) separa o painel em vistas; o endereço guarda a vista (`#analise=…&conta=…&vista=…`). O topo mostra a vista atual, o dataset da análise aberta com o status e a sessão.
+
+| vista | o que mostra |
+|---|---|
+| **Análise** | nova análise (envio ou escolha de dataset, validação, **Analisar**), execução da análise aberta e análises recentes |
+| **Visão geral** | indicadores do recorte, score e faixas de risco (resumo), formato de pagamento, contas prioritárias e tipologias |
+| **Investigação** | contas de maior risco e o grafo da conta em foco |
+| **Transações** | tabela de registros, com linhas expansíveis e detalhes da transação |
+| **Detalhes** | interpretação completa do score e definições dos indicadores |
+
+Visão geral, Investigação e Transações só ficam disponíveis com resultados gravados; o item **Transações** mostra quantos alertas a análise tem. Em **Sistema** ficam o painel operacional e a legenda geral.
+
+1. **Dataset e análise.** Envie um `.csv` (ou `.zip` com um CSV) ou escolha um dataset já disponível. Sem dataset escolhido, o bloco de escolha resume a própria lista: quantos datasets há, quantos foram enviados e quantos estão no servidor, e quantos em cada situação. O servidor valida o arquivo e mostra formato, linhas, contas, período, colunas reconhecidas, moedas e formatos de pagamento. Cada problema traz coluna, linha de exemplo e o que corrigir.
 2. **Analisar.** Só o clique em **Analisar**, com um dataset válido, inicia o processamento. Abrir a página, enviar ou validar não analisa nada.
-3. **Progresso e log da execução.** Durante a análise, lado a lado (≈50/50 a partir de 981 px; empilhados até 980 px, na ordem etapas → Cancelar → aviso de sessão → log), e o bloco de processamento vem antes do envio e da escolha de dataset, que ficam recolhidos em "Enviar ou escolher outro dataset" (assim a etapa atual e o Cancelar aparecem sem rolar em 1280×800). Depois do fim, as etapas viram a caixa recolhida **Etapas executadas** (com quantas foram concluídas ou puladas e a duração total) e o log ocupa a largura toda. À esquerda, as seis etapas com o estado de cada uma, o volume lido e, quando há base medida, percentual e tempo restante (rotulado como estimativa). **Cancelar análise** para no fim do bloco atual e mantém o que já foi pontuado. À direita, o **log da execução**: métricas reais de execução numa área fixa, as transações já pontuadas numa lista virtualizada e, abaixo, precisão e recall do dataset (detalhes em Processamento → Log da execução).
-4. **Filtros.** Um único conjunto de filtros vale para os indicadores, as contas, o grafo e a tabela.
+3. **Execução.** Um cabeçalho mostra a etapa atual (n de 6), o progresso por etapas, o tempo decorrido desde o início gravado no servidor, a estimativa da etapa atual (quando há base medida), as transações pontuadas e os alertas até agora. Abaixo, lado a lado (≈50/50 a partir de 981 px; empilhados até 980 px, na ordem etapas → Cancelar → aviso de sessão → log), a linha do tempo das seis etapas e o **log da execução**. Com a análise em andamento, a execução vem antes da nova análise, que fica recolhida em "Enviar ou escolher outro dataset". Depois do fim, o cabeçalho mostra o resultado (pontuadas, com alerta, duração, modelo) e o botão **Ver resultados**; as etapas viram a caixa recolhida **Etapas executadas** e o log ocupa a largura toda. **Cancelar análise** para no fim do bloco atual e mantém o que já foi pontuado. Uma falha de rede passageira durante o acompanhamento não fecha a análise aberta: a leitura seguinte tenta de novo.
+4. **Recorte.** Um único conjunto de filtros vale para os indicadores, as contas, o grafo e a tabela. A barra do recorte mostra os filtros aplicados como chips; **Editar filtros** abre o formulário completo (que também abre sozinho quando o servidor recusa um valor, com a mensagem junto do campo).
 5. **Visão geral, contas e grafo.** Indicadores do recorte, até 10 contas de maior risco e o grafo da conta em foco.
-6. **Tabela e detalhes.** Página a página, com seletor de colunas. O ID de exibição abre os detalhes da transação.
+6. **Tabela e detalhes.** Página a página, com seletor de colunas. Por padrão, oito colunas; as demais aparecem ao expandir a linha (›). O ID de exibição abre os detalhes da transação: medidor do score, faixa e alerta em destaque, origem → destino, motivos verificáveis, tipologias e, recolhidos, os dados técnicos do score.
 7. **Análises recentes.** Abrem os resultados gravados, sem reprocessar.
 
-O botão ☰ abre o painel operacional (desempenho, logs do sistema, logs de ML, métricas de ML). **Legenda** reúne cores, ícones, setas, estados e termos. **Assistente de dúvidas** é um botão fixo no canto inferior direito, visível em qualquer ponto da rolagem; o painel abre acima dele (detalhes em Assistente de dúvidas, abaixo). Até 480 px de largura, Legenda mostra só o ícone; o nome continua para leitores de tela.
+**Legenda** reúne cores, ícones, setas, estados e termos. **Assistente de dúvidas** é um botão fixo no canto inferior direito, visível em qualquer ponto da rolagem; o painel abre acima dele (detalhes em Assistente de dúvidas, abaixo). Até 480 px de largura, Legenda mostra só o ícone; o nome continua para leitores de tela.
 
 ## Datasets
 
@@ -174,6 +196,8 @@ Consequências testadas: a conversão é monótona; score ≥ 701 equivale exata
 
 As faixas são recomendações de uma análise offline. O NodeWatch não bloqueia nem paga nada e não tem integração bancária. Score alto é sinal para investigação, não prova.
 
+**Onde a explicação aparece.** A visão geral mostra só o resumo (mínimo, mediano e máximo do recorte e a distribuição pelas três faixas) e um botão **Como ler o score**, que leva à vista **Detalhes**. Lá, em **Interpretação do score**, ficam a explicação completa em blocos recolhíveis (o que o score representa; limiar e faixas, com a escala, o score original de cada faixa e as recomendações; como o score original vira o índice de 0 a 1000; finalidade e limites de uso) e os 13 pontos numerados. Os detalhes de cada transação mostram o score, a faixa, o alerta e o medidor 0–1000, com o atalho **Interpretação do score**. A organização mudou só na tela: conversão, limiar, faixas e alertas continuam vindo de `src/painel/score.py`.
+
 ## Tipologias
 
 Vêm do arquivo de padrões do dataset (rótulo do simulador), nunca do modelo. A tela as chama de "registradas no dataset". Cada linha do arquivo é casada com a transação pela chave minuto, conta de origem, conta de destino, valor pago em centavos, moeda e formato. Uma transação em mais de uma tentativa conta em cada tipologia. `padrao_nao_identificado` reúne as transações sem tipologia registrada, inclusive as comuns.
@@ -198,8 +222,11 @@ Um único componente, para a conta do filtro de origem, do filtro de destino ou 
 - A disposição segue a tipologia registrada mais frequente entre as transações relacionadas: `CYCLE` circular, `FAN-OUT` leque de saída, `FAN-IN` leque de entrada, as demais e `padrao_nao_identificado` em camadas. A tipologia nunca é deduzida pela aparência.
 - **Ordem no tempo.** Cada aresta mostra valor, moeda e horário (ou intervalo, se agrupada). Uma relação indireta só é marcada como sequência quando há transação em minuto posterior à chegada do dinheiro na conta intermediária (ou anterior à saída, no caminho até o foco). Mesmo minuto ou fora de ordem aparece tracejado, como "relação do recorte sem ordem temporal confirmada". As sequências confirmadas são listadas passo a passo e podem ser destacadas, inclusive as que voltam à conta em foco (ida e volta, marcada como "volta à conta em foco"). Horário compatível não prova que é o mesmo dinheiro.
 - O grafo usa os filtros de período, moeda, alerta, valor, bancos e score. Os filtros de conta escolhem a conta em foco.
+- **Navegação.** Botões de aproximar, afastar e enquadrar; Ctrl + roda do mouse amplia no ponto do ponteiro (sem Ctrl, a roda rola a página); arrastar o fundo move o desenho. Contas e arestas continuam selecionáveis por clique e por teclado (Tab e Enter). Passar o ponteiro mostra uma dica com conta, banco, papel e alertas (vértice) ou valor, horário, ordem no tempo e alertas (aresta). A legenda rápida fica acima do grafo; a completa, recolhida abaixo. O zoom é só visual: posições, limites e totais vêm do servidor.
 
 ## Painel operacional
+
+Abre como gaveta à direita pelo item **Painel operacional** da navegação; Esc ou o fundo escurecido fecham.
 
 - **Desempenho:** RAM e CPU do processo do NodeWatch e da máquina (lidas do sistema operacional pela biblioteca padrão), latência de cada consulta em ms, e, da análise ativa ou da última, duração, pico de memória e duas vazões com a fórmula: a da análise inteira (pontuadas ÷ duração total) e a só da pontuação (pontuadas ÷ tempo de atributos, inferência e gravação). No exemplo de 2.076.752 transações: 88,6 s no total, cerca de 23,4 mil por segundo; 47,2 s de pontuação, cerca de 44 mil por segundo.
 - **Logs do sistema** e **Logs de ML:** em `artefatos_ml/painel/logs/`. Não guardam contas, linhas do dataset, chaves nem caminhos.
