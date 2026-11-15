@@ -13,6 +13,12 @@
         "300"
       ],
       "port": 5058
+    },
+    {
+      "name": "nodewatch-teste",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": ["scripts/ambiente_teste.py", "--porta", "5001"],
+      "port": 5001
     }
   ]
 }

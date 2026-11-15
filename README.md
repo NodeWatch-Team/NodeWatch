@@ -319,6 +319,26 @@ testes/test_scc.py::test_ordenacao_suspeitos_primeiro PASSED
 27 passed in 0.0Xs
 ```
 
+### Ambiente de teste local
+
+Um painel de teste numa pasta isolada (`artefatos_teste/`, fora do Git), na porta **5001**, com o modelo distribuído instalado nela e datasets sintéticos prontos. As análises, os logs e os envios feitos nele não se misturam com os de `artefatos_ml/`; apagar a pasta zera o ambiente.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\ambiente_teste.ps1            # cria o .venv se faltar e abre http://127.0.0.1:5001/
+powershell -ExecutionPolicy Bypass -File scripts\ambiente_teste.ps1 -Testes    # roda a suíte completa no .venv
+```
+
+Direto pelo Python (`.venv\Scripts\python scripts\ambiente_teste.py`): `--preparar` só prepara a pasta, `--limpar` apaga e prepara de novo, `--hismall CAMINHO` inclui o HI-Small (CSV ou ZIP) na lista, `--porta N` troca a porta. No Claude Code, a configuração `nodewatch-teste` de `.claude/launch.json` sobe o mesmo servidor.
+
+| Dataset (na lista do painel) | Para testar |
+|---|---|
+| `sintetico_5k_rotulado.csv` | análise completa em poucos segundos, com precisão e recall |
+| `sintetico_5k_sem_rotulo.csv` | o caminho sem rótulo ("não disponível para este dataset") |
+| `sintetico_200k_rotulado.csv` | log longo: acima de 8 M px a rolagem fica proporcional |
+| `HI-Small_Trans.zip` (com `--hismall`) | volume real (5 milhões de transações, cerca de 7 min) |
+
+Em `artefatos_teste/para_enviar/` ficam `sintetico_5k_rotulado.csv` e `sintetico_5k_padroes.txt`, para testar o envio pela tela com o arquivo de padrões (tipologias). Os dados sintéticos são determinísticos (mesma semente, mesmos arquivos) e têm tentativas de lavagem FAN-OUT, FAN-IN e CYCLE, com rótulo 1 e registradas no arquivo de padrões; `testes/painel/test_ambiente_teste.py` confere que eles passam na validação e casam com o arquivo de padrões. Só o painel do analista usa a pasta isolada: `/legado` e `/api/ml` continuam lendo a pasta do projeto.
+
 ---
 
 ## Algoritmos

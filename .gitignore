@@ -88,3 +88,5 @@ dados/analises/*.json
 # O modelo DISTRIBUÍDO fica em modelos/ (versionado, com MANIFESTO_MODELO.json): não o ignore.
 artefatos_ml/
 ml_config.local.toml
+# Ambiente de teste local (scripts/ambiente_teste.py): pasta isolada do painel, com modelo e datasets sintéticos.
+artefatos_teste/

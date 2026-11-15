@@ -31,7 +31,8 @@ def test_raiz_serve_o_painel_do_analista(cliente):
     html = r.get_data(as_text=True)
     assert r.status_code == 200
     assert "<title>NodeWatch — Painel do analista</title>" in html and "assets/painel-app.js" in html
-    assert html == (RAIZ / "interface" / "painel.html").read_text(encoding="utf-8")
+    # read_text converte CRLF em LF; o servidor manda os bytes do arquivo (CRLF num checkout com autocrlf no Windows)
+    assert html.replace("\r\n", "\n") == (RAIZ / "interface" / "painel.html").read_text(encoding="utf-8")
     assert "Grafos (demonstração)" not in html and "babel" not in html.lower().replace("sem babel", "")
 
 
@@ -39,7 +40,7 @@ def test_legado_serve_a_interface_antiga(cliente):
     r = cliente.get("/legado")
     html = r.get_data(as_text=True)
     assert r.status_code == 200
-    assert html == (RAIZ / "interface" / "index.html").read_text(encoding="utf-8")
+    assert html.replace("\r\n", "\n") == (RAIZ / "interface" / "index.html").read_text(encoding="utf-8")
     assert "<SecaoML" in html and "'#grafos'" in html and "SentinelChat" in html   # ML antigo, grafos e chat
     assert "painel-app.js" not in html
 
