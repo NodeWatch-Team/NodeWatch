@@ -77,6 +77,14 @@
     sequencia: ['M5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4z', 'M19 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4z', 'M7 18h6a3 3 0 0 0 3-3V8'],
     score: ['M4 18a8 8 0 1 1 16 0', 'M12 18l4-6'],
     limpar: ['M5 7h14', 'M9 7V4h6v3', 'M7 7l1 13h8l1-13'],
+    detalhes: ['M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z', 'M14 3v5h5', 'M9 13h6', 'M9 17h4'],
+    chevron: ['M9 6l6 6-6 6'],
+    mais: ['M12 5v14', 'M5 12h14'],
+    menos: ['M5 12h14'],
+    ajustar: ['M4 9V5h4', 'M20 9V5h-4', 'M4 15v4h4', 'M20 15v4h-4'],
+    seta: ['M5 12h14', 'M13 6l6 6-6 6'],
+    painel: ['M4 4h7v7H4z', 'M13 4h7v4h-7z', 'M13 10h7v10h-7z', 'M4 13h7v7H4z'],
+    editar: ['M4 20h4L19 9l-4-4L4 16z', 'M13.5 6.5l4 4'],
   };
   const Icone = ({ nome }) => h('svg', { className: 'ico', viewBox: '0 0 24 24', 'aria-hidden': 'true', focusable: 'false' },
     (TRACOS[nome] || TRACOS.info).map((d, i) => h('path', { key: i, d })));
@@ -135,7 +143,7 @@
     if (sessao.id) o.headers = Object.assign({}, o.headers || {}, { 'X-NodeWatch-Sessao': sessao.id });
     try { r = await fetch(API + caminho, o); }
     catch (e) {
-      throw { erro: 'Servidor do NodeWatch indisponível.', acao: 'Confira se o servidor está em execução (python src/sentinel_ai.py) e recarregue a página.' };
+      throw { erro: 'Servidor do NodeWatch indisponível.', acao: 'Confira se o servidor está em execução (python src/sentinel_ai.py) e recarregue a página.', rede: true };
     }
     let corpo = null;
     try { corpo = await r.json(); } catch (e) { /* resposta sem JSON */ }
@@ -192,16 +200,19 @@
     erro.acao ? h('p', null, h('strong', null, 'O que fazer: '), erro.acao) : null);
 
   const Carregando = ({ texto }) => h('p', { className: 'suave', role: 'status' }, texto || 'Carregando…');
-  const Vazio = ({ children }) => h('div', { className: 'vazio' }, children);
+  /* Esqueleto: forma do conteúdo enquanto ele carrega (o texto para leitor de tela vem junto). */
+  const Esqueleto = ({ linhas, altura, texto }) => h('div', { className: 'grade', role: 'status', 'aria-label': texto || 'Carregando…', style: { gap: 10 } },
+    Array.from({ length: linhas || 3 }, (_, i) => h('span', { key: i, className: 'esqueleto', 'aria-hidden': 'true', style: { height: altura || 14, width: (100 - (i % 3) * 14) + '%' } })));
+  const Vazio = ({ children, compacto }) => h('div', { className: 'vazio' + (compacto ? ' compacto' : '') }, children);
   const Legenda = ({ children }) => h('p', { className: 'legenda' }, children);
-  const Selo = ({ tom, children, vivo }) => h('span', { className: 'selo ' + (tom || '') + (vivo ? ' vivo' : '') }, children);
+  const Selo = ({ tom, children, vivo, forma, dica }) => h('span', { className: 'selo ' + (tom || '') + (vivo ? ' vivo' : '') + (forma ? ' forma' : ''), title: dica }, children);
 
   const Secao = ({ id, titulo, pergunta, children, extra, icone }) =>
     h('section', { className: 'secao', 'aria-labelledby': id + '-t', id },
       h('header', null,
         h('span', { className: 'emblema' }, h(Icone, { nome: icone || 'info' })),
         h('div', { className: 'titulos' }, h('h2', { id: id + '-t' }, titulo), pergunta ? h('p', { className: 'pergunta' }, pergunta) : null),
-        extra || null),
+        extra ? h('div', { className: 'extra' }, extra) : null),
       h('div', { className: 'corpo' }, children));
 
   const Pares = ({ itens }) => h('dl', { className: 'pares' },
@@ -219,7 +230,7 @@
     return h('dialog', { ref, id, 'aria-labelledby': id + '-t', onClose: aoFechar, onCancel: aoFechar },
       aberto ? h(React.Fragment, null,
         h('header', null, h('h2', { id: id + '-t' }, titulo),
-          h('button', { className: 'botao', type: 'button', onClick: aoFechar }, h(Icone, { nome: 'fechar' }), 'Fechar')),
+          h('button', { className: 'botao fantasma', type: 'button', onClick: aoFechar }, h(Icone, { nome: 'fechar' }), 'Fechar')),
         h('div', { className: 'corpo' }, children)) : null);
   };
 
@@ -232,8 +243,23 @@
     h('i', { style: { width: (total ? Math.max(0, Math.min(100, 100 * feito / total)) : 0) + '%' } }));
 
   const SITUACAO_ALERTA = l => l.alerta ? 'Sim (faixa ' + NOME_FAIXA[l.faixa] + ')' : 'Não (faixa ' + NOME_FAIXA[l.faixa] + ')';
+  /* Tom visual de cada faixa: verde (baixa), âmbar (intermediária) e vermelho (alta = alerta). Sempre com o nome escrito. */
+  const TOM_FAIXA = { baixa: 'ok', intermediaria: 'atencao', alta: 'alerta' };
 
-  window.NW = { h, api, consulta, useCarga, useIntervalo, useSessao, sessao, FILTROS_VAZIOS, NOME_FAIXA, SITUACAO_ALERTA, EXIBIR, exibir,
+  /* Medidor do score (0–1000): régua com as três faixas (0–300, 301–700, 701–1000) e um marcador no valor.
+     Os cortes são os da API (score.py); o medidor só desenha, não recalcula faixa nem alerta. */
+  const MedidorScore = ({ score, faixa, nomeFaixa, alerta }) => h('div', { className: 'medidor ' + (faixa || '') },
+    h('div', { className: 'cabeca' },
+      h('span', { className: 'valor-score' }, inteiro(score), h('small', null, 'de 1000')),
+      h('div', { className: 'linha', style: { paddingBottom: 4 } },
+        h(Selo, { tom: TOM_FAIXA[faixa] }, (alerta ? '⚠ ' : '') + 'Faixa ' + (nomeFaixa || NOME_FAIXA[faixa] || '—')),
+        h(Selo, { tom: alerta ? 'alerta' : 'neutro' }, alerta ? 'Com alerta' : 'Sem alerta'))),
+    h('div', { className: 'regua', role: 'img', 'aria-label': 'Score ' + score + ' na escala de 0 a 1000; faixa ' + (nomeFaixa || NOME_FAIXA[faixa]) + (alerta ? ', com alerta' : ', sem alerta') },
+      h('i', { className: 'baixa' }), h('i', { className: 'intermediaria' }), h('i', { className: 'alta' }),
+      vazio(score) ? null : h('span', { className: 'marcador', style: { left: Math.max(0, Math.min(100, score / 10)) + '%' } })),
+    h('div', { className: 'marcas-regua', 'aria-hidden': 'true' }, h('span', null, '0'), h('span', null, '300'), h('span', null, '700'), h('span', null, '1000')));
+
+  window.NW = { h, api, consulta, useCarga, useIntervalo, useSessao, sessao, FILTROS_VAZIOS, NOME_FAIXA, SITUACAO_ALERTA, TOM_FAIXA, EXIBIR, exibir,
     f: { inteiro, numero, pct, valor, dataHora, diaHora, instante, bytes, gb, duracao, idExibicao, vazio, plural },
-    Icone, Aviso, Erro, Carregando, Vazio, Legenda, Selo, Secao, Pares, Dialogo, Barra, BarraProgresso };
+    Icone, Aviso, Erro, Carregando, Esqueleto, Vazio, Legenda, Selo, Secao, Pares, Dialogo, Barra, BarraProgresso, MedidorScore };
 })();
