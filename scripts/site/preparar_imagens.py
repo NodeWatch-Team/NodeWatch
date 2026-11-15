@@ -1,4 +1,4 @@
-"""Prepara as imagens do site de apresentação (pasta `site/`).
+"""Prepara as imagens do artigo técnico publicado no GitHub Pages (pasta `site-assets/`).
 
 Uso, na raiz do repositório (precisa de Pillow: `pip install pillow`):
     python scripts/site/preparar_imagens.py
@@ -7,11 +7,10 @@ Entradas (os originais nunca são alterados):
     interface/NodeWatchlogo_transparente.png   logo oficial (IMG-08)
     docs/ui/capturas/depois_desktop_*.jpg      capturas reais do painel do analista
 
-Saídas em `site/assets/img/`:
+Saídas em `site-assets/img/`:
     logo.png, favicon.ico, apple-touch-icon.png    derivados do logo
     tela-*.jpg              recortes 16:10 das capturas, largura <= 1280, <= 150 KB
-    IMG-07-capa-video.jpg   capa do vídeo: a captura do grafo com o logo por cima.
-    og-image.jpg            1200x630, feita do mesmo jeito que a capa.
+    og-image.jpg            1200x630: a captura do grafo com o logo por cima.
 
 Rode de novo sempre que trocar uma captura.
 """
@@ -29,7 +28,7 @@ from PIL import Image, ImageDraw, ImageFilter
 RAIZ = Path(__file__).resolve().parents[2]
 LOGO = RAIZ / "interface" / "NodeWatchlogo_transparente.png"
 CAPTURAS_ORIGINAIS = RAIZ / "docs" / "ui" / "capturas"
-SAIDA = RAIZ / "site" / "assets" / "img"
+SAIDA = RAIZ / "site-assets" / "img"
 
 # (original, recorte (esq, topo, dir, base) ou None, arquivo no site). Recortes em 16:10.
 CAPTURAS = [
@@ -159,8 +158,7 @@ def main() -> None:
     logo = preparar_logo()
     print("Capturas")
     img01 = preparar_capturas()
-    print("Capa do vídeo e og-image" + ("" if img01 else " (provisórias, sem a captura do grafo)"))
-    salvar_jpg(capa(img01, logo, (1280, 720)), SAIDA / "IMG-07-capa-video.jpg")
+    print("og-image" + ("" if img01 else " (provisórias, sem a captura do grafo)"))
     salvar_jpg(capa(img01, logo, (1200, 630)), SAIDA / "og-image.jpg")
 
 

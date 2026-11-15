@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NodeWatch · Grafos e Machine Learning contra a lavagem de dinheiro</title>
+  <meta name="description" content="Artigo técnico do NodeWatch: triagem de transações que combina Teoria dos Grafos e Random Forest para priorizar investigações de lavagem de dinheiro.">
+  <meta name="theme-color" content="#0a0e16">
+  <meta name="color-scheme" content="dark">
+
+  <meta property="og:type" content="article">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:title" content="NodeWatch · Grafos e Machine Learning contra a lavagem de dinheiro">
+  <meta property="og:description" content="Triagem inteligente que combina Teoria dos Grafos e Machine Learning para priorizar investigações humanas.">
+  <meta property="og:image" content="./site-assets/img/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="icon" href="./site-assets/img/favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="apple-touch-icon" href="./site-assets/img/apple-touch-icon.png">
+  <link rel="stylesheet" href="./site-assets/css/site.css">
+  <script>document.documentElement.classList.add("js");</script>
+  <script src="./site-assets/vendor/react-18.3.1.production.min.js" defer></script>
+  <script src="./site-assets/vendor/react-dom-18.3.1.production.min.js" defer></script>
+  <script src="./site-assets/js/site.js" defer></script>
+  <script src="./site-assets/js/artigo.js" defer></script>
+</head>
+<body>
+  <a class="pular" href="#conteudo">Pular para o conteúdo</a>
+
+  <header class="cabecalho">
+    <div class="cabecalho-interno">
+      <a class="marca" href="#resumo" aria-label="NodeWatch, início do artigo">
+        <img src="./site-assets/img/logo.png" alt="NodeWatch" width="366" height="96">
+      </a>
+      <button class="menu-botao" type="button" aria-expanded="false" aria-controls="menu-principal">
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+        Menu
+      </button>
+      <nav id="menu-principal" class="menu" aria-label="Seções do artigo">
+        <ul>
+          <li><a href="#resumo">Resumo</a></li>
+          <li><a href="#pipeline">Pipeline</a></li>
+          <li><a href="#ml">Machine Learning</a></li>
+          <li><a href="#referencia">Referência</a></li>
+          <li><a href="#ficha">Ficha</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="conteudo">
+
+    <!-- 1 · Abertura e resumo executivo -->
+    <section id="resumo" class="secao heroi" aria-labelledby="titulo-resumo">
+      <svg class="heroi-textura" aria-hidden="true" viewBox="0 0 600 520" preserveAspectRatio="xMidYMid slice">
+        <g stroke="currentColor" stroke-width="1.2" fill="none">
+          <path d="M60 80 L190 40 L300 120 L420 60 L540 140 M190 40 L230 210 L300 120 M230 210 L120 300 L60 80 M420 60 L470 260 L540 140 M470 260 L560 380 M120 300 L210 430 L350 470 L470 400 L560 380 M350 470 L330 330"/>
+        </g>
+        <g fill="currentColor">
+          <circle cx="60" cy="80" r="5"/><circle cx="190" cy="40" r="5"/><circle cx="300" cy="120" r="5"/><circle cx="420" cy="60" r="5"/><circle cx="540" cy="140" r="5"/><circle cx="230" cy="210" r="5"/><circle cx="120" cy="300" r="5"/><circle cx="470" cy="260" r="5"/><circle cx="560" cy="380" r="5"/><circle cx="210" cy="430" r="5"/><circle cx="350" cy="470" r="5"/><circle cx="470" cy="400" r="5"/>
+        </g>
+        <g class="heroi-ciclo" fill="none" stroke-width="1.6">
+          <path d="M330 330 L470 400 L470 260 Z"/>
+          <circle cx="330" cy="330" r="7"/><circle cx="470" cy="400" r="7"/><circle cx="470" cy="260" r="7"/>
+        </g>
+      </svg>
+
+      <div class="conteudo heroi-conteudo">
+        <div class="heroi-topo">
+          <div class="heroi-texto">
+            <p class="selo">
+              <span>Artigo técnico · Amostra tecnológica</span>
+              <span>Ciência da Computação · Grupo 4</span>
+            </p>
+            <h1 id="titulo-resumo">Grafos e Machine Learning para priorizar investigações de lavagem de dinheiro</h1>
+            <p class="subtitulo">O complemento técnico do vídeo pitch: como o NodeWatch transforma transações em grafo, pontua o risco e entrega ao analista uma fila de prioridades explicável.</p>
+          </div>
+
+          <figure class="video-card" aria-labelledby="video-etiqueta">
+            <figcaption id="video-etiqueta" class="video-etiqueta">
+              <span class="video-ponto" aria-hidden="true"></span>
+              Vídeo pitch • Apresentação rápida
+            </figcaption>
+            <div class="video-quadro">
+              <!-- SUBSTITUIR PELO ID DO VÍDEO NO YOUTUBE -->
+              <iframe
+                src="https://www.youtube.com/embed/COLE_O_ID_AQUI?rel=0"
+                title="Vídeo pitch do NodeWatch"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerpolicy="strict-origin-when-cross-origin"
+                allowfullscreen></iframe>
+            </div>
+          </figure>
+        </div>
+
+        <div class="problema-solucao">
+          <article class="cartao bloco-problema">
+            <p class="rotulo">O problema</p>
+            <h2 class="h-bloco">Regras estáticas não enxergam o caminho do dinheiro</h2>
+            <ul class="lista-curta">
+              <li><strong><em>Smurfing</em></strong>: valores fracionados abaixo dos limites fixos passam despercebidos.</li>
+              <li><strong><em>Layering</em></strong>: o dinheiro atravessa várias contas intermediárias; cada transação isolada parece normal.</li>
+              <li><strong>Falsos positivos</strong>: limites rígidos disparam sobre o fluxo legítimo e afogam a equipe de investigação.</li>
+            </ul>
+          </article>
+          <article class="cartao bloco-solucao">
+            <p class="rotulo">A solução</p>
+            <h2 class="h-bloco">Triagem inteligente, não bloqueio cego</h2>
+            <ul class="lista-curta">
+              <li><strong>Teoria dos Grafos</strong>: contas viram vértices e transações viram arestas, revelando ciclos e grupos.</li>
+              <li><strong>Machine Learning</strong>: um Random Forest pontua cada transação com atributos temporais causais.</li>
+              <li><strong>Decisão humana</strong>: o score ordena a fila de investigação; o analista decide.</li>
+            </ul>
+          </article>
+        </div>
+
+        <ul class="kpis" aria-label="Indicadores-chave">
+          <li class="kpi">
+            <span class="kpi-numero">5.078.345</span>
+            <span class="kpi-rotulo">transações analisadas</span>
+            <span class="kpi-nota">base IBM AML HI-Small</span>
+          </li>
+          <li class="kpi">
+            <span class="kpi-numero">49 + 21</span>
+            <span class="kpi-rotulo">atributos causais</span>
+            <span class="kpi-nota">lavagem + estado de rede</span>
+          </li>
+          <li class="kpi">
+            <span class="kpi-numero">0,464</span>
+            <span class="kpi-rotulo">PR-AUC (<em>Average Precision</em>)</span>
+            <span class="kpi-nota">com 0,10% de positivos</span>
+          </li>
+          <li class="kpi kpi-alerta">
+            <span class="kpi-numero">0–1000</span>
+            <span class="kpi-rotulo">escala de score</span>
+            <span class="kpi-nota">alerta operacional em ≥ 701</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 2 · Etapas do pipeline -->
+    <section id="pipeline" class="secao" aria-labelledby="titulo-pipeline">
+      <div class="conteudo">
+        <h2 id="titulo-pipeline">Pipeline em 4 etapas</h2>
+        <p class="secao-subtitulo">Do arquivo enviado ao alerta explicado.</p>
+
+        <ol class="pipeline">
+          <li class="etapa-pipe">
+            <span class="etapa-num">1</span>
+            <div>
+              <h3>Ingestão e validação</h3>
+              <ul class="lista-curta">
+                <li>Upload de <code>.csv</code> ou <code>.zip</code> no formato IBM AML.</li>
+                <li>Cada aba do navegador abre uma sessão isolada no servidor.</li>
+                <li>O modelo só é carregado se o hash <strong>SHA-256</strong> conferir com o manifesto versionado.</li>
+              </ul>
+            </div>
+          </li>
+          <li class="etapa-pipe">
+            <span class="etapa-num">2</span>
+            <div>
+              <h3>Modelagem em grafo</h3>
+              <ul class="lista-curta">
+                <li>Contas são vértices (<span class="mono">V</span>).</li>
+                <li>Transações são arestas direcionadas e ponderadas pelo valor (<span class="mono">E</span>).</li>
+                <li>Ciclos, grupos fortemente conexos e contas concentradoras ficam visíveis como forma.</li>
+              </ul>
+            </div>
+          </li>
+          <li class="etapa-pipe">
+            <span class="etapa-num">3</span>
+            <div>
+              <h3>Atributos e inferência ML</h3>
+              <ul class="lista-curta">
+                <li>Extração temporal causal: cada transação só enxerga o passado.</li>
+                <li>Random Forest pontua cada transação; o resultado vira um score de 0 a 1000.</li>
+                <li>Pontuação em lote: cerca de 17.981 transações por segundo em CPU.</li>
+              </ul>
+            </div>
+          </li>
+          <li class="etapa-pipe etapa-pipe-alerta">
+            <span class="etapa-num">4</span>
+            <div>
+              <h3>Triagem visual e explicabilidade</h3>
+              <ul class="lista-curta">
+                <li>Painel com grafo interativo em SVG (zoom, arrasto, dicas), filtros e tabela detalhada.</li>
+                <li>Telemetria de hardware durante a análise: CPU, RAM e latência.</li>
+                <li><strong>Sentinel AI</strong> responde dúvidas no contexto da análise aberta.</li>
+              </ul>
+            </div>
+          </li>
+        </ol>
+
+        <div class="telas">
+          <figure class="tela">
+            <button class="tela-abrir" type="button" aria-label="Ampliar imagem: Etapa 1, ingestão e validação">
+              <img src="./site-assets/img/tela-dataset.jpg" width="1100" height="688" loading="lazy" alt="Painel do analista com envio de arquivo, escolha de dataset, botão Analisar e uma análise concluída">
+            </button>
+            <figcaption><strong>Etapa 1 · Ingestão</strong> Envio e validação do dataset; nada é pontuado antes do clique em Analisar.</figcaption>
+          </figure>
+          <figure class="tela">
+            <button class="tela-abrir" type="button" aria-label="Ampliar imagem: Etapa 3, visão geral do score">
+              <img src="./site-assets/img/tela-visao.jpg" width="1100" height="688" loading="lazy" alt="Indicadores do recorte com transações, alertas, período e score, e a explicação da escala de 0 a 1000">
+            </button>
+            <figcaption><strong>Etapa 3 · Score</strong> Transações, alertas e distribuição do score de 0 a 1000.</figcaption>
+          </figure>
+          <figure class="tela">
+            <button class="tela-abrir" type="button" aria-label="Ampliar imagem: Etapa 4, contas de maior risco">
+              <img src="./site-assets/img/tela-contas.jpg" width="1100" height="688" loading="lazy" alt="Lista das contas com mais transações em alerta e quadros com os números da conta em foco">
+            </button>
+            <figcaption><strong>Etapa 4 · Fila de prioridade</strong> Contas ordenadas pela quantidade de transações em alerta.</figcaption>
+          </figure>
+          <figure class="tela">
+            <button class="tela-abrir" type="button" aria-label="Ampliar imagem: Etapa 4, grafo da conta em foco">
+              <img src="./site-assets/img/tela-grafo.jpg" width="982" height="614" loading="lazy" alt="Grafo com a conta em foco, contas ligadas a alerta em vermelho e uma sequência de duas transações destacada em azul">
+            </button>
+            <figcaption><strong>Etapa 4 · Grafo</strong> Contas em alerta em vermelho; em azul, uma sequência de repasse com horários compatíveis.</figcaption>
+          </figure>
+        </div>
+        <p class="nota">
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 11v6M12 7.5v.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>Capturas reais do painel, com dados do HI-Small (01–03/09/2022, período de treino): ilustram a interface, não medem desempenho.</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- 3 · Como o Machine Learning funciona -->
+    <section id="ml" class="secao" aria-labelledby="titulo-ml">
+      <div class="conteudo">
+        <h2 id="titulo-ml">Como o Machine Learning funciona no NodeWatch</h2>
+        <p class="secao-subtitulo">Dois modelos independentes, uma regra de ouro (só o passado) e um score feito para ordenar a fila.</p>
+
+        <!-- Componente React (site-assets/js/artigo.js). O conteúdo abaixo é a versão estática, substituída quando o React carrega. -->
+        <div id="ml-interativo" class="ml-interativo">
+          <div class="ml-estatico">
+            <article class="cartao">
+              <h3>Modelo 1 · Detecção de lavagem (49 atributos)</h3>
+              <p>Random Forest treinado no IBM AML HI-Small: 5.078.345 transações, 5.177 positivas em 8 tipologias. Avalia velocidade de repasse, novidade do par de contas, desvio de valor e agregações em janelas deslizantes.</p>
+            </article>
+            <article class="cartao">
+              <h3>Modelo 2 · Estado de rede (21 atributos)</h3>
+              <p>Random Forest separado: 333.954 medições de 135 caminhos (perda, RTT, jitter) classificadas em OK, RISCO ou FALHA.</p>
+            </article>
+            <article class="cartao">
+              <h3>Rigor causal</h3>
+              <p>Para pontuar uma transação no instante <span class="mono">t</span>, só entram dados de instantes <span class="mono">&lt; t</span>.</p>
+            </article>
+            <article class="cartao">
+              <h3>Score 0–1000</h3>
+              <p>0–300 fluxo basal · 301–700 zona de observação · 701–1000 alerta prioritário. Alerta é prioridade de investigação, não prova de fraude.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 · Referência rápida -->
+    <section id="referencia" class="secao" aria-labelledby="titulo-referencia">
+      <div class="conteudo">
+        <h2 id="titulo-referencia">Referência rápida</h2>
+        <p class="secao-subtitulo">Algoritmos, métricas, ferramentas e bases, definidos em uma linha cada.</p>
+
+        <h3 class="ref-grupo">Algoritmos de grafo</h3>
+        <div class="cartoes cartoes-3">
+          <article class="cartao">
+            <p class="ref-sigla">DFS</p>
+            <h4>Busca em profundidade</h4>
+            <p>Percorre o grafo até voltar a um vértice já visitado no caminho: encontra <strong>ciclos fechados</strong>, quando o dinheiro retorna à conta de origem.</p>
+          </article>
+          <article class="cartao">
+            <p class="ref-sigla">SCC · Kosaraju</p>
+            <h4>Componentes fortemente conexos</h4>
+            <p>Duas passadas de DFS (no grafo e no transposto) agrupam contas em que todas alcançam todas, em tempo linear <span class="mono">O(V + E)</span>.</p>
+          </article>
+          <article class="cartao">
+            <p class="ref-sigla">Grau</p>
+            <h4>Centralidade de grau</h4>
+            <p>Conta arestas de entrada e saída de cada vértice: destaca <strong>concentradoras</strong> (muitas entradas) e <strong>distribuidoras</strong> (muitas saídas).</p>
+          </article>
+        </div>
+
+        <h3 class="ref-grupo">Algoritmo de Machine Learning</h3>
+        <article class="cartao ref-destaque">
+          <p class="ref-sigla">Random Forest Classifier</p>
+          <p>Conjunto de árvores de decisão treinadas em amostras diferentes; o voto médio é o score. Venceu na validação (AP 0,499, contra 0,445 do <em>gradient boosting</em> e 0,19 da regressão logística) por três motivos:</p>
+          <ul class="lista-curta lista-colunas">
+            <li><strong>Robusto em dados tabulares heterogêneos</strong>: mistura contagens, razões, tempos e categorias sem normalização.</li>
+            <li><strong>Baixa variância</strong>: a média de muitas árvores reduz o sobreajuste de uma árvore isolada.</li>
+            <li><strong>Baixa latência em CPU</strong>: pontua milhares de transações por segundo, sem GPU.</li>
+          </ul>
+        </article>
+
+        <h3 class="ref-grupo">Métricas de avaliação <span class="ref-contexto">(teste congelado, modelo de lavagem)</span></h3>
+        <div class="cartoes cartoes-4">
+          <article class="cartao metrica">
+            <p class="metrica-numero">0,464</p>
+            <h4>PR-AUC / <em>Average Precision</em></h4>
+            <p>Métrica principal: mede a qualidade da ordenação sem depender de limiar. Um palpite aleatório daria 0,001.</p>
+          </article>
+          <article class="cartao metrica">
+            <p class="metrica-numero">~63%</p>
+            <h4>Precision no limiar</h4>
+            <p>De cada 100 alertas, cerca de 63 são lavagem de fato (389 de 620).</p>
+          </article>
+          <article class="cartao metrica">
+            <p class="metrica-numero">~41%</p>
+            <h4>Recall no limiar</h4>
+            <p>Fração da lavagem encontrada (389 de 956). Nas 8 tipologias conhecidas, de 55% a 72%.</p>
+          </article>
+          <article class="cartao metrica metrica-limite">
+            <p class="metrica-numero">99,9%</p>
+            <h4>Acurácia: descartada</h4>
+            <p>Um modelo que nunca alerta acerta 99,9%, porque 99,9% das transações são legítimas. A acurácia não mede nada aqui.</p>
+          </article>
+        </div>
+
+        <h3 class="ref-grupo">Ferramentas (stack)</h3>
+        <dl class="stack">
+          <div><dt>Python</dt><dd>linguagem do backend, dos algoritmos e do treino</dd></div>
+          <div><dt>Pandas</dt><dd>leitura e preparação das tabelas de transações</dd></div>
+          <div><dt>NumPy</dt><dd>cálculo vetorizado dos atributos em janelas</dd></div>
+          <div><dt>Scikit-Learn</dt><dd>Random Forest, validação e métricas</dd></div>
+          <div><dt>Flask</dt><dd>API do painel do analista</dd></div>
+          <div><dt>React 18</dt><dd>interface do painel e deste artigo</dd></div>
+          <div><dt>SVG</dt><dd>desenho do grafo interativo</dd></div>
+          <div><dt>CSS</dt><dd>design system do painel, sem framework</dd></div>
+          <div><dt>Google Gemini API</dt><dd>motor do assistente Sentinel AI</dd></div>
+        </dl>
+
+        <h3 class="ref-grupo">Bases de dados</h3>
+        <div class="tabela-rolagem">
+          <table class="tabela">
+            <thead>
+              <tr><th scope="col">Base</th><th scope="col">Conteúdo</th><th scope="col">Volume</th><th scope="col">Uso</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">IBM AML HI-Small</th>
+                <td>Transações sintéticas geradas por simulador (Altman et al., 2023), 01–18/09/2022</td>
+                <td class="mono">5.078.345 tx · 5.177 lavagem</td>
+                <td>Modelo 1 (lavagem)</td>
+              </tr>
+              <tr>
+                <th scope="row"><code>dataset_final.csv</code></th>
+                <td>Telemetria de rede do material da disciplina, 28/09–05/10/2026</td>
+                <td class="mono">333.954 medições · 135 caminhos</td>
+                <td>Modelo 2 (estado de rede)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 · Ficha acadêmica -->
+    <section id="ficha" class="secao" aria-labelledby="titulo-ficha">
+      <div class="conteudo">
+        <h2 id="titulo-ficha">Ficha acadêmica</h2>
+        <dl class="ficha">
+          <div><dt>Projeto</dt><dd>NodeWatch</dd></div>
+          <div><dt>Curso</dt><dd>Ciência da Computação · Grupo 4</dd></div>
+          <div><dt>Orientação</dt><dd>Profa. Andrea Ono Sakai</dd></div>
+          <div><dt>Licença</dt><dd>MIT</dd></div>
+        </dl>
+        <ul class="equipe" aria-label="Integrantes">
+          <li class="cartao pessoa"><span class="pessoa-nome">Caio Winkler Marangoni</span></li>
+          <li class="cartao pessoa"><span class="pessoa-nome">Guilherme Libório Camargo</span></li>
+          <li class="cartao pessoa"><span class="pessoa-nome">Guilherme Lombardi</span></li>
+          <li class="cartao pessoa"><span class="pessoa-nome">Ryan dos Santos Veloso</span></li>
+        </ul>
+        <div class="botoes ficha-botoes">
+          <a class="botao botao-primario" href="https://github.com/1s4ntos/NodeWatch" target="_blank" rel="noopener">Código no GitHub<span class="sr"> (abre em nova aba)</span></a>
+          <a class="botao botao-secundario" href="https://github.com/1s4ntos/NodeWatch/blob/main/docs/ml/RELATORIO_ML.md" target="_blank" rel="noopener">Relatório completo de ML<span class="sr"> (abre em nova aba)</span></a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="rodape">
+    <div class="conteudo">
+      <img class="rodape-logo" src="./site-assets/img/logo.png" alt="" width="366" height="96" loading="lazy">
+      <p>NodeWatch · Ciência da Computação, Grupo 4 · orientação: Profa. Andrea Ono Sakai · licença MIT.</p>
+      <p class="rodape-aviso">Protótipo acadêmico com dados sintéticos. O score indica prioridade de investigação; a decisão final é sempre do analista humano.</p>
+    </div>
+  </footer>
+
+  <dialog class="lightbox" aria-label="Imagem ampliada">
+    <button class="lightbox-fechar" type="button" aria-label="Fechar">✕</button>
+    <img class="lightbox-img" alt="">
+    <p class="lightbox-legenda"></p>
+  </dialog>
+</body>
+</html>

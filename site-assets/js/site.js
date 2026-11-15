@@ -1,4 +1,5 @@
-/* NodeWatch · site de apresentação. Sem dependências, sem rastreamento. */
+/* NodeWatch · artigo técnico. Menu, ampliação das capturas, link ativo e entrada suave.
+   A seção de Machine Learning fica em artigo.js (React). Sem rastreamento. */
 (function () {
   "use strict";
 
@@ -83,68 +84,6 @@
     });
   });
 
-  /* ---------- Vídeo: só carrega ao toque, sem autoplay ---------- */
-  var player = document.querySelector(".player");
-  if (player) {
-    var url = (player.dataset.video || "").trim();
-    var legenda = (player.dataset.legenda || "").trim();
-    var pendente = !url || url.charAt(0) === "[";
-    var play = player.querySelector(".player-play");
-    var aviso = player.querySelector(".player-aviso");
-    var capa = player.querySelector(".player-capa");
-
-    if (!pendente) {
-      aviso.hidden = true;
-      play.hidden = false;
-      play.addEventListener("click", function () { carregarVideo(); });
-    }
-
-    function idYouTube(u) {
-      var m = u.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/))([\w-]{11})/);
-      return m ? m[1] : null;
-    }
-
-    function carregarVideo() {
-      var yt = idYouTube(url);
-      var el;
-      if (yt) {
-        el = document.createElement("iframe");
-        el.src = "https://www.youtube-nocookie.com/embed/" + yt +
-          "?autoplay=1&rel=0&cc_load_policy=1&cc_lang_pref=pt&hl=pt-BR";
-        el.title = "Vídeo pitch do NodeWatch";
-        el.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
-        el.allowFullscreen = true;
-      } else if (/\.(mp4|webm)(\?|#|$)/i.test(url)) {
-        el = document.createElement("video");
-        el.controls = true;
-        el.playsInline = true;
-        el.preload = "metadata";
-        if (capa) el.poster = capa.currentSrc || capa.src;
-        el.src = url;
-        if (legenda) {
-          var trilha = document.createElement("track");
-          trilha.kind = "captions";
-          trilha.srclang = "pt-BR";
-          trilha.label = "Português";
-          trilha.src = legenda;
-          trilha.default = true;
-          el.appendChild(trilha);
-        }
-        el.setAttribute("aria-label", "Vídeo pitch do NodeWatch");
-      } else {
-        window.open(url, "_blank", "noopener");
-        return;
-      }
-      player.replaceChildren(el);
-      if (el.tagName === "VIDEO") {
-        // Começa porque a pessoa tocou no botão; nunca sozinho.
-        var p = el.play();
-        if (p && p.catch) p.catch(function () {});
-        el.focus();
-      }
-    }
-  }
-
   /* ---------- Cabeçalho: link da seção visível ---------- */
   var links = Array.prototype.slice.call(document.querySelectorAll('.menu a[href^="#"]'));
   if (links.length && "IntersectionObserver" in window) {
@@ -166,7 +105,7 @@
   var semMovimento = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (!semMovimento && "IntersectionObserver" in window) {
     var blocos = document.querySelectorAll(
-      ".passo, .tela, .cartao, .etapas li, .situacao li, .faixa-aviso, .faq details, .opcional, .player"
+      ".etapa-pipe, .tela, .cartao, .kpi, .stack > div, .tabela-rolagem, .ml-interativo"
     );
     var revelador = new IntersectionObserver(function (entradas) {
       entradas.forEach(function (e) {

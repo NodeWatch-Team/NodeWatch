@@ -1,11 +1,8 @@
 # Inicializador Rápido (Windows)
 
-Esta pasta tem dois atalhos com funções diferentes:
+**`Iniciar_NodeWatch.bat`** inicia o **aplicativo NodeWatch**: prepara o `.venv`, sobe o servidor e abre o painel do analista.
 
-| Arquivo | O que faz |
-|---|---|
-| **`Iniciar_NodeWatch.bat`** | Inicia o **aplicativo NodeWatch**: prepara o `.venv`, sobe o servidor e abre o painel do analista. |
-| **`Abrir_Site_Apresentacao.bat`** | Abre **só o site de apresentação** (`site/index.html`) no navegador. Não inicia o aplicativo. |
+O site de apresentação (artigo técnico) não depende desta pasta: ele é publicado pelo GitHub Pages a partir do `index.html` da raiz do repositório.
 
 ## Iniciar o aplicativo
 
@@ -45,19 +42,6 @@ No primeiro uso, o inicializador cria o ambiente `.venv` na pasta do projeto e i
 Em seguida ele prepara o **modelo de ML**: instala em `artefatos_ml/` o modelo distribuído em `modelos/`, conferindo o SHA-256 e fazendo uma previsão de teste, e mostra `[OK] Modelo de ML pronto`. Se algo falhar, a janela mostra a causa e o que fazer; o painel abre assim mesmo, mas novas análises ficam bloqueadas até o modelo ser instalado. Detalhes em [modelos/README.md](../modelos/README.md).
 
 Se o NodeWatch **desta pasta** já estiver rodando, o inicializador só abre o painel. Se o NodeWatch em execução for de **outra pasta** (outra cópia ou um download mais antigo), ele mostra qual é e não abre o painel: feche aquele com Ctrl+C na janela dele e rode o inicializador de novo. Se a porta 5000 estiver ocupada por outro programa, ele avisa. Em nenhum caso ele encerra o que não iniciou.
-
-## Abrir só o site de apresentação
-
-Clique duas vezes em **`Abrir_Site_Apresentacao.bat`**. Ele abre `site/index.html` no navegador padrão, direto como arquivo local, porque o site é estático e não precisa de servidor. Não há nada para encerrar: basta fechar a aba.
-
-O atalho só mostra o site:
-
-- não inicia `src/sentinel_ai.py`;
-- não abre o painel do analista;
-- não pede o token do Gemini nem o modelo de Machine Learning;
-- não exige Python nem internet.
-
-O arquivo procura o site pela própria pasta (`..\site\index.html`). Espaços e acentos no caminho não atrapalham. Se a pasta `site` não estiver ao lado desta, ele avisa que o repositório deve ser extraído completo, com `site/` e `Inicializador Rápido/` preservadas.
 
 ## Token do Gemini (opcional)
 

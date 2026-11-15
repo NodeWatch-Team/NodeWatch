@@ -17,8 +17,26 @@
     {
       "name": "nodewatch-teste",
       "runtimeExecutable": ".venv/Scripts/python.exe",
-      "runtimeArgs": ["scripts/ambiente_teste.py", "--porta", "5001"],
+      "runtimeArgs": [
+        "scripts/ambiente_teste.py",
+        "--porta",
+        "5001"
+      ],
       "port": 5001
+    },
+    {
+      "name": "site-pages",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8765",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        ".."
+      ],
+      "port": 8765
     }
   ]
 }
