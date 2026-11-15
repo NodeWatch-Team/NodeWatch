@@ -29,13 +29,16 @@ Rotas:
     GET  /api/painel/analises/<id>                  manifesto: etapas, progresso, contagens, erros
     POST /api/painel/analises/<id>/cancelar         [sessão] pede o cancelamento (ponto seguro)
     POST /api/painel/analises/<id>/assumir          [sessão] esta aba passa a ser a responsável pela análise
+    GET  /api/painel/analises/<id>/fluxo?de=&ate=   log da execução: transações já gravadas por ID de exibição
+                                                    (até 200; responde também durante a análise)
     GET  /api/painel/analises/<id>/visao            indicadores e contas de maior risco do recorte
     GET  /api/painel/analises/<id>/transacoes       página da tabela (filtros, ordenação)
     GET  /api/painel/analises/<id>/transacoes/<n>   detalhes de uma transação (ID de exibição)
     GET  /api/painel/analises/<id>/grafo            grafo da conta em foco
     GET  /api/painel/operacao/desempenho            latência, RAM, CPU e medidas da análise
     GET  /api/painel/operacao/logs?tipo=sistema|ml  logs
-    GET  /api/painel/operacao/metricas              métricas históricas do modelo (+ as do dataset, se houver rótulo)
+    GET  /api/painel/operacao/metricas              métricas históricas do modelo (+ as do dataset, se houver rótulo,
+                                                    com período, pontuadas e se a base foi a do treino)
     POST /api/painel/assistente                     resposta local e verificável
 
 Nenhuma rota recebe caminho de arquivo: datasets e análises são identificados
@@ -429,6 +432,50 @@ def _aberta(aid: str):
     return m, c["analises"].conexao(aid)
 
 
+@bp.get("/analises/<aid>/fluxo")
+@_protegido("fluxo de transações")
+def analises_fluxo(aid: str):
+    """Log da execução: as transações já gravadas, por ID de exibição (de..ate, inclusive).
+
+    Diferente de /visao e /transacoes, responde também durante a análise: lê só pela chave primária o prefixo
+    1..pontuadas, que já está gravado (as contagens do manifesto mudam depois do commit de cada bloco). Não usa
+    ``conexao()``: não confere nem cria índices e não finaliza o banco.
+    """
+    from src.painel import armazenamento as arm
+    try:
+        de = int(request.args.get("de", "1"))
+        ate = int(request.args.get("ate", str(arm.TAMANHO_PAGINA_MAX)))
+    except ValueError:
+        raise arm.ErroFiltro("fluxo", "de e ate precisam ser números inteiros.") from None
+    if de < 1:
+        raise arm.ErroFiltro("fluxo", "de precisa ser 1 ou mais.")
+    if ate < de:
+        raise arm.ErroFiltro("fluxo", "ate precisa ser igual ou maior que de.")
+    if ate - de + 1 > arm.TAMANHO_PAGINA_MAX:
+        raise arm.ErroFiltro("fluxo", f"no máximo {arm.TAMANHO_PAGINA_MAX} transações por consulta.")
+    c = _c()
+    m = c["analises"].obter(aid)
+    gravadas = int(m.get("contagens", {}).get("pontuadas") or 0)
+    saida: Dict[str, Any] = {
+        "analise": {"id": aid, "status": m["status"]}, "gravadas": gravadas,
+        "validas": m.get("contagens", {}).get("validas"),
+        "tipologias_disponiveis": bool(m.get("tipologias", {}).get("disponivel")),
+        "motivo_sem_tipologias": m.get("tipologias", {}).get("motivo", ""),
+        "rotulo_disponivel": bool(m.get("rotulo", {}).get("disponivel")), "linhas": []}
+    ate = min(ate, gravadas)
+    if ate < de:
+        return _json(saida)
+    try:
+        con = arm.conectar(c["analises"].caminho_db(aid))
+    except FileNotFoundError:  # nada pontuado (cancelada antes da pontuação): lista vazia, não 503
+        return _json({**saida, "gravadas": 0})
+    try:
+        saida["linhas"] = arm.intervalo(con, de, ate)
+    finally:
+        con.close()
+    return _json(saida)
+
+
 @bp.get("/analises/<aid>/visao")
 @_protegido("visão geral do recorte")
 def analises_visao(aid: str):
@@ -577,12 +624,26 @@ def operacao_logs():
                   "privacidade": "Os logs não guardam contas, linhas do dataset, chaves nem caminhos da máquina."})
 
 
+def _base_no_treino(m: Dict[str, Any]) -> Dict[str, Any]:
+    """A base analisada é o arquivo usado no treino? Só exibição, e só pelo SHA-256 do arquivo.
+
+    "confirmado": o SHA-256 do arquivo armazenado é igual ao do arquivo de treino do modelo. Qualquer outro caso
+    (hashes diferentes ou ausentes) é "nao_confirmado": o mesmo conjunto em outro empacotamento (CSV × ZIP) tem
+    outro hash, e a sobreposição de datas não prova nada (o LI-Small cobre o mesmo mês sem ser o mesmo dado).
+    """
+    modelo = m.get("modelo") or {}
+    do_dataset, do_treino = (m.get("dataset") or {}).get("sha256"), modelo.get("sha256_treino")
+    return {"base_no_treino": "confirmado" if do_dataset and do_treino and do_dataset == do_treino else "nao_confirmado",
+            "treino": {"fonte": modelo.get("fonte"), "limites": modelo.get("limites_treino"),
+                       "sha256": do_treino, "versao_modelo": modelo.get("versao")}}
+
+
 def _metricas_do_dataset(aid: str) -> Dict[str, Any]:
     """Métricas no dataset da análise aberta, só quando ele tem rótulo (contagens exatas do SQLite)."""
     from src.painel import score as sc
     c = _c()
     m = c["analises"].obter(aid)
-    base = {"analise": aid, "dataset": m["dataset"]["nome"]}
+    base = {"analise": aid, "dataset": m["dataset"]["nome"], **_base_no_treino(m)}
     if not m["rotulo"]["disponivel"]:
         return {**base, "disponivel": False,
                 "motivo": "O dataset desta análise não tem rótulo: não há precisão, recall, F1 nem Average "
@@ -614,6 +675,7 @@ def _metricas_do_dataset(aid: str) -> Dict[str, Any]:
              "precisao": p, "recall": rec,
              "f1": (2 * p * rec / (p + rec)) if p is not None and rec is not None and p + rec > 0 else None,
              "average_precision": ap, "parcial": m["resultados"]["parciais"],
+             "pontuadas": m["contagens"].get("pontuadas"), "periodo": m["contagens"].get("periodo"),
              "origem": "calculado com o rótulo do próprio dataset, sobre as transações pontuadas nesta análise",
              "leitura": "Vale só para este dataset. Não ajusta o modelo e não substitui a avaliação histórica."}
     c["metricas_dataset"] = {chave: saida}

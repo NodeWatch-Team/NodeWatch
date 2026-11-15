@@ -546,6 +546,11 @@ class GerenciadorAnalises:
         m["modelo"] = {"versao": md.get("versao", ""), "familia": getattr(cab, "familia", None),
                        "limiar_alerta": limiar, "treinado_ate": md.get("treinado_ate") or md.get("treinado_ate_utc"),
                        "fonte": md.get("fonte"), "aviso": md.get("aviso")}
+        # só exibição: arquivo e período de treino (marcação "base usada no treino" na tela); sem eles, a tela
+        # trata como "não confirmado", igual a um manifesto antigo
+        for chave, origem in (("sha256_treino", "sha256"), ("limites_treino", "limites")):
+            if md.get(origem):
+                m["modelo"][chave] = md[origem]
         m["conversao_score"] = sc.descricao_conversao(limiar)
         self._log_ml("modelo_carregado", "Modelo de lavagem carregado para a análise", analise=m["id"],
                      versao=m["modelo"]["versao"], familia=m["modelo"]["familia"], limiar_alerta=limiar,
@@ -575,6 +580,8 @@ class GerenciadorAnalises:
         t = {"atr": 0.0, "inf": 0.0, "grav": 0.0}
         pico = memoria_processo()["bytes"] or 0
         alertas = incompleto = cursor = 0
+        # contagens parciais de VP/FP/FN (só registro: as mesmas comparações de alerta × rótulo, bloco a bloco)
+        com_rotulo = vp = fp = fn = 0
         self._progresso(m, "pontuacao", 0, n)
         try:
             while cursor < n:
@@ -612,6 +619,14 @@ class GerenciadorAnalises:
                 saida["historico_incompleto"] = inc.astype(np.int8)
                 gravador.inserir(saida)
                 t3 = time.perf_counter()
+                if "rotulo" in saida:
+                    r = saida["rotulo"].to_numpy()
+                    a = saida["alerta"].to_numpy()
+                    ok = ~pd.isna(r)
+                    com_rotulo += int(ok.sum())
+                    vp += int((ok & (r == 1) & (a == 1)).sum())
+                    fp += int((ok & (r == 0) & (a == 1)).sum())
+                    fn += int((ok & (r == 1) & (a == 0)).sum())
                 t["atr"] += t1 - t0
                 t["inf"] += t2 - t1
                 t["grav"] += t3 - t2
@@ -621,7 +636,16 @@ class GerenciadorAnalises:
                 pico = max(pico, memoria_processo()["bytes"] or 0)
                 with self._trava:
                     m["contagens"].update(pontuadas=gravador.gravadas, alertas=alertas)
-                self._progresso(m, "pontuacao", gravador.gravadas, n, {"alertas_ate_agora": alertas})
+                    if "rotulo" in saida:
+                        m["metricas_parciais"] = {"com_rotulo": com_rotulo, "vp": vp, "fp": fp, "fn": fn,
+                                                  "pontuadas": gravador.gravadas}
+                self._progresso(m, "pontuacao", gravador.gravadas, n, {
+                    "alertas_ate_agora": alertas,
+                    # latência do último bloco, com os mesmos t0..t3 acumulados acima
+                    "ultimo_bloco": {"transacoes": int(len(saida)), "atributos_ms": round((t1 - t0) * 1000, 1),
+                                     "inferencia_ms": round((t2 - t1) * 1000, 1),
+                                     "gravacao_ms": round((t3 - t2) * 1000, 1),
+                                     "total_ms": round((t3 - t0) * 1000, 1), "medido_em": agora_iso()}})
         finally:  # também em cancelamento ou erro: registra o que foi medido até aqui
             self._fechar_pontuacao(m, gravador, t, alertas, incompleto, pico, limiar)
 

@@ -69,7 +69,7 @@ def test_pagina_inicial_e_o_painel_e_a_interface_anterior_fica_em_legado(cliente
     r = cliente.get("/")
     html = r.get_data(as_text=True)
     assert r.status_code == 200 and 'lang="pt-BR"' in html and "painel-app.js" in html and "babel" not in html.lower().replace("sem babel", "")
-    for arq in ("painel.css", "painel-base.js", "painel-grafo.js", "painel-secoes.js", "painel-app.js"):
+    for arq in ("painel.css", "painel-base.js", "painel-log.js", "painel-grafo.js", "painel-secoes.js", "painel-app.js"):
         assert cliente.get(f"/assets/{arq}").status_code == 200, arq
     legado = cliente.get("/legado")
     assert legado.status_code == 200 and "Machine Learning" in legado.get_data(as_text=True)
@@ -212,7 +212,8 @@ def test_legendas_de_cores_setas_scores_icones_estados_e_filtros(cliente):
 
 
 def test_interface_nao_traz_dados_de_exemplo_gravados(cliente):
-    for arq in ("painel.html", "assets/painel-base.js", "assets/painel-grafo.js", "assets/painel-secoes.js", "assets/painel-app.js"):
+    for arq in ("painel.html", "assets/painel-base.js", "assets/painel-log.js", "assets/painel-grafo.js",
+                "assets/painel-secoes.js", "assets/painel-app.js"):
         texto = (INTERFACE / arq).read_text(encoding="utf-8")
         assert not re.search(r"\b(C00\d|nameOrig|isFraud|Math\.random)\b", texto), arq  # nada de amostra nem de progresso simulado
         assert "setTimeout(() => irPara" in texto or "setTimeout" not in texto, arq   # só o ajuste de foco usa temporizador único

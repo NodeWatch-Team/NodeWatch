@@ -352,6 +352,62 @@ dl.pares dd { min-width: 0; overflow-wrap: anywhere; }
 .progresso > i::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent); transform: translateX(-100%); animation: brilho 2.6s ease-in-out infinite; }
 @keyframes brilho { to { transform: translateX(100%); } }
 
+/* ── Execução: etapas (esquerda) e log da execução (direita), sempre abertos; empilham até 980 px ── */
+.execucao { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--e-4); align-items: start; }
+.execucao > *, .log-analise > *, .log-fixo > * { min-width: 0; }
+/* etapas compactas só aqui (a regra global .etapa não muda); o texto quebra em vez de ser cortado */
+.execucao .etapa { grid-template-columns: 24px minmax(0, 1fr); gap: var(--e-2); padding: 8px 10px; }
+.execucao .etapa .marca { width: 24px; height: 24px; font-size: 0.76rem; }
+.execucao .etapa .nome, .execucao .etapa .situacao { overflow-wrap: anywhere; }
+.log-analise { display: grid; gap: var(--e-3); align-content: start; grid-template-columns: minmax(0, 1fr); }
+.log-analise > h3 { margin: 0; }
+.log-notas { display: grid; gap: 4px; font-size: var(--t-s); color: var(--texto-suave); overflow-wrap: anywhere; }
+.log-notas strong { color: var(--texto); }
+/* contêiner rolável: altura limitada, para o aviso de sessão e o Cancelar continuarem à vista ao lado */
+.log-rolagem { position: relative; max-height: min(80vh, 960px); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+  border: 1px solid var(--borda-media); border-radius: var(--r-l); background: var(--poco); box-shadow: var(--rebaixo);
+  --log-linha: 11.2rem; }
+/* área de métricas: primeiro filho do contêiner, fixa no topo dele, fundo opaco */
+.log-fixo { position: sticky; top: 0; z-index: 2; display: grid; gap: 6px; padding: var(--e-2) var(--e-3);
+  background: var(--sup); border-bottom: 1px solid var(--borda-media); box-shadow: 0 6px 12px -8px rgba(0, 0, 0, 0.7); }
+.log-metricas-area > summary { font-size: 0.88rem; }
+.log-metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr)); gap: 6px 12px; }
+.log-metrica { display: grid; gap: 1px; align-content: start; font-size: 0.78rem; line-height: 1.3; overflow-wrap: anywhere; }
+.log-metrica dt { color: var(--texto-suave); font-size: var(--t-xs); font-weight: 650; }
+.log-metrica dd { display: grid; gap: 1px; }
+.log-metrica dd strong { font-weight: 650; color: var(--texto); font-variant-numeric: tabular-nums; }
+.log-detalhe { color: var(--texto-suave); font-size: var(--t-xs); }
+.log-rodape { font-size: var(--t-xs); color: var(--texto-suave); margin-top: 6px; overflow-wrap: anywhere; }
+.log-barra { display: flex; flex-wrap: wrap; gap: 6px var(--e-3); align-items: center; justify-content: space-between; font-size: 0.84rem; }
+.log-barra form { gap: 6px; }
+.log-barra .log-ir-rotulo { margin: 0; font-size: 0.82rem; font-weight: 600; }
+.log-barra input.log-ir { width: 7.5em; min-height: 30px; padding: 3px 8px; }
+.log-erro { display: grid; gap: 6px; justify-items: start; }
+/* lista virtualizada: só as linhas visíveis (e uma sobra) estão no DOM, em posição absoluta */
+.log-lista { position: relative; }
+.log-sonda { position: absolute; top: 0; left: 0; width: 1px; height: var(--log-linha); visibility: hidden; pointer-events: none; }
+.log-entrada { position: absolute; left: 0; right: 0; height: var(--log-linha); padding: 6px var(--e-3) 6px 14px;
+  display: grid; align-content: start; gap: 1px; font-size: 0.8rem; line-height: 1.35; overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--borda); background: var(--sup-2); }
+.log-entrada:focus-visible { outline-offset: -3px; }
+.log-entrada.com-alerta { background: linear-gradient(90deg, var(--alerta-suave), transparent 70%), var(--sup-2); box-shadow: inset 4px 0 0 var(--alerta); }
+.log-entrada.carregando { color: var(--texto-fraco); }
+.log-cab { display: flex; flex-wrap: wrap; gap: 2px 10px; font-weight: 600; color: var(--texto); }
+.log-pos { color: var(--acao-forte); font-variant-numeric: tabular-nums; }
+.log-rot { color: var(--texto-suave); }
+.log-valor { font-variant-numeric: tabular-nums; font-weight: 600; }
+.log-moeda { padding: 0 5px; border: 1px solid var(--borda-media); border-radius: var(--r-s); font-size: var(--t-xs); }
+.log-previsao.alerta strong { color: var(--alerta-forte); }
+/* rótulo do dataset: bloco próprio (tracejado, outro fundo) e prefixo escrito, separado da previsão */
+.log-rotulo { justify-self: start; padding: 0 6px; border: 1px dashed var(--borda-forte); border-radius: var(--r-s); background: rgba(124, 157, 255, 0.08); }
+.log-vazio { padding: var(--e-4); color: var(--texto-suave); font-size: 0.9rem; }
+/* precisão e recall: resumo separado, fora da lista e da área fixa */
+.log-resumo h4 { margin: 0; }
+.log-pr-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: var(--e-3); }
+.log-pr { border: 1px solid var(--borda); border-radius: var(--r-m); padding: 10px 12px; background: var(--sup-3); display: grid; gap: 2px; }
+.log-pr-nome { font-size: var(--t-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--texto-suave); }
+.log-pr-valor { font: 650 1.3rem/1.25 var(--titulo); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
 /* ── Indicadores: cartões planos com um traço de cor; só o de alertas é tingido ── */
 .kpis { display: grid; gap: var(--e-3); grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); }
 .kpi { border: 1px solid var(--borda); border-radius: var(--r-l); padding: 14px var(--e-4); position: relative; overflow: hidden;
@@ -550,6 +606,12 @@ main { padding-bottom: 84px; }
 .assistente .abrir[aria-expanded="true"] { border-color: var(--acao); background: linear-gradient(180deg, rgba(92, 200, 255, 0.16), rgba(92, 200, 255, 0.05)), var(--sup-3); }
 
 @media (max-width: 980px) { #grade-investigacao { grid-template-columns: 1fr !important; } }
+/* duas colunas estreitas (981–1240 px): a entrada do log quebra mais linhas */
+@media (min-width: 981px) and (max-width: 1240px) { .log-rolagem { --log-linha: 12.6rem; } }
+@media (max-width: 980px) {
+  .execucao { grid-template-columns: minmax(0, 1fr); }
+  .log-rolagem { --log-linha: 10.6rem; }
+}
 @media (max-width: 1100px) {
   /* no topo mais estreito, o estado da análise desce para uma linha própria */
   .topo .acoes { margin-left: auto; }
@@ -584,6 +646,7 @@ main { padding-bottom: 84px; }
   .secao > .corpo > .vazio:only-child { padding: var(--e-8) var(--e-4); }
   .ds-vazio { grid-template-columns: minmax(0, 1fr); justify-items: start; }
   .ds-vazio-arte { width: 84px; }
+  .log-rolagem { --log-linha: 11.2rem; max-height: min(80vh, 900px); }
 }
 @media (max-width: 480px) {
   /* topo compacto: uma linha de controles e o estado da análise embaixo. Os rótulos ficam só visualmente ocultos:
@@ -593,6 +656,7 @@ main { padding-bottom: 84px; }
   .topo .acoes { gap: 6px; flex-wrap: nowrap; }
   .topo .acoes .botao { width: 38px; min-height: 38px; padding: 0; }
   .topo .acoes .selo { padding: 4px 9px; font-size: 0.76rem; }
+  .log-rolagem { --log-linha: 16.2rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
@@ -606,4 +670,7 @@ main { padding-bottom: 84px; }
   .g-no circle.corpo, .g-aresta path.traco { stroke: CanvasText; }
   .selo, .botao, .bloco, .secao, .vazio, .kpi, .aviso, .ds-vazio { border: 1px solid CanvasText; }
   .botao:disabled { border-style: dashed; color: GrayText; }
+  .log-rolagem, .log-fixo, .log-entrada, .log-pr, .log-moeda { border: 1px solid CanvasText; }
+  .log-rotulo { border: 1px dashed CanvasText; }
+  .log-entrada.com-alerta { box-shadow: none; border-left: 4px solid Highlight; }
 }

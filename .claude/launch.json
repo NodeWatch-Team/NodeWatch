@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "painel-teste-log",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "C:/Users/ghost/AppData/Local/Temp/claude/f92bf6120159cbee/a9ee2b1b-be21-4ba5-a5cb-7c768c49155d/scratchpad/servidor_demo.py",
+        "C:/Users/ghost/AppData/Local/Temp/claude/f92bf6120159cbee/a9ee2b1b-be21-4ba5-a5cb-7c768c49155d/scratchpad/demo/r2",
+        "30000",
+        "0.4",
+        "5058",
+        "300"
+      ],
+      "port": 5058
+    }
+  ]
+}

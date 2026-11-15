@@ -26,6 +26,7 @@ import json
 import math
 import re
 import sqlite3
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -296,9 +297,25 @@ def _finalizar(con: sqlite3.Connection, progresso: Optional[Callable[[int, int],
     con.execute("ANALYZE")
     con.execute("INSERT OR REPLACE INTO meta (chave, valor) VALUES ('finalizado', '1')")
     con.commit()
-    con.execute("PRAGMA journal_mode=DELETE")  # arquivo único: leitores abrem só para leitura
+    _modo_delete(con)  # arquivo único: leitores abrem só para leitura
     if progresso:
         progresso(total, total)
+
+
+def _modo_delete(con: sqlite3.Connection, tentativas: int = 100, espera_s: float = 0.05) -> None:
+    """Sai do WAL. Sair do WAL exige trava exclusiva, que o SQLite não espera: se uma leitura curta (o log da
+    execução consulta durante a pontuação) estiver aberta nesse instante, tenta de novo em seguida."""
+    for i in range(tentativas):
+        try:
+            modo = con.execute("PRAGMA journal_mode=DELETE").fetchone()[0]
+        except sqlite3.OperationalError:
+            if i == tentativas - 1:
+                raise
+            modo = None
+        if str(modo).lower() == "delete":
+            return
+        time.sleep(espera_s)
+    raise sqlite3.OperationalError("não foi possível sair do modo WAL (banco ocupado por leituras)")
 
 
 def garantir_finalizado(caminho: Path) -> None:
@@ -548,6 +565,17 @@ def pagina(con: sqlite3.Connection, f: Filtros, numero: int = 1, tamanho: int = 
         itens.append(d)
     return {"total": total, "pagina": numero, "paginas": paginas, "tamanho": int(tamanho), "ordenar": ordenar,
             "direcao": direcao, "linhas": itens, "filtros_ativos": f.ativos()}
+
+
+def intervalo(con: sqlite3.Connection, de: int, ate: int) -> List[Dict[str, Any]]:
+    """Transações gravadas com ID de exibição de ``de`` a ``ate`` (inclusive), em ordem cronológica.
+
+    Lê pela chave primária: serve ao log da execução, inclusive durante a pontuação (os IDs gravados são sempre
+    o prefixo 1..pontuadas). Não depende de índices nem de o banco estar finalizado.
+    """
+    linhas = con.execute("SELECT * FROM transacoes WHERE id_exibicao BETWEEN ? AND ? ORDER BY id_exibicao",
+                         (int(de), int(ate))).fetchall()
+    return [_linha(r) for r in linhas]
 
 
 def detalhe(con: sqlite3.Connection, id_exibicao: int) -> Dict[str, Any]:

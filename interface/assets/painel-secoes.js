@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const { h, f, api, consulta, useCarga, useIntervalo, Icone, Aviso, Erro, Carregando, Vazio, Legenda, Selo, Secao, Pares, Dialogo, Barra, BarraProgresso,
-    NOME_FAIXA, SITUACAO_ALERTA, BlocoGrafo } = window.NW;
+    NOME_FAIXA, SITUACAO_ALERTA, BlocoGrafo, LogAnalise, AvisoBaseTreino } = window.NW;
 
   const NOME_STATUS = { em_andamento: 'Em andamento', concluida: 'Concluída', cancelada: 'Cancelada', parcial: 'Parcial', erro: 'Erro' };
   const TOM_STATUS = { concluida: 'ok', cancelada: 'atencao', parcial: 'atencao', erro: 'alerta', em_andamento: '' };
@@ -208,8 +208,10 @@
         h('div', { className: 'linha' }, h('h3', { style: { margin: 0 } }, 'Processamento — ' + manifesto.dataset.nome),
           h(Selo, { tom: TOM_STATUS[manifesto.status] }, NOME_STATUS[manifesto.status]), h('span', { className: 'suave' }, 'iniciada em ' + f.instante(manifesto.iniciada_em))),
         h(SituacaoAnalise, { m: manifesto }),
-        manifesto.status === 'em_andamento' ? h(Progresso, { m: manifesto, aoCancelar, aoAssumir }) :
-          h('details', null, h('summary', null, 'Etapas executadas'), h(Progresso, { m: manifesto, aoCancelar, aoAssumir }))) : null,
+        /* etapas (esquerda) e log da execução (direita), sempre abertos, também depois do fim; empilham até 980 px */
+        h('div', { className: 'execucao' },
+          h('div', { className: 'execucao-etapas' }, h(Progresso, { m: manifesto, aoCancelar, aoAssumir })),
+          h(LogAnalise, { m: manifesto, estado }))) : null,
       h('details', { open: !manifesto }, h('summary', null, 'Análises recentes (' + analises.analises.length + ')'),
         analises.analises.length ? h('div', { className: 'rolagem' }, h('table', null,
           h('caption', null, 'Abrir uma análise carrega os resultados gravados, sem reprocessar. ' + analises.retencao.leitura),
@@ -573,8 +575,10 @@
       h('h4', null, 'Neste dataset (análise aberta)'),
       dd.disponivel ? h(React.Fragment, null,
         h(Pares, { itens: [['Dataset', dd.dataset], ['Transações com rótulo', f.inteiro(dd.transacoes_com_rotulo)], ['Rotuladas como lavagem', f.inteiro(dd.rotuladas_lavagem)],
-          ['Alertas', f.inteiro(dd.alertas) + ' (' + f.inteiro(dd.verdadeiros_positivos) + ' rotulados como lavagem, ' + f.inteiro(dd.falsos_positivos) + ' não)']] }),
-        tabela(dd), h(Legenda, null, dd.origem + '. ' + dd.leitura + (dd.parcial ? ' Resultado parcial.' : ''))) : h(Vazio, null, dd.motivo),
+          ['Alertas', f.inteiro(dd.alertas) + ' (' + f.inteiro(dd.verdadeiros_positivos) + ' rotulados como lavagem, ' + f.inteiro(dd.falsos_positivos) + ' não)'],
+          ['Base usada no treino do modelo', dd.base_no_treino === 'confirmado' ? 'confirmado (mesmo arquivo do treino)' : 'não confirmado']] }),
+        tabela(dd), h(Legenda, null, dd.origem + '. ' + dd.leitura + (dd.parcial ? ' Resultado parcial.' : '')),
+        h(AvisoBaseTreino, { situacao: dd.base_no_treino, treino: dd.treino })) : h(Vazio, null, dd.motivo),
       h(Legenda, null, 'As métricas históricas e as contagens da análise atual são coisas diferentes: as primeiras descrevem o modelo num conjunto com rótulo; as segundas contam alertas no dataset analisado.'));
   }
 

@@ -66,7 +66,7 @@ O terminal confirma com `Origens extras liberadas (NODEWATCH_ORIGENS): null` e m
 
 1. **Dataset e análise.** Envie um `.csv` (ou `.zip` com um CSV) ou escolha um dataset já disponível. Sem dataset escolhido, o bloco de escolha resume a própria lista: quantos datasets há, quantos foram enviados e quantos estão no servidor, e quantos em cada situação. O servidor valida o arquivo e mostra nome, tamanho, linhas, período, colunas reconhecidas, moedas e formatos de pagamento. Cada problema traz coluna, linha de exemplo e o que corrigir.
 2. **Analisar.** Só o clique em **Analisar**, com um dataset válido, inicia o processamento. Abrir a página, enviar ou validar não analisa nada.
-3. **Progresso.** As seis etapas aparecem com o estado de cada uma, o volume lido e, quando há base medida, percentual e tempo restante (rotulado como estimativa). **Cancelar análise** para no fim do bloco atual e mantém o que já foi pontuado.
+3. **Progresso e log da execução.** Lado a lado (≈50/50 a partir de 981 px; empilhados até 980 px, na ordem etapas → aviso de sessão e Cancelar → log), sempre abertos, também depois do fim. À esquerda, as seis etapas com o estado de cada uma, o volume lido e, quando há base medida, percentual e tempo restante (rotulado como estimativa). **Cancelar análise** para no fim do bloco atual e mantém o que já foi pontuado. À direita, o **log da execução**: métricas reais de execução numa área fixa, as transações já pontuadas numa lista virtualizada e, abaixo, precisão e recall do dataset (detalhes em Processamento → Log da execução).
 4. **Filtros.** Um único conjunto de filtros vale para os indicadores, as contas, o grafo e a tabela.
 5. **Visão geral, contas e grafo.** Indicadores do recorte, até 10 contas de maior risco e o grafo da conta em foco.
 6. **Tabela e detalhes.** Página a página, com seletor de colunas. O ID de exibição abre os detalhes da transação.
@@ -113,9 +113,36 @@ Nada é treinado nem reajustado. A pontuação reusa `EstadoFinanceiro` e `pontu
 
 **Estados da análise:** em andamento; concluída; cancelada (a pedido; vale o que foi pontuado até ali); parcial (interrompida sem pedido, por exemplo servidor reiniciado; vale o que foi processado); erro (com causa e ação sugerida).
 
+### Log da execução (`interface/assets/painel-log.js`)
+
+Consultável durante e depois da análise, enquanto ela estiver aberta. Nenhum valor é fixo nem simulado; o que falta aparece como "indisponível" (nunca 0, "—" ou 0%).
+
+**Área fixa de métricas** (primeiro item do contêiner rolável, `position: sticky`). Cada valor tem unidade, escopo e horário:
+
+| métrica | origem | quando |
+|---|---|---|
+| Último bloco de pontuação | `ultimo_bloco` no progresso da etapa de pontuação (manifesto): total, atributos, inferência e gravação em ms, transações do bloco e `medido_em`, com os mesmos `t0..t3` do pipeline | a cada bloco; fica no manifesto depois do fim |
+| Consulta do log | latência da rota `fluxo de transações` em `GET /operacao/desempenho` | depois da primeira consulta |
+| RAM e CPU (processo e computador) | `GET /operacao/desempenho`, sem mudar o formato; CPU com núcleos e `janela_s` (o monitor é compartilhado com o painel operacional) | a cada 2 s, só com a análise em andamento e o log montado |
+| Pico de RAM na pontuação | `desempenho.pico_memoria_processo_na_pontuacao_bytes` | ao fim da pontuação |
+
+RAM e CPU **não vão para o manifesto**. Ao terminar ou cancelar, o polling para e a última leitura fica como "última leitura durante a análise"; numa falha, a leitura anterior fica com "não atualizada desde HH:mm:ss". Numa análise reaberta do histórico, RAM e CPU aparecem como "indisponível (medidas ao vivo só existem durante a análise)". Até 720 px, a área começa recolhida (o título mostra o último bloco e a RAM), para a lista caber.
+
+**Lista virtualizada.** `GET /analises/<id>/fluxo?de=&ate=` em janelas de até 200 IDs, cache de 20 páginas, no máximo 1 requisição em voo e respostas de outra análise ignoradas. Altura de linha fixa por largura de tela (`--log-linha` no CSS, medida numa sonda), sobra de 10 linhas acima e abaixo; com 6.000 transações, o DOM teve no máximo 25 entradas. Acima de 8 milhões de pixels de altura, a rolagem fica proporcional (milhões de linhas). "Seguir ao vivo" vem ligado durante a análise, desliga quando o analista rola para cima e volta pelo botão **Ir para as mais recentes** ou ao chegar no fim; **Ir para a posição** leva a um número do fluxo. Sem animação de rolagem. `role="feed"` com `aria-setsize`/`aria-posinset`; um único resumo `.sr` polite, no máximo a cada 10 s ou na mudança de etapa ou de status (a lista e os números não têm `aria-live`).
+
+Cada entrada: posição no fluxo (igual ao ID de exibição); ID de exibição (`f.idExibicao(id, contagens.validas)`, "gerado pelo NodeWatch em ordem cronológica; não é o ID do arquivo"); data e hora; origem e destino (banco e conta); valor e moeda separados, sem conversão; formato de pagamento; score e faixa; previsão ("Com alerta: possível lavagem, para investigação" ou "Sem alerta"); **rótulo do dataset** em bloco próprio, tracejado e com o prefixo escrito ("lavagem", "não lavagem" ou "sem rótulo"); tipologia registrada. O modelo não classifica tipologia: só aparecem as tipologias casadas com o arquivo de padrões, com "(registrada no dataset)"; sem associação ou sem arquivo, "Sem classificação" (sem tipologia registrada no dataset; não significa que não seja lavagem). O motivo da falta do arquivo de padrões aparece uma vez no cabeçalho, junto do limiar ("score 701 (original …)") e, para o formato IBM AML, da nota de dados simulados.
+
+**Largura do ID (decisão L4).** O log usa `contagens.validas`, fixo desde a leitura, para a largura não mudar durante a análise. A tabela continua usando `pontuadas`; as duas só diferem num resultado parcial que cruza uma potência de 10 (por exemplo, 999.999 pontuadas de 1.200.000 válidas: TX-0999999 no log, TX-999999 na tabela).
+
+**Precisão e recall** (resumo separado, fora da lista e da área fixa). Só sobre as transações com rótulo, sempre com "calculado sobre X de Y transações". Durante a análise, vêm de `metricas_parciais` (VP, FP, FN e transações com rótulo, somados pelo pipeline bloco a bloco, logo depois de cada gravação), com o rótulo "parcial: N de M transações"; sem denominador, "ainda sem base (nenhum alerta até agora)" ou "(nenhuma transação rotulada como lavagem até agora)". Depois do fim, vêm de `GET /operacao/metricas?analise=<id>` (contagem no SQLite, fonte oficial); continuam "parcial" se a análise não foi concluída. Sem rótulo: "Não disponível para este dataset". F1, Average Precision e as métricas históricas não aparecem aqui.
+
+**Base usada no treino do modelo** (só exibição, `base_no_treino`): "confirmado" quando o SHA-256 do arquivo analisado é igual ao do arquivo de treino (`manifesto.modelo.sha256_treino`, copiado dos metadados do modelo junto com `limites_treino`), com o aviso de que as métricas não medem dados novos; nos outros casos, "não confirmado". A sobreposição de datas não conta como prova: o LI-Small cobre o mesmo mês sem ser o mesmo dado, e o HI-Small enviado como CSV tem hash diferente do ZIP de treino.
+
+**Leituras durante a pontuação.** `/fluxo` não usa `conexao()` (não confere índices nem finaliza o banco): lê pela chave primária só o prefixo `1..pontuadas`, já gravado, e devolve 200 com lista vazia quando não há banco. `/visao`, `/transacoes` e `/grafo` continuam com 409 até o fim. Para o banco sempre terminar em `journal_mode=delete`, a saída do WAL tenta de novo quando uma leitura curta do log está aberta naquele instante; sem isso, uma consulta do log no momento exato da finalização fazia a análise terminar em erro ("database is locked").
+
 ## Persistência
 
-- **Manifesto:** `artefatos_ml/painel/analises/<id>/manifesto.json`, com id, dataset, hash SHA-256, datas, status, etapas, duração, versão do modelo, limiar, conversão do score, contagens, avisos e erros. A escrita é atômica (arquivo temporário na mesma pasta e `os.replace`, com novas tentativas no Windows).
+- **Manifesto:** `artefatos_ml/painel/analises/<id>/manifesto.json`, com id, dataset, hash SHA-256, datas, status, etapas (a de pontuação com `ultimo_bloco`), duração, versão do modelo (com `sha256_treino` e `limites_treino` quando os metadados os têm), limiar, conversão do score, contagens, `metricas_parciais` (datasets com rótulo), avisos e erros. RAM e CPU não são gravadas. A escrita é atômica (arquivo temporário na mesma pasta e `os.replace`, com novas tentativas no Windows).
 - **Resultados por transação:** `resultados.sqlite`, um arquivo por análise.
 
 **Por que SQLite e não JSON.** A tabela, os indicadores, as contas e o grafo filtram, ordenam e paginam no servidor. Um JSON teria de ser lido e percorrido inteiro a cada filtro. Medido com 2.076.752 transações (HI-Small, 01–03/09/2022): arquivo de 636 MB, visão geral em 0,4–1,7 s, página da tabela em 0,1–0,3 s, grafo em 0,1–0,2 s. O SQLite é da biblioteca padrão, grava em blocos durante a pontuação (o parcial fica consultável) e tem índices nos campos filtráveis.
@@ -210,6 +237,7 @@ Todas as rotas em `/api/painel` (`src/api_painel.py`):
 | `GET /estado` | modelo, limites, legendas, análise em andamento |
 | `GET /datasets`, `POST /datasets`, `GET /datasets/<id>`, `POST /datasets/<id>/validar` | catálogo, envio e validação |
 | `GET /analises`, `POST /analises`, `GET /analises/<id>`, `POST /analises/<id>/cancelar` | histórico, início, manifesto e cancelamento |
+| `GET /analises/<id>/fluxo?de=&ate=` | log da execução: transações gravadas de `de` a `ate` (até 200), também durante a análise |
 | `GET /analises/<id>/visao` | indicadores e contas do recorte |
 | `GET /analises/<id>/transacoes`, `GET /analises/<id>/transacoes/<n>` | página da tabela e detalhes |
 | `GET /analises/<id>/grafo` | grafo da conta em foco |
@@ -261,6 +289,20 @@ Uso normal conferido do começo ao fim, com arquivos pequenos e sem reprocessar 
 Cancelamento e fim de sessão foram testados num servidor de teste com o código real, pasta temporária, sessão de 20 s e modelo desacelerado, para a análise durar o suficiente. O prazo real de 150 s foi conferido antes, numa aba fechada sem análise rodando.
 
 Correção feita: sequências que voltam à conta em foco eram marcadas como sequência na aresta, mas não apareciam na lista (o resumo dizia "horários compatíveis" e a lista ficava vazia).
+
+## Log da execução: verificação (15/11/2026)
+
+Feita no navegador do aplicativo (Chromium), num servidor de teste com o código real, pasta temporária, modelo de teste desacelerado e um dataset sintético de 6.000 transações em formato IBM AML, com rótulo, arquivo de padrões e valores longos de propósito (bancos de 7 dígitos, contas de 9 caracteres, "Australian Dollar", "Reinvestment", duas tipologias na mesma transação). O painel do navegador estava oculto, o que pausa `requestAnimationFrame`; para medir a rolagem, a página usou um substituto do rAF só durante a medição.
+
+| verificação | resultado |
+|---|---|
+| Larguras 320, 390, 481, 720, 721, 768, 980, 981, 1240, 1241, 1280 e 1440 px | duas colunas iguais a partir de 981 px, uma até 980 px; sem rolagem horizontal; as 6.000 entradas percorridas em cada largura, nenhuma com texto passando da altura da linha (folga mínima de 13 px) |
+| DOM da lista | no máximo 25 entradas para 6.000 transações; no meio da lista, posições 2.990–3.013 |
+| Em andamento | segue ao vivo; RAM, CPU e latências atualizando a cada 2 s; precisão e recall com "parcial: N de 6.000"; Cancelar e aviso de sessão visíveis; anúncio para leitor de tela no máximo a cada 10 s |
+| Fim | polling parado com "última leitura durante a análise"; precisão e recall finais iguais aos da contagem no SQLite; pico de RAM da pontuação |
+| Reaberta do histórico | RAM, CPU e latência do log como "indisponível (medidas ao vivo só existem durante a análise)"; último bloco e pico continuam |
+
+Não verificados nesta rodada: NVDA (fala), `forced-colors` e `prefers-reduced-motion` no navegador (as regras estão no CSS), e o HI-Small completo com o log aberto e fechado (comparação de `vazao_transacoes_por_s`).
 
 ## Testes
 
