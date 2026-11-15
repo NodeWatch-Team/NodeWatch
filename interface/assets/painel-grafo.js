@@ -164,8 +164,50 @@
     const [sel, setSel] = React.useState(null); // {tipo: 'no' | 'aresta', id}
     const [seq, setSeq] = React.useState(null); // índice da sequência destacada
     const [mostrarValores, setMostrarValores] = React.useState(true);
-    React.useEffect(() => { setSel(null); setSeq(null); }, [g]);
+    const [zoom, setZoom] = React.useState({ k: 1, x: 0, y: 0 });   // transformação da câmera (só visual)
+    const [dica, setDica] = React.useState(null);                    // dica ao passar o ponteiro {x, y, titulo, linhas}
+    const refSvg = React.useRef(null), refMoldura = React.useRef(null), arrasto = React.useRef(null);
+    React.useEffect(() => { setSel(null); setSeq(null); setZoom({ k: 1, x: 0, y: 0 }); setDica(null); }, [g]);
     const { pos, altura } = React.useMemo(() => posicionar(g.nos, g.tipologias.disposicao.id), [g]);
+    /* Zoom em torno de um ponto (coordenadas do desenho); limites de 0,4× a 4×. */
+    const ampliar = (fator, cx, cy) => setZoom(z => {
+      const k = Math.max(0.4, Math.min(4, z.k * fator));
+      const px = cx === undefined ? L / 2 : cx, py = cy === undefined ? altura / 2 : cy;
+      return { k, x: px - (px - z.x) * (k / z.k), y: py - (py - z.y) * (k / z.k) };
+    });
+    const escala = () => { const r = refSvg.current ? refSvg.current.getBoundingClientRect() : null; return r && r.width ? L / r.width : 1; };
+    /* Ctrl + roda do mouse: zoom no ponto do ponteiro. Sem Ctrl, a roda continua rolando a página. */
+    React.useEffect(() => {
+      const el = refSvg.current;
+      if (!el) return undefined;
+      const roda = e => {
+        if (!e.ctrlKey && !e.metaKey) return;
+        e.preventDefault();
+        const r = el.getBoundingClientRect(), fs = L / r.width;
+        ampliar(e.deltaY < 0 ? 1.15 : 1 / 1.15, (e.clientX - r.left) * fs, (e.clientY - r.top) * fs - 48);
+      };
+      el.addEventListener('wheel', roda, { passive: false });
+      return () => el.removeEventListener('wheel', roda);
+    }, [altura]);
+    /* Arrastar o fundo move a câmera; contas e arestas continuam clicáveis. */
+    const inicioArrasto = e => {
+      if (e.button !== 0 || (e.target.closest && e.target.closest('.g-no, .g-aresta'))) return;
+      arrasto.current = { x: e.clientX, y: e.clientY, z: zoom, fs: escala() };
+      e.currentTarget.setPointerCapture(e.pointerId);
+      if (refMoldura.current) refMoldura.current.classList.add('arrastando');
+    };
+    const moverArrasto = e => {
+      const a = arrasto.current;
+      if (!a) return;
+      setZoom({ k: a.z.k, x: a.z.x + (e.clientX - a.x) * a.fs, y: a.z.y + (e.clientY - a.y) * a.fs });
+    };
+    const fimArrasto = () => { arrasto.current = null; if (refMoldura.current) refMoldura.current.classList.remove('arrastando'); };
+    const mostrarDica = (e, titulo, linhas) => {
+      if (arrasto.current || !refMoldura.current) return;
+      const r = refMoldura.current.getBoundingClientRect();
+      setDica({ x: Math.max(150, Math.min(r.width - 150, e.clientX - r.left)), y: Math.max(70, e.clientY - r.top), titulo, linhas });
+    };
+    const esconderDica = () => setDica(null);
     const tracos = React.useMemo(() => tracar(g.arestas, pos), [g, pos]);
     const muitos = g.arestas.length > MAX_ROTULOS;
     const comValores = mostrarValores && !muitos;
@@ -183,39 +225,56 @@
     const filtrosSemContas = Object.assign({}, filtros, { conta_origem: '', conta_destino: '' });
 
     return h('div', { className: 'grade' },
-      h('div', { className: 'linha', style: { justifyContent: 'space-between' } },
-        h('p', null, h('strong', null, 'Conta em foco: '), h('span', { className: 'mono' }, g.foco), g.escolha ? h('span', { className: 'suave' }, ' (' + g.escolha + ')') : null),
-        h('div', { className: 'linha' },
+      h('div', { className: 'barra-tabela' },
+        h('p', null, h('span', { className: 'suave' }, 'Conta em foco '), h(Selo, { tom: 'acao' }, h('span', { className: 'mono' }, g.foco)), g.escolha ? h('span', { className: 'suave', style: { fontSize: 'var(--t-s)' } }, ' (' + g.escolha + ')') : null),
+        h('div', { className: 'controles' },
           h('label', { htmlFor: 'grafo-saltos', style: { margin: 0 } }, 'Saltos a partir do foco'),
           h('select', { id: 'grafo-saltos', style: { width: 'auto' }, value: profundidade, onChange: e => aoProfundidade(+e.target.value) },
             Array.from({ length: g.limites.profundidade_max }, (_, i) => h('option', { key: i + 1, value: i + 1 }, i + 1))),
           h('label', { style: { margin: 0, fontWeight: 400 } },
             h('input', { type: 'checkbox', checked: comValores, disabled: muitos, onChange: e => setMostrarValores(e.target.checked) }), ' Valores e horários nas arestas'))),
       muitos ? h(Legenda, null, 'Há ' + g.arestas.length + ' arestas: valores e horários ficam ocultos por legibilidade. Selecione uma aresta, ou use a lista abaixo, para ver valor, moeda, horário e transações.') : null,
-      h('div', { className: 'kpis' },
-        h('div', { className: 'kpi' }, h('div', { className: 'nome' }, 'Vértices e arestas desenhados'),
-          h('div', { className: 'valor menor' }, f.inteiro(t.vertices) + ' vértices · ' + f.inteiro(t.arestas) + ' arestas'),
-          h(Legenda, null, 'De ' + f.inteiro(t.contas_relacionadas) + ' contas e ' + f.inteiro(t.arestas_relacionadas) + ' arestas relacionadas.')),
-        h('div', { className: 'kpi' }, h('div', { className: 'nome' }, 'Transações exibidas'),
-          h('div', { className: 'valor menor' }, 'exibindo ' + f.inteiro(t.exibidas) + ' de ' + f.inteiro(t.relacionadas) + ' transações relacionadas'),
-          h(Legenda, null, 'Relacionadas: enviadas ou recebidas pela conta em foco e pelas contas ligadas a ela, até o limite de saltos. ' + f.inteiro(t.alertas_relacionadas) + ' com alerta.')),
-        h('div', { className: 'kpi' }, h('div', { className: 'nome' }, 'Transações analisadas no recorte'),
-          h('div', { className: 'valor menor' }, f.inteiro(t.transacoes_recorte)),
-          h(Legenda, null, 'Transações que passam pelos filtros (sem os de conta).')),
-        h('div', { className: 'kpi' }, h('div', { className: 'nome' }, 'Valor total transferido, por moeda'),
-          h('ul', null, t.por_moeda.slice(0, 6).map(m => h('li', { key: m.moeda }, h('strong', null, f.valor(m.total) + ' ' + m.moeda), h('span', { className: 'suave' }, ' em ' + f.plural(m.n, 'transação', 'transações'))))),
-          t.por_moeda.length > 6 ? h(Legenda, null, 'e mais ' + (t.por_moeda.length - 6) + ' moeda(s).') : null,
-          h(Legenda, null, 'Soma de todas as transações relacionadas do recorte, não só das desenhadas. Moedas não são somadas entre si.'))),
-      h('div', { className: 'grafo-moldura' },
-        h('svg', { viewBox: '0 -48 ' + L + ' ' + (altura + 48), role: 'group',  // folga no topo para os laços de autotransferência
+      h('dl', { className: 'estatisticas' },
+        h('div', { className: 'estatistica', title: 'De ' + f.inteiro(t.contas_relacionadas) + ' contas e ' + f.inteiro(t.arestas_relacionadas) + ' arestas relacionadas.' },
+          h('dt', null, 'Desenhados'), h('dd', null, f.inteiro(t.vertices) + ' vértices · ' + f.inteiro(t.arestas) + ' arestas',
+            h('small', null, 'de ' + f.inteiro(t.contas_relacionadas) + ' contas e ' + f.inteiro(t.arestas_relacionadas) + ' arestas relacionadas'))),
+        h('div', { className: 'estatistica', title: 'Relacionadas: enviadas ou recebidas pela conta em foco e pelas contas ligadas a ela, até o limite de saltos.' },
+          h('dt', null, 'Transações exibidas'), h('dd', null, 'exibindo ' + f.inteiro(t.exibidas) + ' de ' + f.inteiro(t.relacionadas),
+            h('small', null, f.inteiro(t.alertas_relacionadas) + ' relacionadas com alerta'))),
+        h('div', { className: 'estatistica', title: 'Transações que passam pelos filtros (sem os de conta).' },
+          h('dt', null, 'Analisadas no recorte'), h('dd', null, f.inteiro(t.transacoes_recorte), h('small', null, 'filtros sem os de conta'))),
+        h('div', { className: 'estatistica', title: 'Soma de todas as transações relacionadas do recorte, não só das desenhadas. Moedas não são somadas entre si.' },
+          h('dt', null, 'Valor total, por moeda'),
+          h('dd', null, t.por_moeda.length ? f.valor(t.por_moeda[0].total) + ' ' + t.por_moeda[0].moeda : '—',
+            h('small', null, t.por_moeda.length > 1 ? '+ ' + (t.por_moeda.length - 1) + ' moeda(s): ' + t.por_moeda.slice(1, 4).map(m => f.valor(m.total) + ' ' + m.moeda).join(' · ') + (t.por_moeda.length > 4 ? ' …' : '') : 'moedas nunca são somadas')))),
+      h('ul', { className: 'legenda-rapida', 'aria-label': 'Legenda rápida do grafo' },
+        h('li', null, h('svg', { viewBox: '0 0 28 16', 'aria-hidden': 'true' }, h('g', { className: 'g-no foco' }, h('circle', { className: 'anel', cx: 14, cy: 8, r: 7 }), h('circle', { className: 'corpo', cx: 14, cy: 8, r: 4.5 }))), 'Conta em foco'),
+        h('li', null, h('svg', { viewBox: '0 0 28 16', 'aria-hidden': 'true' }, h('g', { className: 'g-no alerta' }, h('circle', { className: 'corpo', cx: 14, cy: 8, r: 5.5 }))), 'Ligada a alerta'),
+        h('li', null, h('svg', { viewBox: '0 0 28 16', 'aria-hidden': 'true' }, h('g', { className: 'g-aresta alerta' }, h('path', { className: 'traco', d: 'M 2 8 L 26 8' }))), 'Caminho com alerta'),
+        h('li', null, h('svg', { viewBox: '0 0 28 16', 'aria-hidden': 'true' }, h('g', { className: 'g-aresta sem-ordem' }, h('path', { className: 'traco', d: 'M 2 8 L 26 8' }))), 'Sem ordem confirmada'),
+        h('li', null, h('svg', { viewBox: '0 0 28 16', 'aria-hidden': 'true' }, h('g', { className: 'g-aresta na-sequencia' }, h('path', { className: 'traco', d: 'M 2 8 L 26 8' }))), 'Sequência selecionada'),
+        h('li', { className: 'fraco' }, 'Ctrl + roda ou botões: zoom · arraste o fundo para mover')),
+      h('div', { className: 'grafo-moldura', ref: refMoldura },
+        h('div', { className: 'grafo-controles', role: 'group', 'aria-label': 'Zoom do grafo' },
+          h('button', { type: 'button', className: 'botao', onClick: () => ampliar(1.25), 'aria-label': 'Aproximar', title: 'Aproximar' }, h(Icone, { nome: 'mais' })),
+          h('button', { type: 'button', className: 'botao', onClick: () => ampliar(1 / 1.25), 'aria-label': 'Afastar', title: 'Afastar' }, h(Icone, { nome: 'menos' })),
+          h('button', { type: 'button', className: 'botao', onClick: () => setZoom({ k: 1, x: 0, y: 0 }), 'aria-label': 'Enquadrar o grafo inteiro', title: 'Enquadrar o grafo inteiro' }, h(Icone, { nome: 'ajustar' }))),
+        zoom.k !== 1 ? h('span', { className: 'grafo-zoom', 'aria-hidden': 'true' }, f.numero(zoom.k * 100, 0) + '%') : null,
+        dica ? h('div', { className: 'grafo-dica', style: { left: dica.x, top: dica.y }, 'aria-hidden': 'true' }, h('strong', null, dica.titulo), dica.linhas.map((l, i) => h('div', { key: i, className: l.alerta ? 'alerta-txt' : '' }, l.texto))) : null,
+        h('svg', { ref: refSvg, viewBox: '0 -48 ' + L + ' ' + (altura + 48), role: 'group',  // folga no topo para os laços de autotransferência
+          onPointerDown: inicioArrasto, onPointerMove: moverArrasto, onPointerUp: fimArrasto, onPointerCancel: fimArrasto, onPointerLeave: esconderDica,
           'aria-label': 'Grafo de transações da conta ' + g.foco + ': ' + t.vertices + ' contas e ' + t.arestas + ' arestas. As setas vão da origem para o destino. ' + g.ordem_temporal.resumo },
           h('defs', null, [['seta', 'm-seta'], ['seta-alerta', 'm-seta-alerta'], ['seta-seq', 'm-seta-seq']].map(([id, classe]) =>
             h('marker', { key: id, id, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 9, markerHeight: 9, orient: 'auto-start-reverse', markerUnits: 'userSpaceOnUse' }, h('path', { className: classe, d: 'M 0 0 L 10 5 L 0 10 z' })))),
+          h('g', { transform: 'translate(' + zoom.x + ' ' + zoom.y + ') scale(' + zoom.k + ')' },
           tracos.map(tr => {
             const a = tr.a, k = chaveAresta(a), selecionada = arSel && k === sel.id, emSeq = naSeq.has(k);
             return h('g', Object.assign({ key: k, className: 'g-aresta' + (a.alerta ? ' alerta' : '') + (a.agrupada ? ' agrupada' : '') + (semOrdem(a) ? ' sem-ordem' : '') + (emSeq ? ' na-sequencia' : '') +
               (selecionada ? ' selecionada' : '') + (arestaDestacada(a) ? '' : ' apagada'),
-              tabIndex: 0, role: 'button', 'aria-pressed': !!selecionada, 'aria-label': descricaoAresta(a) }, ativar(() => selecionar(selecionada ? null : { tipo: 'aresta', id: k }))),
+              tabIndex: 0, role: 'button', 'aria-pressed': !!selecionada, 'aria-label': descricaoAresta(a),
+              onMouseMove: e => mostrarDica(e, a.origem + ' → ' + a.destino, [{ texto: (a.n > 1 ? f.inteiro(a.n) + ' transações · total ' : '') + f.valor(a.total) + ' ' + a.moeda },
+                { texto: horarioAresta(a) + ' · ' + a.ordem_texto }, { texto: a.alerta ? '⚠ ' + f.inteiro(a.alertas) + ' com alerta · maior score ' + a.maior_score : 'sem alerta · maior score ' + a.maior_score, alerta: a.alerta }]),
+              onMouseLeave: esconderDica }, ativar(() => selecionar(selecionada ? null : { tipo: 'aresta', id: k }))),
               h('path', { className: 'alvo', d: tr.d }),
               h('path', { className: 'traco', d: tr.d, markerEnd: 'url(#' + (emSeq ? 'seta-seq' : a.alerta ? 'seta-alerta' : 'seta') + ')' }),
               (comValores || selecionada || emSeq) ? h('text', { x: tr.mx, y: tr.my - 9, textAnchor: 'middle' },
@@ -225,16 +284,19 @@
             const p = pos[n.id], selecionado = noSel && n.id === sel.id;
             return h('g', Object.assign({ key: n.id, className: 'g-no ' + (n.tipo === 'foco' ? 'foco' : '') + (n.alerta ? ' alerta' : '') + (selecionado ? ' selecionado' : '') + (haDestaque && !destacados.has(n.id) ? ' apagado' : ''),
               transform: 'translate(' + p.x + ' ' + p.y + ')', tabIndex: 0, role: 'button', 'aria-pressed': !!selecionado,
-              'aria-label': 'Conta ' + n.id + ', ' + PAPEL[n.tipo] + (n.alerta ? ', ligada a ' + n.alertas_relacionados + ' transações com alerta' : ', sem alerta') },
+              'aria-label': 'Conta ' + n.id + ', ' + PAPEL[n.tipo] + (n.alerta ? ', ligada a ' + n.alertas_relacionados + ' transações com alerta' : ', sem alerta'),
+              onMouseMove: e => mostrarDica(e, n.id, [{ texto: 'Banco ' + n.banco + ' · conta ' + n.conta }, { texto: PAPEL[n.tipo] },
+                { texto: n.alerta ? '⚠ ' + f.plural(n.alertas_relacionados, 'transação relacionada com alerta', 'transações relacionadas com alerta') : 'sem alerta', alerta: n.alerta }]),
+              onMouseLeave: esconderDica },
               ativar(() => selecionar(selecionado ? null : { tipo: 'no', id: n.id }))),
               n.tipo === 'foco' ? h('circle', { className: 'anel', r: RAIO + 5 }) : null,
               h('circle', { className: 'corpo', r: RAIO }),
-              n.alerta ? h('text', { className: 'marca-alerta', y: 5, style: { fontSize: '15px' } }, '!') : null,
+              n.alerta ? h('text', { className: 'marca-alerta', y: 5, style: { fontSize: '15px' } }, '!') : h('circle', { className: 'nucleo', r: n.tipo === 'foco' ? 5 : 3.5 }),
               h('text', { y: RAIO + 14 + (n.tipo === 'foco' ? 4 : 0) }, n.rotulo),
               h('text', { y: RAIO + 26 + (n.tipo === 'foco' ? 4 : 0) },
                 n.tipo === 'foco' ? h('tspan', { className: 'marca-foco' }, 'foco') : null, n.tipo === 'foco' && n.alerta ? ' · ' : null,
                 n.alerta ? h('tspan', { className: 'marca-alerta' }, 'alerta') : null));
-          }))),
+          })))),
       h('div', { className: 'grade duas' },
         h(Sequencias, { ordem: g.ordem_temporal, selecionada: seq, aoSelecionar: i => { setSel(null); setSeq(i); }, total }),
         h('div', { className: 'bloco', 'aria-live': 'polite' },
@@ -278,11 +340,15 @@
     if (carga.erro) return h(Erro, { erro: carga.erro });
     if (!carga.dados) return carga.carregando ? h(Carregando, { texto: 'Montando o grafo…' }) : h(Vazio, null, 'Nenhuma conta em foco.');
     const g = carga.dados;
+    /* Enquanto a nova consulta não volta, não mostra o estado anterior como se fosse o atual. */
+    if (carga.carregando && (g.sem_foco || g.vazio || g.ambiguo)) return h(Carregando, { texto: 'Montando o grafo…' });
+
     if (g.ambiguo) return h(Vazio, null, h('p', null, g.motivo),
       h('div', { className: 'linha', style: { marginTop: 8 } }, g.candidatas.map(c => h('button', { key: c, type: 'button', className: 'botao pequeno mono', onClick: () => props.aoFocar(c) }, c))));
     if (g.sem_foco) return h(Vazio, null, g.motivo);
     if (g.vazio) return h(Vazio, null, h('p', null, h('strong', null, 'Conta em foco: '), h('span', { className: 'mono' }, g.foco)), h('p', null, g.motivo));
-    return h(Grafo, Object.assign({ g }, props));
+    return h('div', { className: 'grade', 'aria-busy': carga.carregando ? 'true' : 'false' },
+      carga.carregando ? h(Carregando, { texto: 'Atualizando o grafo…' }) : null, h(Grafo, Object.assign({ g }, props)));
   }
 
   window.NW.BlocoGrafo = BlocoGrafo;
