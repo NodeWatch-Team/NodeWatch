@@ -113,7 +113,9 @@ def test_previsao_de_poucas_linhas_usa_uma_thread_sem_alterar_o_modelo() -> None
     _FlorestaQueAnotaThreads.threads_na_previsao = []
     grande = cab.probabilidades(X)
     pequena = cab.probabilidades(X.iloc[:10])
-    assert _FlorestaQueAnotaThreads.threads_na_previsao == [2, 1]
+    # a previsão grande usa as 2 threads pela soma em ordem (_proba_floresta_em_ordem), sem passar pelo
+    # predict_proba da floresta; a pequena usa a cópia de 1 thread. As duas dão o mesmo resultado, bit a bit.
+    assert _FlorestaQueAnotaThreads.threads_na_previsao == [1]
     assert floresta.n_jobs == 2
     assert np.array_equal(grande[:10], pequena)
     assert LIMITE_LINHAS_UMA_THREAD > 10

@@ -359,6 +359,11 @@ dl.pares dd { min-width: 0; overflow-wrap: anywhere; }
 .execucao .etapa { grid-template-columns: 24px minmax(0, 1fr); gap: var(--e-2); padding: 8px 10px; }
 .execucao .etapa .marca { width: 24px; height: 24px; font-size: 0.76rem; }
 .execucao .etapa .nome, .execucao .etapa .situacao { overflow-wrap: anywhere; }
+/* depois do fim: as etapas ficam na caixa recolhida "Etapas executadas" e o log ocupa a largura toda */
+.execucao.terminada { grid-template-columns: minmax(0, 1fr); }
+.execucao.terminada > details.execucao-etapas { padding: 8px 12px; border: 1px solid var(--borda); border-radius: var(--r-l); background: var(--sup-2); }
+/* sem a linha "Rótulo do dataset" (EXIBIR.rotulo = false), cada entrada do log tem uma linha a menos */
+.log-rolagem.sem-rotulo { --log-menos: 1.15rem; }
 .log-analise { display: grid; gap: var(--e-3); align-content: start; grid-template-columns: minmax(0, 1fr); }
 .log-analise > h3 { margin: 0; }
 .log-notas { display: grid; gap: 4px; font-size: var(--t-s); color: var(--texto-suave); overflow-wrap: anywhere; }
@@ -385,8 +390,8 @@ dl.pares dd { min-width: 0; overflow-wrap: anywhere; }
 .log-erro { display: grid; gap: 6px; justify-items: start; }
 /* lista virtualizada: só as linhas visíveis (e uma sobra) estão no DOM, em posição absoluta */
 .log-lista { position: relative; }
-.log-sonda { position: absolute; top: 0; left: 0; width: 1px; height: var(--log-linha); visibility: hidden; pointer-events: none; }
-.log-entrada { position: absolute; left: 0; right: 0; height: var(--log-linha); padding: 6px var(--e-3) 6px 14px;
+.log-sonda { position: absolute; top: 0; left: 0; width: 1px; height: calc(var(--log-linha) - var(--log-menos, 0rem)); visibility: hidden; pointer-events: none; }
+.log-entrada { position: absolute; left: 0; right: 0; height: calc(var(--log-linha) - var(--log-menos, 0rem)); padding: 6px var(--e-3) 6px 14px;
   display: grid; align-content: start; gap: 1px; font-size: 0.8rem; line-height: 1.35; overflow-wrap: anywhere;
   border-bottom: 1px solid var(--borda); background: var(--sup-2); }
 .log-entrada:focus-visible { outline-offset: -3px; }

@@ -2,7 +2,8 @@
 (function () {
   'use strict';
   const { h, f, api, consulta, useCarga, useIntervalo, Icone, Aviso, Erro, Carregando, Vazio, Legenda, Selo, Secao, Pares, Dialogo, Barra, BarraProgresso,
-    NOME_FAIXA, SITUACAO_ALERTA, BlocoGrafo, LogAnalise, AvisoBaseTreino } = window.NW;
+    NOME_FAIXA, SITUACAO_ALERTA, BlocoGrafo, LogAnalise, AvisoBaseTreino, TEXTO_METRICAS, exibir } = window.NW;
+  const ROTULO = exibir('rotulo');                   // ponto único (painel-base.js): rótulo do dataset na tela
 
   const NOME_STATUS = { em_andamento: 'Em andamento', concluida: 'Concluída', cancelada: 'Cancelada', parcial: 'Parcial', erro: 'Erro' };
   const TOM_STATUS = { concluida: 'ok', cancelada: 'atencao', parcial: 'atencao', erro: 'alerta', em_andamento: '' };
@@ -43,20 +44,26 @@
       h(Aviso, { tom: 'erro', titulo: 'Este dataset não pode ser analisado' }, 'Corrija o arquivo conforme a tabela abaixo e envie de novo.'),
       h('div', { style: { marginTop: 8 } }, h(TabelaProblemas, { problemas: (d.erro || {}).problemas })));
     const cat = lista => lista.map(x => x.valor + ' (' + f.inteiro(x.n) + ')').join(', ');
+    // a coluna de rótulo (Is Laundering) não é atributo do modelo: some da lista e do contador quando escondida
+    const colunas = v.colunas.filter(c => exibir('coluna_rotulo') || !(v.rotulo.disponivel && c.original === v.rotulo.coluna));
     return h('div', { className: 'bloco grade' }, cabecalho,
       h(Pares, { itens: [
         ['Formato reconhecido', v.formato_nome],
         ['Linhas', f.inteiro(v.linhas.lidas) + ' lidas · ' + f.inteiro(v.linhas.validas) + ' válidas · ' + f.inteiro(v.linhas.recusadas) + ' recusadas'],
-        ['Período', v.periodo ? f.dataHora(v.periodo.inicio) + ' a ' + f.dataHora(v.periodo.fim) + ' — ' + v.periodo.fuso : null],
+        ['Período', v.periodo ? f.dataHora(v.periodo.inicio) + ' a ' + f.dataHora(v.periodo.fim) + (exibir('fuso') ? ' — ' + v.periodo.fuso : '') : null],
         ['Contas distintas', f.inteiro(v.contas_distintas)],
-        ['Moedas de pagamento', cat(v.moedas_pagamento)],
-        ['Formatos de pagamento', cat(v.formatos_pagamento)],
-        ['Rótulo do dataset', v.rotulo.disponivel ? 'coluna "' + v.rotulo.coluna + '": ' + f.inteiro(v.rotulo.positivos) + ' transações rotuladas como lavagem' : 'não há (' + v.rotulo.motivo + ')'],
+        ROTULO ? ['Rótulo do dataset', v.rotulo.disponivel ? 'coluna "' + v.rotulo.coluna + '": ' + f.inteiro(v.rotulo.positivos) + ' transações rotuladas como lavagem' : 'não há (' + v.rotulo.motivo + ')'] : null,
         ['Tipologias registradas', v.tipologias.disponivel ? f.inteiro(v.tipologias.tentativas) + ' tentativas e ' + f.inteiro(v.tipologias.transacoes_listadas) + ' transações no arquivo de padrões "' + (d.padroes || {}).nome + '"' : 'não há (' + v.tipologias.motivo + ')'],
-        ['Hash do arquivo (SHA-256)', h('span', { className: 'mono' }, v.sha256.slice(0, 16) + '…')],
       ] }),
-      h('details', null, h('summary', null, 'Colunas reconhecidas (' + v.colunas.length + ')' + (v.colunas_nao_reconhecidas.length ? ' e ' + v.colunas_nao_reconhecidas.length + ' fora do contrato' : '')),
-        h('ul', null, v.colunas.map(c => h('li', { key: c.original }, h('span', { className: 'mono' }, c.original), ' → ' + c.papel))),
+      /* detalhes técnicos começam recolhidos: colunas, moedas, formatos e hash */
+      h('details', null, h('summary', null, 'Detalhes técnicos: colunas reconhecidas (' + colunas.length + ')' + (v.colunas_nao_reconhecidas.length ? ' e ' + v.colunas_nao_reconhecidas.length + ' fora do contrato' : '') + ', moedas, formatos e hash'),
+        h(Pares, { itens: [
+          ['Moedas de pagamento', cat(v.moedas_pagamento)],
+          ['Formatos de pagamento', cat(v.formatos_pagamento)],
+          ['Hash do arquivo (SHA-256)', h('span', { className: 'mono' }, v.sha256.slice(0, 16) + '…')],
+        ] }),
+        h('h4', null, 'Colunas reconhecidas'),
+        h('ul', null, colunas.map(c => h('li', { key: c.original }, h('span', { className: 'mono' }, c.original), ' → ' + c.papel))),
         v.colunas_nao_reconhecidas.length ? h(Legenda, null, 'Colunas fora do contrato (guardadas e exibíveis na tabela, mas não usadas pelo modelo): ' + v.colunas_nao_reconhecidas.join(', ') + '.') : null),
       v.avisos.map((a, i) => h(Aviso, { key: i, tom: 'atencao' }, a)),
       v.linhas.recusadas ? h(Aviso, { tom: 'atencao', titulo: f.inteiro(v.linhas.recusadas) + ' linha(s) recusada(s) ficam fora da análise' },
@@ -88,13 +95,25 @@
               (e.unidade === 'bytes' ? f.bytes(p.vazao_por_s) : f.inteiro(p.vazao_por_s) + ' ' + e.unidade) + ' por segundo em ' + f.duracao(p.decorrido_s) + '.') : null,
             e.detalhe ? h('div', { className: 'situacao' }, e.detalhe) : null));
       })),
+      /* Cancelar logo abaixo das etapas, antes do aviso de sessão: fica visível sem rolar */
+      m.status === 'em_andamento' ? h('div', { className: 'linha' },
+        h('button', { type: 'button', className: 'botao perigo', onClick: aoCancelar, disabled: m.cancelamento_solicitado }, h(Icone, { nome: 'fechar' }), m.cancelamento_solicitado ? 'Cancelamento pedido…' : 'Cancelar análise'),
+        h(Legenda, null, m.cancelamento_solicitado ? 'A análise para no fim do bloco atual; o que já foi pontuado fica gravado.' : 'O cancelamento é seguro: para no fim do bloco atual e mantém o que já foi pontuado.')) : null,
       m.status === 'em_andamento' && ss.exigida ? h(Aviso, { tom: ss.desta_sessao ? '' : 'atencao', titulo: ss.desta_sessao ? 'Esta aba mantém a análise em andamento' : 'Outra aba é a responsável por esta análise', vivo: true },
         h('p', null, ss.desta_sessao ? 'Mantenha esta página aberta (pode minimizar ou trocar de aba). Sem sinal dela por ' + f.inteiro(ss.janela_s) + ' s, a análise para num ponto seguro e fica parcial; não é retomada sozinha.'
           : (ss.responsavel_ativa ? 'A sessão que iniciou a análise continua ativa em outra aba.' : 'A sessão que iniciou a análise não dá sinal: a análise vai parar no próximo ponto seguro.') + ' Para que esta aba passe a mantê-la, use o botão abaixo.'),
-        ss.desta_sessao ? null : h('div', null, h('button', { type: 'button', className: 'botao pequeno', onClick: aoAssumir }, h(Icone, { nome: 'sessao' }), 'Manter a análise nesta aba'))) : null,
-      m.status === 'em_andamento' ? h('div', { className: 'linha' },
-        h('button', { type: 'button', className: 'botao perigo', onClick: aoCancelar, disabled: m.cancelamento_solicitado }, h(Icone, { nome: 'fechar' }), m.cancelamento_solicitado ? 'Cancelamento pedido…' : 'Cancelar análise'),
-        h(Legenda, null, m.cancelamento_solicitado ? 'A análise para no fim do bloco atual; o que já foi pontuado fica gravado.' : 'O cancelamento é seguro: para no fim do bloco atual e mantém o que já foi pontuado.')) : null);
+        ss.desta_sessao ? null : h('div', null, h('button', { type: 'button', className: 'botao pequeno', onClick: aoAssumir }, h(Icone, { nome: 'sessao' }), 'Manter a análise nesta aba'))) : null);
+  }
+
+  /* Título da caixa "Etapas executadas" (depois do fim): quantas etapas, em que situação e a duração total. */
+  function ResumoEtapas({ m }) {
+    const n = s => m.etapas.filter(e => e.status === s).length;
+    const partes = [f.plural(n('concluida'), 'concluída', 'concluídas')];
+    if (n('pulada')) partes.push(f.plural(n('pulada'), 'pulada (não se aplica)', 'puladas (não se aplicam)'));
+    const outras = m.etapas.length - n('concluida') - n('pulada');
+    if (outras) partes.push(f.plural(outras, 'não concluída', 'não concluídas'));
+    return h(React.Fragment, null, 'Etapas executadas (' + m.etapas.length + ')',
+      h('span', { className: 'suave' }, ' — ' + partes.join(', ') + (f.vazio(m.duracao_s) ? '' : ' · duração ' + f.duracao(m.duracao_s))));
   }
 
   function SituacaoAnalise({ m }) {
@@ -170,8 +189,7 @@
     const validar = async () => { setErro(null); try { await api('/datasets/' + datasetId + '/validar', { method: 'POST' }); aoEscolher(datasetId, true); } catch (e) { setErro(e); } };
     const ocupado = manifesto && manifesto.status === 'em_andamento';
     const podeAnalisar = dataset && (dataset.status === 'valido' || dataset.status === 'valido_com_recusas') && !ocupado && !estado.analise_em_andamento;
-    return h(Secao, { id: 'dataset', icone: 'dataset', titulo: 'Dataset e análise', pergunta: 'O que estou analisando e qual é o estado da análise?' },
-      estado.modelo.disponivel ? null : h(Aviso, { tom: 'erro', titulo: 'Modelo não encontrado no servidor' }, (estado.modelo.motivo || '') + ' Sem o modelo, a análise não pode ser iniciada.'),
+    const escolha = h(React.Fragment, { key: 'escolha' },
       h('div', { className: 'grade duas' },
         h('form', { className: 'bloco grade', onSubmit: enviar, 'aria-labelledby': 'enviar-t' },
           h('h3', { id: 'enviar-t' }, h(Icone, { nome: 'enviar' }), 'Enviar um arquivo'),
@@ -203,15 +221,27 @@
             : !dataset ? 'Envie ou escolha um dataset. Nada é analisado antes de você clicar em Analisar.'
               : podeAnalisar ? 'Pontua as ' + f.inteiro(dataset.validacao.linhas.validas) + ' linhas válidas com o modelo salvo. Nada é treinado. A análise roda enquanto esta página estiver aberta.'
                 : 'O botão é liberado quando o dataset escolhido estiver válido.')),
-      h(Erro, { erro: erroAnalise }),
-      manifesto ? h('div', { className: 'bloco grade' },
-        h('div', { className: 'linha' }, h('h3', { style: { margin: 0 } }, 'Processamento — ' + manifesto.dataset.nome),
-          h(Selo, { tom: TOM_STATUS[manifesto.status] }, NOME_STATUS[manifesto.status]), h('span', { className: 'suave' }, 'iniciada em ' + f.instante(manifesto.iniciada_em))),
-        h(SituacaoAnalise, { m: manifesto }),
-        /* etapas (esquerda) e log da execução (direita), sempre abertos, também depois do fim; empilham até 980 px */
-        h('div', { className: 'execucao' },
-          h('div', { className: 'execucao-etapas' }, h(Progresso, { m: manifesto, aoCancelar, aoAssumir })),
-          h(LogAnalise, { m: manifesto, estado }))) : null,
+      h(Erro, { erro: erroAnalise }));
+    const terminada = !!manifesto && manifesto.status !== 'em_andamento';
+    /* O nome do dataset e o status já estão no topo (fixo) e no título da situação: aqui só "Processamento". */
+    // chave estável: quando a análise termina e o bloco muda de lugar, o React o move em vez de recriá-lo
+    // (o log mantém a rolagem e a última leitura de RAM e CPU)
+    const processamento = manifesto ? h('div', { key: 'processamento', className: 'bloco grade' },
+      h('div', { className: 'linha' }, h('h3', { style: { margin: 0 } }, 'Processamento'),
+        h(Selo, { tom: TOM_STATUS[manifesto.status] }, NOME_STATUS[manifesto.status]), h('span', { className: 'suave' }, 'iniciada em ' + f.instante(manifesto.iniciada_em))),
+      h(SituacaoAnalise, { m: manifesto }),
+      /* Durante a análise: etapas (esquerda) e log da execução (direita), lado a lado; empilham até 980 px.
+         Depois do fim: as etapas viram a caixa recolhida "Etapas executadas" e o log ocupa a largura toda. */
+      h('div', { className: 'execucao' + (terminada ? ' terminada' : '') },
+        terminada ? h('details', { className: 'execucao-etapas' }, h('summary', null, h(ResumoEtapas, { m: manifesto })),
+          h(Progresso, { m: manifesto, aoCancelar, aoAssumir }))
+          : h('div', { className: 'execucao-etapas' }, h(Progresso, { m: manifesto, aoCancelar, aoAssumir })),
+        h(LogAnalise, { m: manifesto, estado }))) : null;
+    /* Com a análise em andamento, o progresso e o Cancelar vêm primeiro; o envio e a escolha de dataset ficam recolhidos. */
+    return h(Secao, { id: 'dataset', icone: 'dataset', titulo: 'Dataset e análise', pergunta: 'O que estou analisando e qual é o estado da análise?' },
+      estado.modelo.disponivel ? null : h(Aviso, { tom: 'erro', titulo: 'Modelo não encontrado no servidor' }, (estado.modelo.motivo || '') + ' Sem o modelo, a análise não pode ser iniciada.'),
+      ocupado ? processamento : escolha,
+      ocupado ? h('details', { key: 'escolha-recolhida', className: 'bloco recolhido' }, h('summary', null, 'Enviar ou escolher outro dataset (a análise em andamento continua)'), escolha) : processamento,
       h('details', { open: !manifesto }, h('summary', null, 'Análises recentes (' + analises.analises.length + ')'),
         analises.analises.length ? h('div', { className: 'rolagem' }, h('table', null,
           h('caption', null, 'Abrir uma análise carrega os resultados gravados, sem reprocessar. ' + analises.retencao.leitura),
@@ -286,17 +316,19 @@
           h('div', null, h('span', null, 'original 0'), h('span', null, orig(inicioInter))),
           h('div', null, h('span', null, ''), h('strong', null, orig(limiar) + ' (limiar)')),
           h('div', null, h('span', null, ''), h('span', null, 'original 1')))),
+      /* uma legenda visível (limiar + aviso das faixas); a conversão e a evidência ficam recolhidas */
       h(Legenda, null, h('strong', null, 'Limiar original do modelo: '), orig(limiar) + ' (cerca de ' + f.numero(limiar, 3) + '), na escala de 0 a 1. Ele vira o score 701: tudo a partir dele é alerta e faixa alta. A faixa intermediária é o trecho logo abaixo do limiar (score original de ' +
-        orig(inicioInter) + ' a ' + orig(limiar) + '); a faixa baixa é o que fica abaixo de ' + orig(inicioInter) + '.'),
-      h(Legenda, null, h('strong', null, 'Conversão: '), leg.conversao || conv.tipo || ''),
-      ev ? h('details', null, h('summary', null, 'Por que o score original não é uma probabilidade'),
-        h(Legenda, null, ev.leitura + ' Origem: ' + ev.origem + '.'),
-        h('div', { className: 'rolagem' }, h('table', null,
-          h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Score original'), h('th', { scope: 'col', className: 'num' }, 'Transações'), h('th', { scope: 'col', className: 'num' }, 'Score médio'), h('th', { scope: 'col', className: 'num' }, 'Rotuladas como lavagem'))),
-          h('tbody', null, ev.caixas.map((c, i) => h('tr', { key: i }, h('td', null, f.numero(c.de, 1) + ' a ' + f.numero(c.ate, 1)), h('td', { className: 'num' }, f.inteiro(c.transacoes)),
-            h('td', { className: 'num' }, f.numero(c.score_medio, 3)), h('td', { className: 'num' }, f.pct(c.fracao_rotulada_lavagem, 1)))))))) :
-        h(Legenda, null, 'A avaliação histórica com a comparação entre score e rótulo não está disponível neste servidor.'),
-      h(Legenda, null, estado.aviso_faixas));
+        orig(inicioInter) + ' a ' + orig(limiar) + '); a faixa baixa é o que fica abaixo de ' + orig(inicioInter) + '. ' + (estado.aviso_faixas || '')),
+      h('details', null, h('summary', null, 'Como o score original vira o índice de 0 a 1000'),
+        h(Legenda, null, h('strong', null, 'Conversão: '), leg.conversao || conv.tipo || ''),
+        /* a evidência compara o score com o rótulo do dataset: só aparece quando o rótulo é exibido */
+        ROTULO ? (ev ? h(React.Fragment, null, h('h4', null, 'Por que o score original não é uma probabilidade'),
+          h(Legenda, null, ev.leitura + ' Origem: ' + ev.origem + '.'),
+          h('div', { className: 'rolagem' }, h('table', null,
+            h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Score original'), h('th', { scope: 'col', className: 'num' }, 'Transações'), h('th', { scope: 'col', className: 'num' }, 'Score médio'), h('th', { scope: 'col', className: 'num' }, 'Rotuladas como lavagem'))),
+            h('tbody', null, ev.caixas.map((c, i) => h('tr', { key: i }, h('td', null, f.numero(c.de, 1) + ' a ' + f.numero(c.ate, 1)), h('td', { className: 'num' }, f.inteiro(c.transacoes)),
+              h('td', { className: 'num' }, f.numero(c.score_medio, 3)), h('td', { className: 'num' }, f.pct(c.fracao_rotulada_lavagem, 1)))))))) :
+          h(Legenda, null, 'A avaliação histórica com a comparação entre score e rótulo não está disponível neste servidor.')) : null));
   }
 
   const faixaOriginal = (manifesto, estado, id) => {
@@ -318,15 +350,17 @@
           'Os números abaixo cobrem só as ' + f.inteiro(manifesto.contagens.pontuadas) + ' transações pontuadas antes da interrupção, de ' + f.inteiro(manifesto.contagens.validas) + ' válidas.') : null,
         h('div', { className: 'kpis', 'aria-busy': carga.carregando },
           h('div', { className: 'kpi' }, h('div', { className: 'nome' }, 'Registros de transação'),
-            h('div', { className: 'valor' }, f.inteiro(n)), h('div', null, 'no recorte, de ' + f.inteiro(v.registros.dataset) + ' no dataset'), h(Legenda, null, v.registros.legenda)),
+            h('div', { className: 'valor' }, f.inteiro(n)), h('div', null, 'no recorte, de ' + f.inteiro(v.registros.dataset) + ' no dataset')),
           h('div', { className: 'kpi alerta' }, h('div', { className: 'nome' }, h(Icone, { nome: 'alerta' }), 'Alertas de lavagem'),
-            h('div', { className: 'valor' }, '⚠ ' + f.inteiro(v.alertas.n)), h('div', null, n ? f.pct(v.alertas.proporcao, 2) + ' das ' + f.inteiro(n) + ' transações do recorte' : '—'), h(Legenda, null, v.alertas.legenda)),
+            h('div', { className: 'valor' }, '⚠ ' + f.inteiro(v.alertas.n)), h('div', null, n ? f.pct(v.alertas.proporcao, 2) + ' das ' + f.inteiro(n) + ' transações do recorte' : '—')),
           h('div', { className: 'kpi' }, h('div', { className: 'nome' }, 'Período coberto'),
-            h('div', { className: 'valor menor' }, v.periodo ? f.dataHora(v.periodo.inicio) + ' a ' + f.dataHora(v.periodo.fim) : 'Sem transações no recorte'),
-            h(Legenda, null, v.periodo ? v.periodo.legenda : 'Ajuste os filtros.')),
+            h('div', { className: 'valor menor' }, v.periodo ? f.dataHora(v.periodo.inicio) + ' a ' + f.dataHora(v.periodo.fim) : 'Sem transações no recorte. Ajuste os filtros.')),
           h('div', { className: 'kpi' }, h('div', { className: 'nome' }, 'Score (0 a 1000)'),
-            h('div', { className: 'valor menor' }, v.score ? 'mín. ' + v.score.min + ' · mediano ' + f.numero(v.score.mediana, Number.isInteger(v.score.mediana) ? 0 : 1) + ' · máx. ' + v.score.max : '—'),
-            h(Legenda, null, v.score ? v.score.legenda : 'Sem transações no recorte.'))),
+            h('div', { className: 'valor menor' }, v.score ? 'mín. ' + v.score.min + ' · mediano ' + f.numero(v.score.mediana, Number.isInteger(v.score.mediana) ? 0 : 1) + ' · máx. ' + v.score.max : '—'))),
+        /* as legendas dos indicadores ficam juntas e recolhidas (uma por indicador, como antes) */
+        h('details', null, h('summary', null, 'O que cada indicador mede'),
+          h(Pares, { itens: [['Registros de transação', v.registros.legenda], ['Alertas de lavagem', v.alertas.legenda],
+            ['Período coberto', v.periodo ? v.periodo.legenda : null], ['Score (0 a 1000)', v.score ? v.score.legenda : null]] })),
         v.valor_minimo && v.valor_minimo.fora ? h(Aviso, { tom: 'atencao', titulo: 'O valor mínimo de ' + f.numero(v.valor_minimo.aplicado, 0) + ' deixa ' + f.plural(v.valor_minimo.fora, 'transação', 'transações') + ' fora do recorte' },
           h('p', null, 'Por moeda: ' + v.valor_minimo.por_moeda.map(m => m.moeda + ' ' + f.inteiro(m.n)).join(', ') + '. ' +
             (v.valor_minimo.alertas_fora ? f.plural(v.valor_minimo.alertas_fora, 'delas tem alerta', 'delas têm alerta') + '. ' : 'Nenhuma delas tem alerta. ') + v.valor_minimo.legenda)) : null,
@@ -337,8 +371,7 @@
               h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Faixa'), h('th', { scope: 'col' }, 'Score original'), h('th', { scope: 'col' }, 'Recomendação'), h('th', { scope: 'col', className: 'num' }, 'Transações'), h('th', { scope: 'col', className: 'num' }, '% do recorte'))),
               h('tbody', null, v.faixas.map(x => h('tr', { key: x.id, className: x.id === 'alta' && x.n ? 'com-alerta' : '' },
                 h('td', null, h('strong', null, (x.id === 'alta' ? '⚠ ' : '') + x.nome), ' (' + x.de + '–' + x.ate + ')'), h('td', { className: 'mono' }, faixaOriginal(manifesto, estado, x.id)), h('td', { style: { whiteSpace: 'normal' } }, x.recomendacao),
-                h('td', { className: 'num' }, f.inteiro(x.n)), h('td', { className: 'num' }, f.pct(x.proporcao, 2))))))),
-            h(Legenda, null, estado.aviso_faixas)),
+                h('td', { className: 'num' }, f.inteiro(x.n)), h('td', { className: 'num' }, f.pct(x.proporcao, 2)))))))),
           h('div', { className: 'bloco' }, h('h3', null, h(Icone, { nome: 'visao' }), 'Formato de pagamento'),
             v.formatos.itens.length ? h('div', { className: 'rolagem' }, h('table', null,
               h('caption', null, v.formatos.legenda + '. Formato vazio ou desconhecido aparece como "Não informado".'),
@@ -346,17 +379,17 @@
               h('tbody', null, v.formatos.itens.map(x => h('tr', { key: x.formato },
                 h('td', null, x.nao_informado ? h('em', null, x.formato) : x.formato), h('td', { className: 'num' }, f.inteiro(x.n)), h('td', { className: 'num' }, f.pct(x.proporcao, 1)),
                 h('td', { style: { minWidth: 90 } }, h(Barra, { fracao: x.proporcao, rotulo: f.pct(x.proporcao, 1) + ' das transações do recorte' }))))))) : h(Vazio, null, 'Nenhuma transação no recorte.'))),
-        h('div', { className: 'grade duas' },
+        h('div', { className: ROTULO ? 'grade duas' : 'grade' },
           h('div', { className: 'bloco' }, h('h3', null, h(Icone, { nome: 'sequencia' }), 'Tipologias de lavagem — registradas no dataset'),
             v.tipologias.disponivel ? h(React.Fragment, null, h('div', { className: 'rolagem' }, h('table', null,
               h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Tipologia'), h('th', { scope: 'col' }, 'O que é'), h('th', { scope: 'col', className: 'num' }, 'Transações'), h('th', { scope: 'col', className: 'num' }, 'Com alerta'))),
               h('tbody', null, v.tipologias.itens.map(x => h('tr', { key: x.tipologia },
                 h('td', { className: 'mono' }, x.tipologia), h('td', { style: { whiteSpace: 'normal', minWidth: 190 } }, x.descricao), h('td', { className: 'num' }, f.inteiro(x.n)), h('td', { className: 'num' }, f.inteiro(x.alertas))))))),
               h(Legenda, null, h('strong', null, 'Origem: '), v.tipologias.origem + '. ' + v.tipologias.legenda)) : h(Vazio, null, v.tipologias.motivo)),
-          h('div', { className: 'bloco' }, h('h3', null, h(Icone, { nome: 'info' }), 'Rótulo do dataset — separado da previsão'),
+          ROTULO ? h('div', { className: 'bloco' }, h('h3', null, h(Icone, { nome: 'info' }), 'Rótulo do dataset — separado da previsão'),
             v.rotulo.disponivel ? h(React.Fragment, null,
               h(Pares, { itens: [['Rotuladas como lavagem no recorte', f.inteiro(v.rotulo.rotuladas_lavagem)], ['Dessas, com alerta do modelo', f.inteiro(v.rotulo.rotuladas_com_alerta)]] }),
-              h(Legenda, null, v.rotulo.legenda)) : h(Vazio, null, v.rotulo.motivo))));
+              h(Legenda, null, v.rotulo.legenda)) : h(Vazio, null, v.rotulo.motivo)) : null));
     }
     return h(Secao, { id: 'visao', icone: 'visao', titulo: 'Visão geral do recorte', pergunta: 'Quantas transações e alertas existem no recorte, em que período e com que scores?' }, corpo);
   }
@@ -393,7 +426,7 @@
     { id: 'valor_recebido', nome: 'Valor recebido', num: true }, { id: 'moeda_recebimento', nome: 'Moeda recebida' },
     { id: 'rotulo', nome: 'Rótulo do dataset' }, { id: 'tipologias', nome: 'Tipologias registradas' },
     { id: 'linha_arquivo', nome: 'Linha no arquivo', num: true }, { id: 'id_original', nome: 'ID original do arquivo' },
-  ];
+  ].filter(c => c.id !== 'rotulo' || ROTULO);   // coluna escondida também quando estava salva nas preferências
   const celula = (c, l, total) => {
     switch (c.id) {
       case 'posicao': return f.inteiro(l.posicao);
@@ -489,8 +522,8 @@
             h(Legenda, null, conv.leitura + ' ' + d.aviso_faixas),
             aoPerguntar ? h('div', { className: 'linha', style: { marginTop: 8 } },
               h('button', { type: 'button', className: 'botao pequeno', onClick: () => aoPerguntar(t.id_exibicao) }, h(Icone, { nome: 'assistente' }), 'Perguntar ao Assistente de dúvidas sobre esta transação')) : null)),
-          cartao('Rótulo do dataset', d.rotulo_disponivel ? h(React.Fragment, null, h('p', null, h('strong', null, t.rotulo === 1 ? 'Lavagem (rótulo 1)' : 'Não lavagem (rótulo 0)')),
-            h(Legenda, null, 'Valor que já veio no arquivo. Não é previsão e não entra no cálculo do score.')) : h(Legenda, null, 'Este dataset não tem rótulo de lavagem.')),
+          ROTULO ? cartao('Rótulo do dataset', d.rotulo_disponivel ? h(React.Fragment, null, h('p', null, h('strong', null, t.rotulo === 1 ? 'Lavagem (rótulo 1)' : 'Não lavagem (rótulo 0)')),
+            h(Legenda, null, 'Valor que já veio no arquivo. Não é previsão e não entra no cálculo do score.')) : h(Legenda, null, 'Este dataset não tem rótulo de lavagem.')) : null,
           cartao('Tipologias registradas', d.tipologias_disponiveis ? h(React.Fragment, null,
             h('p', { className: 'mono' }, t.tipologias.length ? t.tipologias.join(', ') : 'padrao_nao_identificado'),
             h(Legenda, null, t.tipologias.length ? 'Registrada no arquivo de padrões do dataset (tentativa nº ' + t.tentativas.join(', ') + '). Não é previsão do modelo.' : 'Esta transação não aparece no arquivo de padrões do dataset.')) :
@@ -516,8 +549,8 @@
     return h('div', { className: 'grade' },
       h('h3', null, h(Icone, { nome: 'operacao' }), ' Desempenho'),
       h(Pares, { itens: [
-        ['RAM — processo do NodeWatch', f.vazio(mp.bytes) ? ind(null) : f.bytes(mp.bytes) + ' (' + f.numero(mp.percentual_da_maquina, 1) + '% da memória da máquina) · pico ' + f.bytes(mp.pico_bytes)],
-        ['RAM — máquina', f.vazio(mm.em_uso_bytes) ? ind(null) : f.bytes(mm.em_uso_bytes) + ' em uso de ' + f.bytes(mm.total_bytes) + ' (' + f.numero(mm.percentual, 1) + '%)'],
+        ['RAM — processo do NodeWatch', f.vazio(mp.bytes) ? ind(null) : f.gb(mp.bytes) + ' (' + f.numero(mp.percentual_da_maquina, 1) + '% da memória da máquina) · pico desde o início do servidor ' + f.gb(mp.pico_bytes)],
+        ['RAM — máquina', f.vazio(mm.em_uso_bytes) ? ind(null) : f.gb(mm.em_uso_bytes) + ' em uso de ' + f.gb(mm.total_bytes) + ' (' + f.numero(mm.percentual, 1) + '%)'],
         ['CPU — processo do NodeWatch', f.vazio(d.cpu.processo_pct) ? ind(null) : f.numero(d.cpu.processo_pct, 1) + '%'],
         ['CPU — máquina', f.vazio(d.cpu.maquina_pct) ? ind(null) : f.numero(d.cpu.maquina_pct, 1) + '%'],
       ] }),
@@ -534,7 +567,7 @@
         ['Duração total', f.vazio(a.duracao_total_s) ? (a.etapa_atual ? 'em andamento: ' + a.etapa_atual : '—') : f.duracao(a.duracao_total_s)],
         ['Vazão da análise inteira', f.vazio(a.vazao_total_por_s) ? 'ainda não medida' : f.inteiro(a.vazao_total_por_s) + ' transações por segundo (' + f.inteiro(a.transacoes_pontuadas) + ' ÷ ' + f.duracao(a.duracao_total_s) + ')'],
         ['Vazão só da pontuação', f.vazio(a.vazao_pontuacao_por_s) ? 'ainda não medida' : f.inteiro(a.vazao_pontuacao_por_s) + ' transações por segundo (' + f.inteiro(a.transacoes_pontuadas) + ' ÷ ' + f.duracao(a.tempo_pontuacao_s) + ')'],
-        ['Pico de memória', f.vazio(a.pico_memoria_bytes) ? 'ainda não medido' : f.bytes(a.pico_memoria_bytes)],
+        ['Pico de memória na pontuação', f.vazio(a.pico_memoria_bytes) ? 'ainda não medido' : f.gb(a.pico_memoria_bytes)],
         ['Tempo por atividade', ['atributos ' + f.duracao(a.tempos.tempo_atributos_s), 'inferência ' + f.duracao(a.tempos.tempo_inferencia_s), 'gravação ' + f.duracao(a.tempos.tempo_gravacao_s)].join(' · ')],
         ['Transações pontuadas', f.inteiro(a.transacoes_pontuadas)],
       ] }), h(Legenda, null, 'Vazão da análise inteira: ' + a.vazao_total_formula + '. Vazão só da pontuação: ' + a.vazao_pontuacao_formula + '. Pico de memória: ' + a.pico_escopo + '.')) : h(Legenda, null, 'Nenhuma análise foi feita ainda.'));
@@ -561,7 +594,9 @@
     if (carga.erro) return h(Erro, { erro: carga.erro });
     if (!carga.dados) return h(Carregando, null);
     const { historicas: hi, do_dataset: dd, legendas } = carga.dados;
-    const linhaMetricas = x => [['Precisão', x.precisao, legendas.precisao], ['Recall', x.recall, legendas.recall], ['F1', x.f1, legendas.f1], ['Average Precision', x.average_precision, legendas.average_precision]];
+    const T = TEXTO_METRICAS;   // redação neutra quando o rótulo do dataset está escondido (EXIBIR.rotulo)
+    const linhaMetricas = x => [['Precisão', x.precisao, T.precisao || legendas.precisao], ['Recall', x.recall, T.recall || legendas.recall], ['F1', x.f1, legendas.f1], ['Average Precision', x.average_precision, legendas.average_precision]];
+    const motivoDataset = ROTULO || !/rótulo/i.test(dd.motivo || '') ? dd.motivo : T.sem_referencia;
     const tabela = x => h('div', { className: 'rolagem' }, h('table', null,
       h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Métrica'), h('th', { scope: 'col', className: 'num' }, 'Valor'), h('th', { scope: 'col' }, 'O que mede'))),
       h('tbody', null, linhaMetricas(x).map(([n, v, l]) => h('tr', { key: n }, h('td', null, n), h('td', { className: 'num' }, f.vazio(v) ? 'indisponível' : f.pct(v, 1)), h('td', { style: { whiteSpace: 'normal' } }, l))))));
@@ -570,16 +605,16 @@
       hi.disponivel ? h(React.Fragment, null,
         h(Pares, { itens: [['Modelo', hi.versao_modelo], ['Dados', hi.dados], ['Origem', h('span', { className: 'mono' }, hi.origem)], ['Arquivo gravado em', f.instante(hi.arquivo_gravado_em)]] }),
         hi.conjuntos.map(c => h('div', { key: c.id, className: 'bloco' }, h('h4', { style: { marginTop: 0 } }, 'Conjunto de avaliação: ' + c.nome),
-          h(Legenda, null, 'Período: ' + c.periodo + ' · ' + f.inteiro(c.transacoes) + ' transações, ' + f.inteiro(c.rotuladas_lavagem) + ' rotuladas como lavagem.'), tabela(c))),
+          h(Legenda, null, 'Período: ' + c.periodo + ' · ' + f.inteiro(c.transacoes) + ' transações, ' + f.inteiro(c.rotuladas_lavagem) + ' ' + T.positivos + '.'), tabela(c))),
         h(Aviso, { tom: 'atencao' }, hi.ressalva)) : h(Vazio, null, hi.motivo),
       h('h4', null, 'Neste dataset (análise aberta)'),
       dd.disponivel ? h(React.Fragment, null,
-        h(Pares, { itens: [['Dataset', dd.dataset], ['Transações com rótulo', f.inteiro(dd.transacoes_com_rotulo)], ['Rotuladas como lavagem', f.inteiro(dd.rotuladas_lavagem)],
-          ['Alertas', f.inteiro(dd.alertas) + ' (' + f.inteiro(dd.verdadeiros_positivos) + ' rotulados como lavagem, ' + f.inteiro(dd.falsos_positivos) + ' não)'],
-          ['Base usada no treino do modelo', dd.base_no_treino === 'confirmado' ? 'confirmado (mesmo arquivo do treino)' : 'não confirmado']] }),
-        tabela(dd), h(Legenda, null, dd.origem + '. ' + dd.leitura + (dd.parcial ? ' Resultado parcial.' : '')),
-        h(AvisoBaseTreino, { situacao: dd.base_no_treino, treino: dd.treino })) : h(Vazio, null, dd.motivo),
-      h(Legenda, null, 'As métricas históricas e as contagens da análise atual são coisas diferentes: as primeiras descrevem o modelo num conjunto com rótulo; as segundas contam alertas no dataset analisado.'));
+        h(Pares, { itens: [['Dataset', dd.dataset], ['Transações ' + T.conferiveis, f.inteiro(dd.transacoes_com_rotulo)], [T.positivos.charAt(0).toUpperCase() + T.positivos.slice(1), f.inteiro(dd.rotuladas_lavagem)],
+          ['Alertas', f.inteiro(dd.alertas) + ' (' + f.inteiro(dd.verdadeiros_positivos) + ' ' + T.vp + ', ' + f.inteiro(dd.falsos_positivos) + ' ' + T.fp + ')'],
+          exibir('base_treino') ? ['Base usada no treino do modelo', dd.base_no_treino === 'confirmado' ? 'confirmado (mesmo arquivo do treino)' : 'não confirmado'] : null] }),
+        tabela(dd), h(Legenda, null, (T.origem || dd.origem) + '. ' + dd.leitura + (dd.parcial ? ' Resultado parcial.' : '')),
+        exibir('base_treino') ? h(AvisoBaseTreino, { situacao: dd.base_no_treino, treino: dd.treino }) : null) : h(Vazio, null, motivoDataset),
+      h(Legenda, null, 'As métricas históricas e as contagens da análise atual são coisas diferentes: as primeiras descrevem o modelo ' + T.conjunto + '; as segundas contam alertas no dataset analisado.'));
   }
 
   function PainelLateral({ aberto, aoFechar, analiseId }) {
@@ -627,7 +662,7 @@
         grupo('Estados do dataset', [['Válido', 'Todas as linhas passaram na validação.'], ['Válido, com linhas recusadas', 'Há linhas com problema; elas ficam fora da análise e são listadas.'],
           ['Inválido', 'O arquivo não pode ser analisado; a tabela de problemas diz o que corrigir.']]),
         grupo('Tabela', [['Posição', 'Lugar da linha na lista atual (muda com filtros e ordenação).'], ['ID de exibição', 'Ordem cronológica no dataset inteiro; empates pela ordem da linha. Nunca muda.'],
-          ['Rótulo do dataset', 'Marcação de lavagem que já veio no arquivo; separada da previsão.'], ['Não informado', 'Formato de pagamento vazio ou desconhecido no arquivo.'],
+          ROTULO ? ['Rótulo do dataset', 'Marcação de lavagem que já veio no arquivo; separada da previsão.'] : null, ['Não informado', 'Formato de pagamento vazio ou desconhecido no arquivo.'],
           ['Recorte', 'Conjunto de transações que passa pelos filtros aplicados.']]),
         grupo('Sessão da interface', [['Sessão ativa', estado.sessao.leitura], ['Sem retomada', 'Reabrir a página mostra o que ficou gravado. Nenhuma análise recomeça sozinha.']]),
         grupo('Grafo', [['Vértice', 'Uma conta (banco-conta). A conta em foco tem contorno duplo.'], ['Seta', 'Vai da conta de origem para a conta de destino do dinheiro.'],

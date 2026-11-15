@@ -110,8 +110,9 @@
     const lim = g.limites, tip = g.tipologias;
     const item = (desenho, texto) => h('li', null, h('svg', { viewBox: '0 0 48 24', 'aria-hidden': 'true' }, desenho), h('span', null, texto));
     const seta = (classe, marca, extra) => h('g', { className: 'g-aresta ' + classe }, h('path', { className: 'traco', d: 'M 3 12 L 38 12' }, extra || null), h('path', { className: marca, d: 'M 45 12 L 36 7 L 36 17 Z' }));
-    return h('div', { className: 'bloco', role: 'group', 'aria-label': 'Legenda do grafo' },
-      h('h3', null, h(Icone, { nome: 'legenda' }), 'Legenda do grafo'),
+    /* começa recolhida: os rótulos do próprio grafo já dizem "foco" e "alerta" */
+    return h('details', { className: 'bloco legenda-grafo-caixa' },
+      h('summary', null, h(Icone, { nome: 'legenda' }), 'Legenda do grafo'),
       h('ul', { className: 'legenda-grafo' },
         item(h('g', { className: 'g-no foco' }, h('circle', { className: 'anel', cx: 24, cy: 12, r: 11 }), h('circle', { className: 'corpo', cx: 24, cy: 12, r: 7 })),
           h(React.Fragment, null, h('strong', null, 'Conta em foco'), ': contorno duplo azul e a palavra "foco".')),

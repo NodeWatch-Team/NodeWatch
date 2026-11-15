@@ -341,9 +341,16 @@ def test_execucao_em_duas_colunas_iguais_que_empilham_ate_980px():
     assert "overflow-wrap: anywhere" in compactas
 
 
-def test_etapas_sempre_abertas_e_log_ao_lado():
-    assert "Etapas executadas" not in SECOES
+def test_etapas_abertas_durante_a_analise_e_recolhidas_depois():
+    # durante a análise: etapas e log lado a lado; depois do fim: caixa recolhida "Etapas executadas" e log na largura toda
     assert "h(LogAnalise," in SECOES and "className: 'execucao'" in SECOES
+    assert "Etapas executadas" in SECOES
+    execucao = SECOES[SECOES.index("const terminada"):SECOES.index("h(LogAnalise, { m: manifesto, estado })")]
+    assert "terminada ? h('details', { className: 'execucao-etapas' }" in execucao      # fechada: sem open
+    assert ": h('div', { className: 'execucao-etapas' }, h(Progresso" in execucao        # em andamento: aberta
+    assert "manifesto.status !== 'em_andamento'" in execucao
+    regras = [corpo for sel, corpo in re.findall(r"([^{}]+)\{([^{}]*)\}", CSS) if sel.split("*/")[-1].strip() == ".execucao.terminada"]
+    assert any("grid-template-columns: minmax(0, 1fr)" in r for r in regras)
 
 
 def test_log_sem_temporizadores_soltos_nem_valores_fixos():

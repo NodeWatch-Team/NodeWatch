@@ -28,6 +28,8 @@
   };
   const bytes = b => vazio(b) ? '—' : b >= 1e9 ? nf(2, 2).format(b / 1e9) + ' GB' : b >= 1e6 ? nf(1, 1).format(b / 1e6) + ' MB'
     : b >= 1e3 ? nf(0, 0).format(b / 1e3) + ' kB' : b + ' bytes';
+  // Memória sempre em GB (10^9 bytes), 2 casas: a unidade não muda entre leituras (0,98 GB → 1,02 GB)
+  const gb = b => vazio(b) ? '—' : nf(2, 2).format(b / 1e9) + ' GB';
   const duracao = s => {
     if (vazio(s)) return '—';
     if (s < 60) return nf(0, 1).format(s) + ' s';
@@ -37,6 +39,18 @@
   const plural = (n, um, varios) => inteiro(n) + ' ' + (n === 1 ? um : varios);
   const idExibicao = (n, total) => 'TX-' + String(n).padStart(Math.max(6, String(total || 0).length), '0');
   const NOME_FAIXA = { baixa: 'baixa', intermediaria: 'intermediária', alta: 'alta' };
+
+  /* ── O que a tela mostra: ponto único de controle ─────────────────
+     false = o item some só da interface (texto, rótulo, coluna, cartão, legenda, aviso, controle, anúncio
+     para leitor de tela e title). Coleta, leitura do arquivo, SQLite, manifesto, rotas e campos da API,
+     cálculos, logs e testes de backend continuam iguais. Para voltar a mostrar, troque para true. */
+  const EXIBIR = Object.freeze({
+    rotulo: false,          // rótulo do dataset (Is Laundering / rotulo): resumo, visão, tabela, detalhes, log, legenda
+    coluna_rotulo: false,   // a coluna de rótulo em "Colunas reconhecidas" (e no contador)
+    base_treino: false,     // marcação "Base usada no treino do modelo" (o cálculo continua na API)
+    fuso: false,            // nota de fuso ao lado do período do dataset
+  });
+  const exibir = chave => EXIBIR[chave] === true;
 
   /* ── Ícones (SVG embutido; sempre acompanhados de texto) ──────────── */
   const TRACOS = {
@@ -219,7 +233,7 @@
 
   const SITUACAO_ALERTA = l => l.alerta ? 'Sim (faixa ' + NOME_FAIXA[l.faixa] + ')' : 'Não (faixa ' + NOME_FAIXA[l.faixa] + ')';
 
-  window.NW = { h, api, consulta, useCarga, useIntervalo, useSessao, sessao, FILTROS_VAZIOS, NOME_FAIXA, SITUACAO_ALERTA,
-    f: { inteiro, numero, pct, valor, dataHora, diaHora, instante, bytes, duracao, idExibicao, vazio, plural },
+  window.NW = { h, api, consulta, useCarga, useIntervalo, useSessao, sessao, FILTROS_VAZIOS, NOME_FAIXA, SITUACAO_ALERTA, EXIBIR, exibir,
+    f: { inteiro, numero, pct, valor, dataHora, diaHora, instante, bytes, gb, duracao, idExibicao, vazio, plural },
     Icone, Aviso, Erro, Carregando, Vazio, Legenda, Selo, Secao, Pares, Dialogo, Barra, BarraProgresso };
 })();

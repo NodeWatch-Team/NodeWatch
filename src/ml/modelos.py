@@ -20,17 +20,20 @@ from __future__ import annotations
 import copy
 import json
 import platform
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import joblib
+from joblib import effective_n_jobs
 import numpy as np
 import pandas as pd
 import sklearn
 from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
+from sklearn.ensemble._forest import ForestClassifier
 from sklearn.linear_model import LogisticRegression
 
 from src.ml import VERSAO_MODULO
@@ -158,7 +161,11 @@ class CabecaClassificacao:
         ordem_modelo = list(self.pipeline.classes_)
         idx = [ordem_modelo.index(c) for c in self.classes]
         pipe = self.pipeline if len(X) >= LIMITE_LINHAS_UMA_THREAD else self._pipeline_uma_thread()
-        partes = [pipe.predict_proba(X.iloc[i:i + lote])[:, idx] for i in range(0, len(X), lote)]
+        partes = []
+        for i in range(0, len(X), lote):
+            parte = X.iloc[i:i + lote]
+            p = _proba_floresta_em_ordem(pipe, parte)  # floresta com threads: soma determinística
+            partes.append((pipe.predict_proba(parte) if p is None else p)[:, idx])
         return np.vstack(partes) if partes else np.empty((0, len(self.classes)))
 
     def _pipeline_uma_thread(self) -> Any:
@@ -173,6 +180,42 @@ class CabecaClassificacao:
         estado = dict(self.__dict__)
         estado.pop("_cache_uma_thread", None)
         return estado
+
+
+_ARVORES_POR_RODADA = 4  # por thread: limita quantas previsões de árvore ficam na memória antes de somar
+
+
+def _proba_floresta_em_ordem(pipeline: Any, X: pd.DataFrame) -> Optional[np.ndarray]:
+    """``predict_proba`` de floresta com várias threads e a soma das árvores sempre na ordem delas.
+
+    O ``predict_proba`` do sklearn soma a previsão de cada árvore na ordem em que as threads terminam. Em ponto
+    flutuante a soma depende da ordem, e o score variava no último bit de uma execução para outra (medido no
+    HI-Small: 120.386 de 5.078.345 transações com score original diferente em até 1,1e-16 entre duas análises
+    do mesmo arquivo; uma delas trocou de alerta, score 701 numa e 700 na outra). Aqui as árvores continuam
+    rodando em paralelo, mas a soma segue a ordem das árvores, a mesma da execução com 1 thread: o resultado é
+    idêntico, bit a bit, ao de ``n_jobs=1`` e não muda entre execuções.
+
+    Devolve ``None`` quando não se aplica (não é floresta de classificação de uma saída, ou roda com 1 thread):
+    aí vale o ``predict_proba`` do próprio estimador, que já é determinístico.
+    """
+    est = pipeline.steps[-1][1] if hasattr(pipeline, "steps") else pipeline
+    if not isinstance(est, ForestClassifier) or getattr(est, "n_outputs_", 1) != 1:
+        return None
+    arvores = est.estimators_
+    threads = min(effective_n_jobs(est.n_jobs), len(arvores))
+    if threads <= 1:
+        return None
+    Xt = pipeline[:-1].transform(X) if hasattr(pipeline, "steps") and len(pipeline.steps) > 1 else X
+    Xv = est._validate_X_predict(Xt)  # o mesmo preparo que o predict_proba da floresta faz uma vez
+    soma = np.zeros((Xv.shape[0], est.n_classes_), dtype=np.float64)
+    passo = threads * _ARVORES_POR_RODADA
+    with ThreadPoolExecutor(max_workers=threads) as executor:
+        for i in range(0, len(arvores), passo):
+            # map devolve na ordem das árvores, não na ordem em que terminam
+            for p in executor.map(lambda arvore: arvore.predict_proba(Xv, check_input=False), arvores[i:i + passo]):
+                soma += p
+    soma /= len(arvores)
+    return soma
 
 
 def _copia_uma_thread(pipeline: Any) -> Any:

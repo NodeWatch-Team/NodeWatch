@@ -7,7 +7,28 @@
    da página (1 s), RAM e CPU por useIntervalo (2 s, só durante a análise) e a rolagem usa requestAnimationFrame. */
 (function () {
   'use strict';
-  const { h, f, api, useCarga, useIntervalo, Aviso, Erro, Legenda, Selo, Icone, NOME_FAIXA } = window.NW;
+  const { h, f, api, useCarga, useIntervalo, Aviso, Erro, Legenda, Selo, Icone, NOME_FAIXA, exibir } = window.NW;
+  const ROTULO = exibir('rotulo'), BASE_TREINO = exibir('base_treino');   // ponto único (painel-base.js)
+
+  /* Precisão e recall: com o rótulo do dataset escondido, a mesma conta (alerta × rótulo) com redação neutra.
+     Compartilhado com as métricas do painel operacional (painel-secoes.js). */
+  const TEXTO_METRICAS = Object.freeze(ROTULO ? {
+    conferiveis: 'com rótulo', positivos: 'rotuladas como lavagem', nenhum_positivo: 'nenhuma transação rotulada como lavagem',
+    calculado: 'só as que têm rótulo no dataset',
+    sem_referencia: 'O dataset não tem coluna de rótulo de lavagem (por exemplo, "Is Laundering"): sem rótulo não há como medir acertos.',
+    nenhuma_conferivel: 'Nenhuma das transações pontuadas tem rótulo.',
+    precisao: null, recall: null, origem: null,             // null: usa o texto que vem da API
+    vp: 'rotulados como lavagem', fp: 'não', conjunto: 'num conjunto com rótulo',
+  } : {
+    conferiveis: 'conferíveis', positivos: 'casos de referência', nenhum_positivo: 'nenhum caso de referência',
+    calculado: 'só as que têm referência para conferência no arquivo',
+    sem_referencia: 'Este arquivo não traz referência para conferir acertos: sem ela não há como medir precisão e recall.',
+    nenhuma_conferivel: 'Nenhuma das transações pontuadas tem referência para conferência.',
+    precisao: 'Entre as transações com alerta, a fração que está entre os casos de referência.',
+    recall: 'Entre os casos de referência, a fração que recebeu alerta.',
+    origem: 'calculado com a referência que veio no próprio arquivo, sobre as transações pontuadas nesta análise',
+    vp: 'entre os casos de referência', fp: 'fora deles', conjunto: 'num conjunto com referência',
+  });
 
   const INDISPONIVEL = 'indisponível';
   const SO_AO_VIVO = 'indisponível (medidas ao vivo só existem durante a análise)';
@@ -96,7 +117,7 @@
     if (cpu) rodape += ' CPU: ' + cpu.leitura + '; o monitor é compartilhado com o painel operacional.';
     return h('details', { className: 'log-metricas-area', open: aberto, onToggle: e => setAberto(e.currentTarget.open) },
       h('summary', null, 'Métricas de execução', aberto ? null : h('span', { className: 'log-detalhe' },
-        ' — último bloco ' + (ub ? ms(ub.total_ms) : INDISPONIVEL) + ' · RAM do NodeWatch ' + (mp && !vazio(mp.bytes) ? f.bytes(mp.bytes) : INDISPONIVEL))),
+        ' — último bloco ' + (ub ? ms(ub.total_ms) : INDISPONIVEL) + ' · RAM do NodeWatch ' + (mp && !vazio(mp.bytes) ? f.gb(mp.bytes) : INDISPONIVEL))),
       h('dl', { className: 'log-metricas' },
         h(Metrica, { nome: 'Último bloco de pontuação (servidor)',
           valor: ub ? ms(ub.total_ms) + ' · ' + f.plural(ub.transacoes, 'transação', 'transações') : INDISPONIVEL,
@@ -106,27 +127,32 @@
           valor: lat ? ms(lat.ultima_ms) : semLeitura ? SO_AO_VIVO : INDISPONIVEL,
           detalhe: lat ? 'última; mediana ' + ms(lat.mediana_ms) + ' ' + (lat.amostras === 1 ? 'em 1 consulta' : 'das últimas ' + f.inteiro(lat.amostras) + ' consultas') + ' · medido às ' + hora(lat.medido_em)
             : semLeitura ? null : 'aparece depois da primeira consulta do log' }),
+        /* RAM sempre em GB (f.gb) e em %, com o escopo no nome e o horário no rodapé */
         h(Metrica, { nome: 'RAM do processo NodeWatch',
-          valor: ou(mp && !vazio(mp.bytes), () => f.bytes(mp.bytes)),
-          detalhe: !semLeitura && mp && !vazio(mp.percentual_da_maquina) ? pct100(mp.percentual_da_maquina) + ' da memória da máquina' : null }),
+          valor: ou(mp && !vazio(mp.bytes), () => f.gb(mp.bytes)),
+          detalhe: semLeitura ? null : (mp && !vazio(mp.percentual_da_maquina) ? pct100(mp.percentual_da_maquina) : INDISPONIVEL) + ' da memória da máquina' }),
         h(Metrica, { nome: 'RAM do computador',
-          valor: ou(mm && !vazio(mm.em_uso_bytes) && !vazio(mm.total_bytes), () => f.bytes(mm.em_uso_bytes) + ' de ' + f.bytes(mm.total_bytes)),
-          detalhe: !semLeitura && mm && !vazio(mm.percentual) ? pct100(mm.percentual) + ' em uso' : null }),
+          valor: ou(mm && !vazio(mm.em_uso_bytes) && !vazio(mm.total_bytes), () => f.gb(mm.em_uso_bytes) + ' de ' + f.gb(mm.total_bytes)),
+          detalhe: semLeitura ? null : (mm && !vazio(mm.percentual) ? pct100(mm.percentual) : INDISPONIVEL) + ' em uso' }),
         h(Metrica, { nome: 'CPU: processo NodeWatch · computador',
           valor: semLeitura ? SO_AO_VIVO : (cpu ? pct100(cpu.processo_pct) + ' · ' + pct100(cpu.maquina_pct) : INDISPONIVEL),
           detalhe: cpu ? f.inteiro(cpu.nucleos_logicos) + ' núcleos lógicos; janela de ' + (vazio(cpu.janela_s) ? INDISPONIVEL : f.numero(cpu.janela_s, 1) + ' s') : null }),
-        h(Metrica, { nome: 'Pico de RAM do processo na pontuação', valor: vazio(pico) ? INDISPONIVEL : f.bytes(pico),
-          detalhe: vazio(pico) ? 'registrado quando a pontuação termina' : 'medido pelo pipeline' })),
+        h(Metrica, { nome: 'Pico de RAM do processo na pontuação', valor: vazio(pico) ? INDISPONIVEL : f.gb(pico) +
+            (mm && !vazio(mm.total_bytes) ? ' · ' + pct100(100 * pico / mm.total_bytes) + ' da memória da máquina' : ''),
+          detalhe: vazio(pico) ? 'registrado quando a pontuação termina'
+            : 'maior leitura da RAM do processo NodeWatch ao fim de cada bloco de pontuação (amostrada pelo pipeline)' })),
       h('p', { className: 'log-rodape' }, rodape));
   }
 
   /* ── Uma entrada do log (altura fixa, definida no CSS por largura de tela) ── */
   const textoRotulo = (l, comRotulo) => !comRotulo || l.rotulo === null || l.rotulo === undefined ? 'sem rótulo' : l.rotulo === 1 ? 'lavagem' : 'não lavagem';
-  const Entrada = React.memo(function Entrada({ l, topo, total, validas, comRotulo, comTipologias }) {
+  /* setsize: total final, ou -1 (desconhecido, válido em role=feed) enquanto a análise cresce; assim o React.memo
+     não redesenha todas as entradas visíveis a cada atualização do manifesto. */
+  const Entrada = React.memo(function Entrada({ l, topo, setsize, validas, comRotulo, comTipologias }) {
     const idTitulo = 'log-tx-' + l.id_exibicao;
     const tipos = comTipologias ? (l.tipologias || []).filter(t => !/nao_identificado$/.test(t)) : [];
     return h('article', { className: 'log-entrada' + (l.alerta ? ' com-alerta' : ''), style: { top: topo + 'px' }, tabIndex: -1,
-      'aria-posinset': l.id_exibicao, 'aria-setsize': total, 'aria-labelledby': idTitulo },
+      'aria-posinset': l.id_exibicao, 'aria-setsize': setsize, 'aria-labelledby': idTitulo },
       h('div', { className: 'log-cab', id: idTitulo },
         h('span', { className: 'log-pos' }, h('span', { className: 'sr' }, 'Posição no fluxo: '), 'nº ' + f.inteiro(l.id_exibicao)),
         h('span', { className: 'mono log-id', title: TEXTO_ID }, h('span', { className: 'sr' }, 'ID de exibição (gerado pelo NodeWatch): '), f.idExibicao(l.id_exibicao, validas)),
@@ -137,7 +163,7 @@
         ' · ', h('span', { className: 'log-rot' }, 'Formato: '), l.formato),
       h('div', { className: 'log-previsao' + (l.alerta ? ' alerta' : '') }, h('span', { className: 'log-rot' }, 'Previsão do modelo: '), 'score ', h('strong', null, l.score),
         ' (faixa ' + NOME_FAIXA[l.faixa] + ') · ', l.alerta ? h('strong', null, '⚠ Com alerta: possível lavagem, para investigação') : 'Sem alerta'),
-      h('div', { className: 'log-rotulo' }, h('span', { className: 'log-rot' }, 'Rótulo do dataset: '), textoRotulo(l, comRotulo)),
+      ROTULO ? h('div', { className: 'log-rotulo' }, h('span', { className: 'log-rot' }, 'Rótulo do dataset: '), textoRotulo(l, comRotulo)) : null,
       h('div', null, h('span', { className: 'log-rot' }, 'Tipologia registrada: '),
         tipos.length ? tipos.join(', ') + ' (registrada no dataset)'
           : h('span', { title: TEXTO_SEM_TIPOLOGIA }, 'Sem classificação', h('span', { className: 'sr' }, ' (' + TEXTO_SEM_TIPOLOGIA + ')'))));
@@ -155,6 +181,7 @@
     const cache = React.useRef(new Map());
     const emVoo = React.useRef(false), montado = React.useRef(true), quadro = React.useRef(0);
     const posProgramada = React.useRef(null), topoAnterior = React.useRef(0);
+    const ancora = React.useRef(null), fatorAnterior = React.useRef(1), focoPendente = React.useRef(null);
     const [geo, setGeo] = React.useState({ topo: 0, visivel: 0, linha: 0, inicio: 0 });
     const [versao, setVersao] = React.useState(0);
     const [seguir, setSeguir] = React.useState(emAndamento);
@@ -180,7 +207,11 @@
     const alturaLista = Math.min(real, ALTURA_MAX_PX);
     const fator = real > alturaLista && alturaLista > geo.visivel ? (real - geo.visivel) / (alturaLista - geo.visivel) : 1;
     const s = Math.max(0, geo.topo - geo.inicio);
-    const inicioVirtual = s * fator;
+    // Ancorado (sem "seguir ao vivo", com o fator recém-mudado): até o efeito de layout recolocar a rolagem, a
+    // janela vem da âncora e não do scrollTop antigo; senão cada atualização desenharia outras linhas por um
+    // instante e recriaria todas as entradas visíveis (perdendo o foco e pedindo páginas à toa).
+    const ancorado = !seguir && ancora.current !== null && fator !== fatorAnterior.current;
+    const inicioVirtual = ancorado ? ancora.current : s * fator;
     const primeiro = total ? Math.max(1, Math.floor(inicioVirtual / H) + 1 - SOBRA) : 0;
     const ultimo = total ? Math.min(total, Math.ceil((inicioVirtual + geo.visivel) / H) + SOBRA) : -1;
 
@@ -194,6 +225,7 @@
         const programada = posProgramada.current !== null && Math.abs(el.scrollTop - posProgramada.current) < 2;
         if (!programada) {
           posProgramada.current = null;
+          ancora.current = null;      // o analista rolou: a âncora passa a ser a nova posição
           const noFim = el.scrollTop + el.clientHeight >= el.scrollHeight - H;
           if (el.scrollTop < topoAnterior.current && !noFim) setSeguir(false);
           else if (noFim && emAndamento) setSeguir(true);
@@ -205,6 +237,22 @@
     const rolarPara = y => { const el = ref.current; if (!el) return; el.scrollTop = y; posProgramada.current = el.scrollTop; topoAnterior.current = el.scrollTop; medir(); };
     React.useLayoutEffect(() => { if (seguir && ref.current) rolarPara(ref.current.scrollHeight); }, [seguir, total, H, geo.inicio]);
     React.useEffect(() => { if (!emAndamento) setSeguir(false); }, [emAndamento]);
+
+    /* Posição de leitura na rolagem proporcional (mais de 8 M px, como no HI-Small): sem "seguir ao vivo", cada
+       bloco gravado muda o fator, e o mesmo scrollTop passaria a apontar para outra transação. A âncora guarda a
+       posição virtual do topo e, quando o fator muda, recoloca a rolagem para a mesma transação. */
+    React.useLayoutEffect(() => {
+      if (seguir) { ancora.current = null; fatorAnterior.current = fator; return; }
+      if (ancora.current === null) { ancora.current = inicioVirtual; fatorAnterior.current = fator; return; }
+      if (fator !== fatorAnterior.current) { fatorAnterior.current = fator; rolarPara(geo.inicio + ancora.current / fator); }
+    });
+    /* Depois de "Ir para a posição", o foco vai para a entrada pedida assim que ela estiver carregada. */
+    React.useEffect(() => {
+      const alvo = focoPendente.current;
+      if (!alvo || !ref.current) return;
+      const el = ref.current.querySelector('article[aria-posinset="' + alvo + '"]');
+      if (el) { focoPendente.current = null; el.focus({ preventScroll: true }); }
+    });
 
     /* Busca a página que falta para a janela visível (uma por vez; respostas de outra análise são ignoradas). */
     const tocar = p => { const c = cache.current.get(p); if (c) { cache.current.delete(p); cache.current.set(p, c); } };
@@ -234,7 +282,7 @@
     for (let id = primeiro; id >= 1 && id <= ultimo; id += 1) {
       const l = linha(id);
       const y = s + ((id - 1) * H - inicioVirtual);
-      linhas.push(l ? h(Entrada, { key: id, l, topo: y, total, validas, comRotulo: !!m.rotulo.disponivel, comTipologias: !!m.tipologias.disponivel })
+      linhas.push(l ? h(Entrada, { key: id, l, topo: y, setsize: emAndamento ? -1 : total, validas, comRotulo: !!m.rotulo.disponivel, comTipologias: !!m.tipologias.disponivel })
         : h('div', { key: id, className: 'log-entrada carregando', style: { top: y + 'px' }, 'aria-hidden': 'true' }, 'Carregando a transação nº ' + f.inteiro(id) + '…'));
     }
     const irParaPosicao = ev => {
@@ -243,18 +291,21 @@
       if (!total || !Number.isFinite(n)) return;
       const alvo = Math.min(Math.max(1, n), total);
       setSeguir(false);
-      rolarPara(geo.inicio + ((alvo - 1) * H) / fator);
+      ancora.current = null;
+      focoPendente.current = alvo;
+      // a entrada pedida fica logo abaixo da área fixa de métricas (que tem a altura geo.inicio), não atrás dela
+      rolarPara(geo.inicio + ((alvo - 1) * H - geo.inicio) / fator);
     };
     const vazioTexto = total ? null : emAndamento
       ? 'Nenhuma transação pontuada ainda: a lista começa quando a etapa de pontuação gravar o primeiro bloco.'
       : 'Nenhuma transação foi pontuada nesta análise.';
-    return h('div', { className: 'log-rolagem', ref, tabIndex: 0, onScroll: aoRolar,
+    return h('div', { className: 'log-rolagem' + (ROTULO ? '' : ' sem-rotulo'), ref, tabIndex: 0, onScroll: aoRolar,
       'aria-label': 'Log da execução: métricas e transações pontuadas, rolável' },
       h('div', { className: 'log-fixo' }, topo,
         total ? h('div', { className: 'log-barra' },
           seguir ? h('span', { className: 'suave' }, 'Seguindo ao vivo as mais recentes.')
             : h('button', { type: 'button', className: 'botao pequeno',
-              onClick: () => { if (emAndamento) setSeguir(true); else if (ref.current) rolarPara(ref.current.scrollHeight); } }, 'Ir para as mais recentes'),
+              onClick: () => { ancora.current = null; if (emAndamento) setSeguir(true); else if (ref.current) rolarPara(ref.current.scrollHeight); } }, 'Ir para as mais recentes'),
           h('form', { className: 'linha', onSubmit: irParaPosicao },
             h('label', { htmlFor: 'log-ir-' + m.id, className: 'log-ir-rotulo' }, 'Ir para a posição'),
             h('input', { id: 'log-ir-' + m.id, type: 'number', min: 1, max: total, step: 1, value: irPara, onChange: e => setIrPara(e.target.value), className: 'log-ir' }),
@@ -276,11 +327,13 @@
     const parcial = !final || m.status !== 'concluida' || !!(dd && dd.parcial);
     const rotuloEscopo = parcial ? 'parcial: ' + f.inteiro(pontuadas) + ' de ' + f.inteiro(validas) + ' transações' : 'final: ' + f.inteiro(pontuadas) + ' de ' + f.inteiro(validas) + ' transações';
     const titulo = h('div', { className: 'linha' }, h('h4', { id: 'log-pr-t-' + m.id }, 'Precisão e recall neste dataset'), h(Selo, { tom: parcial ? 'atencao' : 'ok' }, rotuloEscopo));
-    const treino = h(AvisoBaseTreino, { situacao: dd && dd.base_no_treino ? dd.base_no_treino : situacaoTreino(m), treino: dd && dd.treino ? dd.treino : treinoDoManifesto(m) });
+    // a marcação "base usada no treino" só aparece quando EXIBIR.base_treino é true (o cálculo continua na API)
+    const treino = BASE_TREINO ? h(AvisoBaseTreino, { situacao: dd && dd.base_no_treino ? dd.base_no_treino : situacaoTreino(m), treino: dd && dd.treino ? dd.treino : treinoDoManifesto(m) }) : null;
+    const T = TEXTO_METRICAS;
     const caixa = (...filhos) => h('section', { className: 'bloco grade log-resumo', 'aria-labelledby': 'log-pr-t-' + m.id }, titulo, ...filhos);
     const naoDisponivel = motivo => caixa(h('p', null, h('strong', null, 'Não disponível para este dataset. '), motivo), treino);
 
-    if (!m.rotulo || !m.rotulo.disponivel) return naoDisponivel((dd && dd.motivo) || 'O dataset não tem coluna de rótulo de lavagem (por exemplo, "Is Laundering"): sem rótulo não há como medir acertos.');
+    if (!m.rotulo || !m.rotulo.disponivel) return naoDisponivel(ROTULO ? ((dd && dd.motivo) || T.sem_referencia) : T.sem_referencia);
     if (m.status !== 'em_andamento' && !final) return naoDisponivel('Nenhuma transação foi pontuada nesta análise.');
     if (final && carga.erro) return caixa(h(Erro, { erro: carga.erro }), treino);
     if (final && !dd) return caixa(h('p', { className: 'suave' }, 'Carregando as contagens gravadas…'));
@@ -289,7 +342,7 @@
     if (final) b = { x: dd.transacoes_com_rotulo, y: vazio(dd.pontuadas) ? pontuadas : dd.pontuadas, vp: dd.verdadeiros_positivos, fp: dd.falsos_positivos, fn: dd.falsos_negativos, periodo: dd.periodo };
     else if (m.metricas_parciais) { const p = m.metricas_parciais; b = { x: p.com_rotulo, y: p.pontuadas, vp: p.vp, fp: p.fp, fn: p.fn, periodo: null }; }
     if (!b) return caixa(h('p', null, h('strong', null, INDISPONIVEL + ': '), pontuadas ? 'este manifesto não registra contagens parciais (gravado por versão anterior).' : 'a pontuação ainda não gravou nenhum bloco.'), treino);
-    if (!b.x) return naoDisponivel('Nenhuma das transações pontuadas tem rótulo.');
+    if (!b.x) return naoDisponivel(T.nenhuma_conferivel);
     const valorPrecisao = b.vp + b.fp > 0 ? b.vp / (b.vp + b.fp) : null;
     const valorRecall = b.vp + b.fn > 0 ? b.vp / (b.vp + b.fn) : null;
     const semBase = (qual) => (!final ? 'ainda sem base (' + qual + ' até agora)' : 'sem base (' + qual + ')');
@@ -297,15 +350,15 @@
       h('div', { className: 'log-pr-nome' }, nome),
       h('div', { className: 'log-pr-valor' }, vazio(valor) ? semBase(faltando) : f.pct(valor, 1)),
       h(Legenda, null, legenda || INDISPONIVEL));
+    // o limiar já está nas notas do log, logo acima: não se repete aqui
     return caixa(
-      h('p', null, 'Resultado calculado sobre ' + f.inteiro(b.x) + ' de ' + f.inteiro(b.y) + ' transações (só as que têm rótulo no dataset).'),
+      h('p', null, 'Resultado calculado sobre ' + f.inteiro(b.x) + ' de ' + f.inteiro(b.y) + ' transações (' + T.calculado + ').'),
       h('div', { className: 'log-pr-grade' },
-        cartao('Precisão', valorPrecisao, leg.precisao, 'nenhum alerta'),
-        cartao('Recall', valorRecall, leg.recall, 'nenhuma transação rotulada como lavagem')),
+        cartao('Precisão', valorPrecisao, T.precisao || leg.precisao, 'nenhum alerta'),
+        cartao('Recall', valorRecall, T.recall || leg.recall, T.nenhum_positivo)),
       h('dl', { className: 'pares' },
-        h('dt', null, 'Base'), h('dd', null, f.inteiro(b.x) + ' com rótulo · ' + f.inteiro(b.vp + b.fn) + ' rotuladas como lavagem · ' + f.inteiro(b.vp + b.fp) + ' com alerta'),
+        h('dt', null, 'Base'), h('dd', null, f.inteiro(b.x) + ' ' + T.conferiveis + ' · ' + f.inteiro(b.vp + b.fn) + ' ' + T.positivos + ' · ' + f.inteiro(b.vp + b.fp) + ' com alerta'),
         h('dt', null, 'Período'), h('dd', null, b.periodo ? f.dataHora(b.periodo.inicio) + ' a ' + f.dataHora(b.periodo.fim) + ' (horário do dataset)' : final ? INDISPONIVEL : 'indisponível até o fim da análise'),
-        h('dt', null, 'Limiar e modelo'), h('dd', null, textoLimiar(m)),
         h('dt', null, 'Fonte'), h('dd', null, final ? 'contagens gravadas no banco da análise (fonte oficial)' : 'contagens acumuladas pelo pipeline a cada bloco gravado')),
       treino);
   }
@@ -333,14 +386,16 @@
       h('p', { className: 'sr', role: 'status', 'aria-live': 'polite' }, anuncio),
       h('div', { className: 'log-notas' },
         h('p', null, textoLimiar(m)),
-        m.tipologias && !m.tipologias.disponivel ? h('p', null, h('strong', null, 'Tipologias: '), (m.tipologias.motivo || 'Este dataset não tem tipologias registradas.') + ' Nas entradas, "Sem classificação".') : null,
+        m.tipologias && !m.tipologias.disponivel ? h('p', null, h('strong', null, 'Tipologias: '), (m.tipologias.motivo || 'Este dataset não tem tipologias registradas.').replace(/\.?\s*$/, '.') + ' Nas entradas, "Sem classificação".') : null,
         h('p', null, ibm ? NOTA_IBM : (estado && estado.aviso_faixas) || ''),
-        h(Legenda, null, h('strong', null, 'Como ler: '), 'nº = posição no fluxo (ordem cronológica, igual ao ID de exibição). ' + TEXTO_ID + '. ',
-          '"Previsão do modelo" é o score e o alerta gravados; "Rótulo do dataset" é o valor que veio no arquivo, não é previsão. ',
-          'O modelo não classifica tipologia: só aparece a tipologia registrada no arquivo de padrões. "Sem classificação" = ' + TEXTO_SEM_TIPOLOGIA + '.')),
+        /* "Como ler" começa recolhido: repete o que a legenda da tabela já explica */
+        h('details', null, h('summary', null, 'Como ler as entradas do log'),
+          h(Legenda, null, 'nº = posição no fluxo (ordem cronológica, igual ao ID de exibição). ' + TEXTO_ID + '. ',
+            '"Previsão do modelo" é o score e o alerta gravados' + (ROTULO ? '; "Rótulo do dataset" é o valor que veio no arquivo, não é previsão. ' : '. '),
+            'O modelo não classifica tipologia: só aparece a tipologia registrada no arquivo de padrões. "Sem classificação" = ' + TEXTO_SEM_TIPOLOGIA + '.'))),
       h(ListaFluxo, { key: m.id, m, topo: h(MetricasExecucao, { m, leitura }) }),
       h(ResumoPrecisaoRecall, { m }));
   }
 
-  Object.assign(window.NW, { LogAnalise, MetricasExecucao, ListaFluxo, ResumoPrecisaoRecall, AvisoBaseTreino });
+  Object.assign(window.NW, { LogAnalise, MetricasExecucao, ListaFluxo, ResumoPrecisaoRecall, AvisoBaseTreino, TEXTO_METRICAS });
 })();
