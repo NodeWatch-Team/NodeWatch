@@ -1,19 +1,32 @@
-/* NodeWatch — painel do analista: estado da página e fluxo principal (uma única página).
-   Abrir a página só consulta o servidor e abre a sessão da interface; nenhuma análise começa sem o clique em Analisar. */
+/* NodeWatch — painel do analista: estado da página, navegação por vistas e fluxo principal.
+   Abrir a página só consulta o servidor e abre a sessão da interface; nenhuma análise começa sem o clique em Analisar.
+   Estrutura: navegação lateral (vistas) + topo com o contexto da análise aberta + uma vista por vez no <main>.
+   Os dados de todas as vistas de resultado são carregados juntos (mesmo recorte), então trocar de vista é imediato. */
 (function () {
   'use strict';
   const { h, f, api, consulta, useCarga, useIntervalo, useSessao, sessao, FILTROS_VAZIOS, Icone, Erro, Carregando, Vazio, Selo,
-    SecaoDataset, SecaoFiltros, SecaoVisao, SecaoInvestigacao, SecaoTabela, DialogoDetalhes, PainelLateral, DialogoLegenda, Assistente,
+    SecaoDataset, SecaoFiltros, SecaoVisao, SecaoInvestigacao, SecaoTabela, SecaoDetalhes, DialogoDetalhes, PainelLateral, DialogoLegenda, Assistente,
     NOME_STATUS, TOM_STATUS } = window.NW;
 
   const TABELA_PADRAO = { pagina: 1, tamanho: 50, ordenar: 'id_exibicao', direcao: 'asc' };
   /* Filtros iniciais: o valor mínimo começa em 1 unidade da moeda de cada transação (sem conversão entre moedas).
      A visão geral informa quantas transações ficam fora por causa dele; apagar o campo inclui as de valor menor. */
   const filtrosIniciais = est => Object.assign({}, FILTROS_VAZIOS, { valor_min: String((est && est.valor_minimo_padrao) || 1) });
-  /* O endereço guarda a análise aberta e a conta em foco (#analise=…&conta=…), para recarregar ou compartilhar a tela. */
+  /* O endereço guarda a análise aberta, a conta em foco e a vista (#analise=…&conta=…&vista=…), para recarregar ou compartilhar a tela. */
   const analiseDoEndereco = () => { const m = /analise=([\w-]+)/.exec(location.hash); return m ? m[1] : ''; };
   const contaDoEndereco = () => { const m = /conta=([^&]+)/.exec(location.hash); try { return m ? decodeURIComponent(m[1]) : ''; } catch (e) { return ''; } };
+  const vistaDoEndereco = () => { const m = /vista=(\w+)/.exec(location.hash); return m ? m[1] : ''; };
   const irPara = id => { const el = document.getElementById(id); if (el) { el.scrollIntoView({ block: 'start' }); const t = document.getElementById(id + '-t'); if (t) { t.tabIndex = -1; t.focus({ preventScroll: true }); } } };
+
+  /* Vistas da navegação. As de resultado só ficam disponíveis com resultados gravados. */
+  const VISTAS = [
+    { id: 'analise', nome: 'Análise', icone: 'analisar', grupo: 'Fluxo', dica: 'Dataset, execução e análises recentes' },
+    { id: 'visao', nome: 'Visão geral', icone: 'painel', grupo: 'Resultados', resultados: true, dica: 'Indicadores do recorte, faixas do score e prioridades' },
+    { id: 'investigacao', nome: 'Investigação', icone: 'grafo', grupo: 'Resultados', resultados: true, dica: 'Contas de maior risco e grafo de transações' },
+    { id: 'transacoes', nome: 'Transações', icone: 'tabela', grupo: 'Resultados', resultados: true, dica: 'Registros de transação, com detalhes por linha' },
+    { id: 'detalhes', nome: 'Detalhes', icone: 'detalhes', grupo: 'Resultados', dica: 'Interpretação do score e definições dos indicadores' },
+  ];
+  const NOME_VISTA = Object.fromEntries(VISTAS.map(v => [v.id, v.nome]));
 
   /* Situação da sessão da interface, sempre com texto (nunca só a cor). */
   function SeloSessao() {
@@ -23,6 +36,40 @@
     if (s.estado === 'ativa') return h('span', { role: 'status', title: dica }, h(Selo, { tom: 'ok', vivo: true }, 'Sessão ativa'));
     if (s.estado === 'sem_servidor') return h('span', { role: 'status', title: dica }, h(Selo, { tom: 'alerta' }, '⚠ Sem conexão com o servidor'));
     return h('span', { role: 'status', title: dica }, h(Selo, { tom: 'atencao' }, s.estado === 'expirada' ? 'Sessão expirada: abrindo outra…' : 'Abrindo a sessão…'));
+  }
+
+  /* Navegação lateral: vistas agrupadas, contadores reais (alertas da análise aberta) e atalhos do sistema. */
+  function Navegacao({ vista, aoVista, temResultados, emAndamento, manifesto, aberta, aoFechar, lateral, aoLateral, aoLegenda, estado }) {
+    const grupos = [];
+    VISTAS.forEach(v => { let g = grupos.find(x => x.nome === v.grupo); if (!g) { g = { nome: v.grupo, itens: [] }; grupos.push(g); } g.itens.push(v); });
+    const alertas = manifesto && manifesto.resultados && manifesto.resultados.disponiveis ? manifesto.contagens.alertas : null;
+    const item = v => {
+      const indisponivel = v.resultados && !temResultados;
+      const atual = vista === v.id;
+      return h('li', { key: v.id }, h('button', { type: 'button', className: 'nav-item', 'aria-current': atual ? 'page' : undefined,
+        'aria-disabled': indisponivel ? 'true' : undefined,
+        title: indisponivel ? (emAndamento ? 'Disponível quando a análise terminar' : 'Abra ou conclua uma análise para ver os resultados') : undefined,
+        'aria-describedby': 'nav-dica-' + v.id,
+        onClick: () => { if (!indisponivel) { aoVista(v.id); aoFechar(); } } },
+        h(Icone, { nome: v.icone }), h('span', null, v.nome), h('span', { className: 'sr', id: 'nav-dica-' + v.id }, indisponivel ? (emAndamento ? 'Disponível quando a análise terminar.' : 'Disponível com uma análise concluída.') : v.dica + '.'),
+        v.id === 'analise' && emAndamento ? h('span', { className: 'pulso', 'aria-label': 'análise em andamento', role: 'img' }) : null,
+        v.id === 'transacoes' && !f.vazio(alertas) ? h('span', { className: 'contador' + (alertas ? ' alerta' : ''), 'aria-label': f.plural(alertas, 'alerta', 'alertas') }, f.inteiro(alertas)) : null));
+    };
+    return h(React.Fragment, null,
+      h('div', { className: 'nav-fundo' + (aberta ? ' aberta' : ''), onClick: aoFechar, 'aria-hidden': 'true' }),
+      h('nav', { id: 'navegacao', className: 'navegacao' + (aberta ? ' aberta' : ''), 'aria-label': 'Navegação do painel', onKeyDown: e => { if (e.key === 'Escape') aoFechar(); } },
+        h('div', { className: 'marca' }, h('img', { className: 'logo', src: 'assets/nodewatch-logo.png', alt: 'NodeWatch', width: 146, height: 40 })),
+        grupos.map(g => h('div', { key: g.nome, className: 'nav-grupo' }, h('span', { className: 'eyebrow', 'aria-hidden': 'true' }, g.nome), h('ul', { 'aria-label': g.nome }, g.itens.map(item)))),
+        h('div', { className: 'nav-grupo' }, h('span', { className: 'eyebrow', 'aria-hidden': 'true' }, 'Sistema'),
+          h('ul', { 'aria-label': 'Sistema' },
+            h('li', null, h('button', { type: 'button', id: 'nav-operacao', className: 'nav-item', 'aria-expanded': lateral, 'aria-controls': 'painel-operacional',
+              onClick: () => { aoLateral(!lateral); aoFechar(); } },
+              h(Icone, { nome: 'operacao' }), h('span', null, 'Painel operacional'))),
+            h('li', null, h('button', { type: 'button', className: 'nav-item', 'aria-haspopup': 'dialog', onClick: () => { aoLegenda(); aoFechar(); } },
+              h(Icone, { nome: 'legenda' }), h('span', null, 'Legenda geral'))))),
+        h('div', { className: 'rodape' },
+          h('span', null, 'Prevenção à lavagem de dinheiro'),
+          estado && estado.modelo && estado.modelo.disponivel ? h('span', { className: 'mono', title: 'Modelo salvo usado na pontuação' }, 'Modelo ' + estado.modelo.versao) : null)));
   }
 
   function App() {
@@ -46,6 +93,9 @@
     const [pedidoAssistente, setPedidoAssistente] = React.useState(0);
     const [lateral, setLateral] = React.useState(false);
     const [legenda, setLegenda] = React.useState(false);
+    const [navAberta, setNavAberta] = React.useState(false);
+    // vista pedida pelo analista (ou pelo endereço); vazia = a padrão (visão geral com resultados, análise sem)
+    const [vistaPedida, setVistaPedida] = React.useState(vistaDoEndereco);
     const iniciais = filtrosIniciais(estado.dados);
 
     const carregarDatasets = () => api('/datasets').then(d => setDatasets(d.datasets)).catch(() => {});
@@ -59,32 +109,38 @@
     useIntervalo(lerDataset, 700, validando);
     React.useEffect(() => { if (dataset && !validando) carregarDatasets(); }, [validando, dataset && dataset.status]);
 
-    /* Análise aberta: acompanha o manifesto enquanto estiver em andamento (consulta: não inicia nem retoma nada). */
+    /* Análise aberta: acompanha o manifesto enquanto estiver em andamento (consulta: não inicia nem retoma nada).
+       Uma falha de rede passageira durante o acompanhamento não fecha a análise: a próxima leitura tenta de novo. */
     const lerManifesto = () => {
       if (!analiseId) return;
       api('/analises/' + analiseId).then(m => { setManifesto(m); setErroAnalise(null); })
-        .catch(e => { setManifesto(null); setErroAnalise(e); setAnaliseId(''); });
+        .catch(e => { if (e && e.rede && manifesto && manifesto.id === analiseId) { setErroAnalise(e); return; } setManifesto(null); setErroAnalise(e); setAnaliseId(''); });
     };
     React.useEffect(() => { setManifesto(null); lerManifesto(); }, [analiseId]);
-    React.useEffect(() => { if (analiseId) history.replaceState(null, '', '#analise=' + analiseId + (focoPedido ? '&conta=' + encodeURIComponent(focoPedido) : '')); }, [analiseId, focoPedido]);
     const emAndamento = !!manifesto && manifesto.status === 'em_andamento';
     useIntervalo(lerManifesto, 1000, emAndamento);
     React.useEffect(() => { if (manifesto && !emAndamento) { carregarAnalises(); setVersaoEstado(v => v + 1); } }, [emAndamento, manifesto && manifesto.id]);
     /* Ao abrir a página com uma análise já em andamento no servidor, mostra o progresso dela (não inicia nada). */
     React.useEffect(() => { if (!analiseId && estado.dados && estado.dados.analise_em_andamento) setAnaliseId(estado.dados.analise_em_andamento); }, [estado.dados]);
 
+    const temResultados = !!manifesto && !emAndamento && manifesto.resultados.disponiveis;
+    const definicao = VISTAS.find(v => v.id === vistaPedida);
+    const vista = definicao && (!definicao.resultados || temResultados) ? vistaPedida : (temResultados && !vistaPedida ? 'visao' : (definicao && definicao.id === 'detalhes' ? 'detalhes' : 'analise'));
+    React.useEffect(() => { if (analiseId) history.replaceState(null, '', '#analise=' + analiseId + (focoPedido ? '&conta=' + encodeURIComponent(focoPedido) : '') + (vistaPedida ? '&vista=' + vistaPedida : '')); }, [analiseId, focoPedido, vistaPedida]);
+    /* Trocar de vista leva o topo da página para o início e o foco para o título da vista (leitores de tela). */
+    const mudarVista = v => { setVistaPedida(v); window.scrollTo(0, 0); };
+
     const reiniciarRecorte = () => { setRascunho(iniciais); setAplicados(iniciais); setTabela(TABELA_PADRAO); setFocoPedido(''); setDetalheId(null); setTxAssistente(null); };
     const analisar = async did => {
       setErroAnalise(null);
       try { const m = await api('/analises', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataset_id: did }) });
-        reiniciarRecorte(); setManifesto(m); setAnaliseId(m.id); setVersaoEstado(v => v + 1); }
+        reiniciarRecorte(); setManifesto(m); setAnaliseId(m.id); setVistaPedida('analise'); setVersaoEstado(v => v + 1); }
       catch (e) { setErroAnalise(e); }
     };
     const cancelar = () => api('/analises/' + analiseId + '/cancelar', { method: 'POST' }).then(setManifesto).catch(setErroAnalise);
     const assumir = () => api('/analises/' + analiseId + '/assumir', { method: 'POST' }).then(setManifesto).catch(setErroAnalise);
-    const abrir = id => { reiniciarRecorte(); setErroAnalise(null); setAnaliseId(id); };
+    const abrir = id => { reiniciarRecorte(); setErroAnalise(null); setVistaPedida(''); setAnaliseId(id); };
 
-    const temResultados = !!manifesto && !emAndamento && manifesto.resultados.disponiveis;
     const base = temResultados ? '/analises/' + manifesto.id : null;
     const visao = useCarga(base ? base + '/visao' + consulta(aplicados) : null);
     const pagina = useCarga(base ? base + '/transacoes' + consulta(aplicados, tabela) : null);
@@ -99,42 +155,55 @@
     const filtrarTabela = parcial => {
       const novo = Object.assign({}, aplicados, parcial);
       setRascunho(novo); setAplicados(novo); setFocoPedido(''); setTabela(Object.assign({}, tabela, { pagina: 1 }));
+      setVistaPedida('transacoes');
       setTimeout(() => irPara('tabela'), 60);
     };
-    const focar = conta => { setFocoPedido(conta); setTimeout(() => irPara('investigacao'), 60); };
+    const focar = conta => { setFocoPedido(conta); setVistaPedida('investigacao'); setTimeout(() => irPara('investigacao'), 60); };
 
     if (estado.erro && !estado.dados) return h('main', { id: 'conteudo' }, h(Erro, { erro: estado.erro }));
     if (!estado.dados) return h('main', { id: 'conteudo' }, h(Carregando, { texto: 'Abrindo o painel…' }));
     const est = estado.dados;
     const total = manifesto ? manifesto.contagens.pontuadas : 0;
+    const recorte = h(SecaoFiltros, { key: 'filtros', rascunho, setRascunho, aplicados, aoAplicar: aplicar, aoLimpar: limpar, moedas: manifesto && manifesto.contagens.moedas || [], erro: erroFiltro });
 
-    return h(React.Fragment, null,
-      h('header', { className: 'topo' },
-        h('button', { type: 'button', className: 'botao hamburguer', 'aria-expanded': lateral, 'aria-controls': 'painel-operacional',
-          'aria-label': lateral ? 'Fechar o painel operacional' : 'Abrir o painel operacional (desempenho, logs e métricas)', onClick: () => setLateral(!lateral) }, h(Icone, { nome: 'menu' })),
-        h('div', { className: 'marca' },
-          h('img', { className: 'logo', src: 'assets/nodewatch-logo.png', alt: 'NodeWatch', width: 146, height: 40 }),
-          h('img', { className: 'logo-simbolo', src: 'assets/nodewatch-simbolo.png', alt: 'NodeWatch', width: 38, height: 38 }),
-          h('h1', null, 'Painel do analista', h('small', null, 'Prevenção à lavagem de dinheiro'))),
-        h('div', { className: 'estado-analise', role: 'status' }, manifesto ? h(React.Fragment, null, h('span', { className: 'suave' }, 'Análise: '), h('strong', null, manifesto.dataset.nome), ' ',
-          h(Selo, { tom: TOM_STATUS[manifesto.status] }, NOME_STATUS[manifesto.status])) : h('span', { className: 'suave' }, 'Nenhuma análise aberta')),
-        h('div', { className: 'acoes' }, h(SeloSessao),
-          h('button', { type: 'button', className: 'botao', onClick: () => setLegenda(true), 'aria-haspopup': 'dialog' }, h(Icone, { nome: 'legenda' }), h('span', { className: 'rotulo-botao' }, 'Legenda')))),
-      h(PainelLateral, { aberto: lateral, aoFechar: () => { setLateral(false); const b = document.querySelector('.hamburguer'); if (b) b.focus(); }, analiseId: manifesto ? manifesto.id : '' }),
-      h('main', { id: 'conteudo' },
-        h(SecaoDataset, { estado: est, datasets, dataset, datasetId, aoEscolher: (id, forcar) => { if (forcar && id === datasetId) lerDataset(); else setDatasetId(id); }, aoRecarregar: carregarDatasets,
-          manifesto, aoAnalisar: analisar, aoCancelar: cancelar, aoAssumir: assumir, analises, aoAbrir: abrir, analiseId: manifesto ? manifesto.id : '', erroAnalise }),
-        temResultados ? h(React.Fragment, null,
-          h(SecaoFiltros, { rascunho, setRascunho, aplicados, aoAplicar: aplicar, aoLimpar: limpar, moedas: manifesto.contagens.moedas || [], erro: erroFiltro }),
-          h(SecaoVisao, { carga: visao, manifesto, estado: est }),
-          h(SecaoInvestigacao, { visao, focoPedido, aoFocar: focar, cargaGrafo: grafo, analiseId: manifesto.id, filtros: aplicados, total, profundidade, aoProfundidade: setProfundidade, aoFiltrarTabela: filtrarTabela }),
-          h(SecaoTabela, { carga: pagina, manifesto, tabela, setTabela, aoDetalhe: setDetalheId, selecionada: detalheId }),
-          h(DialogoDetalhes, { analiseId: manifesto.id, id: detalheId, total, aoFechar: () => setDetalheId(null), aoFiltrarTabela: filtrarTabela, aoFocar: focar,
-            aoPerguntar: id => { setDetalheId(null); setTxAssistente(id); setPedidoAssistente(n => n + 1); } })) :
-          h('section', { className: 'secao' }, h('div', { className: 'corpo' }, h(Vazio, null,
-            emAndamento ? 'Os indicadores, as contas, o grafo e a tabela aparecem quando a análise terminar (ou for interrompida com transações já pontuadas).'
-              : manifesto ? 'Esta análise não tem resultados gravados. Abra outra em Análises recentes ou inicie uma nova.'
-                : 'Envie ou escolha um dataset e clique em Analisar, ou abra uma análise em Análises recentes. Os indicadores, as contas, o grafo e a tabela aparecem aqui.')))),
+    let conteudo;
+    const abrindoResultados = analiseId && !manifesto && !erroAnalise && definicao && definicao.resultados;
+    if (abrindoResultados) {
+      conteudo = h(Carregando, { texto: 'Abrindo a análise…' });
+    } else if (vista === 'analise') {
+      conteudo = h(SecaoDataset, { estado: est, datasets, dataset, datasetId, aoEscolher: (id, forcar) => { if (forcar && id === datasetId) lerDataset(); else setDatasetId(id); }, aoRecarregar: carregarDatasets,
+        manifesto, aoAnalisar: analisar, aoCancelar: cancelar, aoAssumir: assumir, analises, aoAbrir: abrir, analiseId: manifesto ? manifesto.id : '', erroAnalise,
+        temResultados, aoVerResultados: () => mudarVista('visao') });
+    } else if (vista === 'detalhes') {
+      conteudo = h(SecaoDetalhes, { estado: est, manifesto, visao: temResultados ? visao : null });
+    } else if (vista === 'visao') {
+      conteudo = h(React.Fragment, null, recorte, h(SecaoVisao, { carga: visao, manifesto, estado: est, aoVista: mudarVista, aoFocar: focar, aoFiltrarTabela: filtrarTabela }));
+    } else if (vista === 'investigacao') {
+      conteudo = h(React.Fragment, null, recorte, h(SecaoInvestigacao, { visao, focoPedido, aoFocar: focar, cargaGrafo: grafo, analiseId: manifesto.id, filtros: aplicados, total, profundidade, aoProfundidade: setProfundidade, aoFiltrarTabela: filtrarTabela }));
+    } else {
+      conteudo = h(React.Fragment, null, recorte, h(SecaoTabela, { carga: pagina, manifesto, tabela, setTabela, aoDetalhe: setDetalheId, selecionada: detalheId }));
+    }
+
+    return h(React.Fragment, null, h('div', { className: 'app' },
+      h(Navegacao, { vista, aoVista: mudarVista, temResultados, emAndamento, manifesto, aberta: navAberta, estado: est,
+        aoFechar: () => setNavAberta(false), lateral, aoLateral: setLateral, aoLegenda: () => setLegenda(true) }),
+      h('div', { className: 'coluna' },
+        h('header', { className: 'topo' },
+          h('button', { type: 'button', className: 'botao hamburguer', 'aria-expanded': navAberta, 'aria-controls': 'navegacao',
+            'aria-label': navAberta ? 'Fechar o menu de navegação' : 'Abrir o menu de navegação', onClick: () => setNavAberta(!navAberta) }, h(Icone, { nome: 'menu' })),
+          h('div', { className: 'marca' }, h('img', { className: 'logo-simbolo', src: 'assets/nodewatch-simbolo.png', alt: '', width: 30, height: 30 })),
+          h('h1', null, h('span', { className: 'eyebrow' }, 'Painel do analista'), h('span', { className: 'nome-vista' }, NOME_VISTA[vista])),
+          h('div', { className: 'estado-analise', role: 'status' }, manifesto ? h(React.Fragment, null,
+            h('span', { className: 'sr' }, 'Análise aberta: '), h('span', { className: 'nome-ds', title: manifesto.dataset.nome }, manifesto.dataset.nome),
+            h(Selo, { tom: TOM_STATUS[manifesto.status] || 'acao', forma: true }, NOME_STATUS[manifesto.status])) : h('span', { className: 'suave', style: { paddingRight: 8 } }, 'Nenhuma análise aberta')),
+          h('div', { className: 'acoes' }, h(SeloSessao),
+            h('button', { type: 'button', className: 'botao', onClick: () => setLegenda(true), 'aria-haspopup': 'dialog' }, h(Icone, { nome: 'legenda' }), h('span', { className: 'rotulo-botao' }, 'Legenda')))),
+        h(PainelLateral, { aberto: lateral, aoFechar: () => { setLateral(false); const b = document.getElementById('nav-operacao'); if (b && b.offsetParent) b.focus(); }, analiseId: manifesto ? manifesto.id : '' }),
+        h('main', { id: 'conteudo' },
+          h('div', { key: vista, className: 'vista', 'data-vista': vista }, conteudo),
+          temResultados ? h(DialogoDetalhes, { analiseId: manifesto.id, id: detalheId, total, aoFechar: () => setDetalheId(null), aoFiltrarTabela: filtrarTabela, aoFocar: focar,
+            aoInterpretar: () => { setDetalheId(null); mudarVista('detalhes'); },
+            aoPerguntar: id => { setDetalheId(null); setTxAssistente(id); setPedidoAssistente(n => n + 1); } }) : null))),
       h(DialogoLegenda, { aberto: legenda, aoFechar: () => setLegenda(false), estado: est }),
       /* botão fixo no canto inferior direito, fora do <main> e do topo: não depende da rolagem nem é cortado */
       h(Assistente, { analiseId: manifesto ? manifesto.id : '', filtros: aplicados, estado: est, total,
