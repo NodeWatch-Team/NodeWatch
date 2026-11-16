@@ -20,21 +20,26 @@ O painel não funciona aberto como arquivo (`interface/painel.html` com dois cli
 
 ## Identidade visual e design system
 
-Tema escuro único (`interface/assets/painel.css`, design system "Watch"): fundo azul-marinho profundo, superfícies grafite em quatro níveis (`--sup` → `--sup-4`), bordas de 1 px e sombras curtas. O vermelho da marca fica na logo (no "Watch"); o resto da interface usa cores semânticas, sempre acompanhadas de texto, ícone ou forma:
+Design system "Carbon" (`interface/assets/painel.css`): preto carbono (`#090909`), superfícies grafite em quatro níveis (`#101010` → `#202020`), bordas `#1f1f1f`–`#383838` e o vermelho NodeWatch (`#F04444`, com `#FF6666` para luz e estados interativos) como assinatura. O vermelho marca o que está ativo — item de navegação, ação principal, seleção, progresso, conexões do grafo — e nunca ocupa grandes áreas. A profundidade vem de camadas, reflexo de 1 px no topo dos cartões, sombras longas e luz ambiente vermelha muito difusa no fundo. Um motivo de rede (vértices e conexões em posições fixas, alguns pulsando) fica atrás do conteúdo, em estados vazios, no carregamento e na execução; é decoração pura, sem cliques e escondido de leitores de tela.
 
 | cor | token | uso |
 |---|---|---|
-| vermelho-coral | `--alerta` | alerta, faixa alta, caminho com alerta (sempre com "⚠" e texto) |
+| vermelho NodeWatch | `--marca`, `--acao` | ativo, ação principal, seleção, progresso, conexões |
+| vermelho com ⚠ | `--alerta` | alerta, faixa alta, caminho com alerta (sempre com "⚠", texto ou fundo tingido) |
 | âmbar | `--atencao` | atenção: resultado parcial, linhas recusadas, faixa intermediária |
 | verde | `--ok` | sucesso, etapa concluída, faixa baixa |
-| ciano | `--acao` | ação, seleção, conta em foco, progresso |
+| ciano | `--info` | aviso informativo |
 | amarelo | `--foco` | contorno do foco do teclado |
 
-Todos os valores (cores, faixas do score, séries de gráfico, espaçamento em escala de 4 px, tipografia, raios, alturas de controle, elevação e tempos de transição) são variáveis CSS em `:root`. Tipografia: Inter quando instalada, senão a fonte do sistema (Segoe UI Variable no Windows); números com algarismos tabulares; identificadores de conta e transação em monoespaçada. Nenhum recurso externo: fontes do sistema, ícones em SVG embutido no estilo de traço único (`TRACOS` em `painel-base.js`), logo em `assets/`.
+No grafo, a conta em foco tem contorno duplo branco com halo vermelho e a sequência selecionada é um traço branco animado; o vermelho cheio fica para alerta.
 
-Componentes padronizados: botões (padrão, primário — o único com brilho —, perigo, fantasma, pequeno, ícone), campos, selos de estado (com forma ● ◆ ▲ além da cor), chips de filtro, cartões de indicador, estatísticas em linha, acordeões, abas, tabelas, barras de progresso, medidor do score, esqueletos de carregamento, estados vazios, dicas (`data-dica`) e diálogos nativos. As animações são curtas (entrada da vista, abertura de diálogo e gaveta) e param com `prefers-reduced-motion`; em `forced-colors` os contornos voltam ao padrão do sistema.
+Todos os valores (cores, faixas do score, espaçamento em escala de 4 px, tipografia, raios, alturas de controle, elevação e tempos de transição) são variáveis CSS em `:root`. Tipografia: Inter quando instalada, senão a fonte do sistema; números com algarismos tabulares; identificadores em monoespaçada. Nenhum recurso externo e nenhuma biblioteca nova: os efeitos são CSS e SVG gerado pelo React já vendorizado.
 
-A logo é a oficial, `interface/NodeWatchlogo_transparente.png`. Os arquivos servidos são derivados dela só por recorte das margens e redução proporcional: `assets/nodewatch-logo.png` (navegação lateral) e `assets/nodewatch-simbolo.png` (topo em tela estreita e ícone da aba). Capturas de antes e depois em `docs/ui/capturas/` (o redesenho de 15/11/2026 em `docs/ui/capturas/redesign/`).
+**Textos.** Títulos e rótulos curtos ("Registros no recorte", "Última pontuação", "RAM do processo"); as explicações técnicas ficam em dicas (ícone ⓘ ou ao passar o ponteiro, e no nome acessível), em blocos recolhíveis ou na vista **Detalhes**. Medida ausente aparece como "—", com o motivo na dica.
+
+**Movimento.** Entrada da vista em sequência curta, barras que crescem, marcador do score que desliza, abertura suave de detalhes, diálogos e gavetas, indicador de atividade na execução. Tudo para com `prefers-reduced-motion`; em `forced-colors` os contornos voltam ao padrão do sistema.
+
+A logo é a oficial, `interface/NodeWatchlogo_transparente.png`. Os arquivos servidos são derivados dela só por recorte das margens e redução proporcional: `assets/nodewatch-logo.png` (navegação lateral) e `assets/nodewatch-simbolo.png` (navegação recolhida, topo em tela estreita, carregamento e ícone da aba). Capturas de antes e depois em `docs/ui/capturas/` (tema Carbon em `docs/ui/capturas/carbon/`).
 
 ## Sessão da interface
 
@@ -74,7 +79,7 @@ O terminal confirma com `Origens extras liberadas (NODEWATCH_ORIGENS): null` e m
 
 ## Fluxo de uso
 
-A navegação lateral (gaveta abaixo de 1024 px, aberta pelo botão ☰) separa o painel em vistas; o endereço guarda a vista (`#analise=…&conta=…&vista=…`). O topo mostra a vista atual, o dataset da análise aberta com o status e a sessão.
+A navegação lateral separa o painel em vistas; o endereço guarda a vista (`#analise=…&conta=…&vista=…`). No desktop ela pode ser recolhida para só ícones (**Recolher menu**, no rodapé; a escolha fica guardada no navegador). Abaixo de 1024 px vira gaveta, aberta pelo botão ☰. O topo mostra a vista atual, o dataset da análise aberta com o status, a sessão (ponto verde; o detalhe fica na dica) e o atalho da legenda.
 
 | vista | o que mostra |
 |---|---|
@@ -84,7 +89,7 @@ A navegação lateral (gaveta abaixo de 1024 px, aberta pelo botão ☰) separa 
 | **Transações** | tabela de registros, com linhas expansíveis e detalhes da transação |
 | **Detalhes** | interpretação completa do score e definições dos indicadores |
 
-Visão geral, Investigação e Transações só ficam disponíveis com resultados gravados; o item **Transações** mostra quantos alertas a análise tem. Em **Sistema** ficam o painel operacional e a legenda geral.
+Visão geral, Investigação e Transações só ficam disponíveis com resultados gravados; o item **Transações** mostra quantos alertas a análise tem (um ponto vermelho com o menu recolhido). Em **Sistema** ficam **Operação** (o painel operacional) e **Legenda**.
 
 1. **Dataset e análise.** Envie um `.csv` (ou `.zip` com um CSV) ou escolha um dataset já disponível. Sem dataset escolhido, o bloco de escolha resume a própria lista: quantos datasets há, quantos foram enviados e quantos estão no servidor, e quantos em cada situação. O servidor valida o arquivo e mostra formato, linhas, contas, período, colunas reconhecidas, moedas e formatos de pagamento. Cada problema traz coluna, linha de exemplo e o que corrigir.
 2. **Analisar.** Só o clique em **Analisar**, com um dataset válido, inicia o processamento. Abrir a página, enviar ou validar não analisa nada.
@@ -137,18 +142,18 @@ Nada é treinado nem reajustado. A pontuação reusa `EstadoFinanceiro` e `pontu
 
 ### Log da execução (`interface/assets/painel-log.js`)
 
-Consultável durante e depois da análise, enquanto ela estiver aberta. Nenhum valor é fixo nem simulado; o que falta aparece como "indisponível" (nunca 0, "—" ou 0%).
+Consultável durante e depois da análise, enquanto ela estiver aberta. Nenhum valor é fixo nem simulado; o que falta aparece como "—" (nunca 0), com o motivo na dica do bloco.
 
-**Área fixa de métricas** (primeiro item do contêiner rolável, `position: sticky`). Cada valor tem unidade, escopo e horário:
+**Área fixa de métricas** (primeiro item do contêiner rolável, `position: sticky`): quatro blocos compactos, rótulo curto e valor. O detalhe técnico (composição, escopo e horário) fica na dica de cada bloco.
 
-| métrica | origem | quando |
+| bloco | origem | quando |
 |---|---|---|
-| Último bloco de pontuação | `ultimo_bloco` no progresso da etapa de pontuação (manifesto): total, atributos, inferência e gravação em ms, transações do bloco e `medido_em`, com os mesmos `t0..t3` do pipeline | a cada bloco; fica no manifesto depois do fim |
-| Consulta do log | latência da rota `fluxo de transações` em `GET /operacao/desempenho` | depois da primeira consulta |
-| RAM e CPU (processo e computador) | `GET /operacao/desempenho`, sem mudar o formato; CPU com núcleos e `janela_s` (o monitor é compartilhado com o painel operacional) | a cada 2 s, só com a análise em andamento e o log montado |
-| Pico de RAM na pontuação | `desempenho.pico_memoria_processo_na_pontuacao_bytes` | ao fim da pontuação |
+| Última pontuação | `ultimo_bloco` no progresso da etapa de pontuação (manifesto): total em ms e transações do bloco; atributos, inferência, gravação e `medido_em` na dica | a cada bloco; fica no manifesto depois do fim |
+| Log de transações | latência da rota `fluxo de transações` em `GET /operacao/desempenho` (última; mediana embaixo) | depois da primeira consulta |
+| RAM do processo | `GET /operacao/desempenho`, em GB, com o percentual da máquina | a cada 2 s, só com a análise em andamento e o log montado |
+| RAM do sistema | idem, memória em uso de total | idem |
 
-RAM e CPU **não vão para o manifesto**. Ao terminar ou cancelar, o polling para e a última leitura fica como "última leitura durante a análise"; numa falha, a leitura anterior fica com "não atualizada desde HH:mm:ss". Numa análise reaberta do histórico, RAM e CPU aparecem como "indisponível (medidas ao vivo só existem durante a análise)". Até 720 px, a área começa recolhida (o título mostra o último bloco e a RAM), para a lista caber.
+CPU e o pico de RAM do processo não aparecem no log; continuam no painel operacional (vista **Operação**), que é secundário. RAM **não vai para o manifesto**. O rodapé da área diz em uma linha se a leitura está ao vivo, encerrada (com o horário da última) ou falhou. Até 720 px, a área começa recolhida (o título mostra a última pontuação e a RAM), para a lista caber.
 
 **Lista virtualizada.** `GET /analises/<id>/fluxo?de=&ate=` em janelas de até 200 IDs, cache de 20 páginas, no máximo 1 requisição em voo e respostas de outra análise ignoradas. Altura de linha fixa por largura de tela (`--log-linha` no CSS, medida numa sonda), sobra de 10 linhas acima e abaixo; com 6.000 transações, o DOM teve no máximo 25 entradas. Acima de 8 milhões de pixels de altura, a rolagem fica proporcional (milhões de linhas). "Seguir ao vivo" vem ligado durante a análise, desliga quando o analista rola para cima e volta pelo botão **Ir para as mais recentes** ou ao chegar no fim; **Ir para a posição** leva a um número do fluxo. Sem animação de rolagem. Na rolagem proporcional, sem "seguir ao vivo", a posição de leitura fica ancorada na mesma transação enquanto a lista cresce; **Ir para a posição** deixa a transação pedida logo abaixo da área fixa e leva o foco até ela. `role="feed"` com `aria-posinset` e `aria-setsize` (-1, "desconhecido", enquanto a análise cresce; o total depois do fim); um único resumo `.sr` polite, no máximo a cada 10 s ou na mudança de etapa ou de status (a lista e os números não têm `aria-live`).
 
@@ -226,7 +231,7 @@ Um único componente, para a conta do filtro de origem, do filtro de destino ou 
 
 ## Painel operacional
 
-Abre como gaveta à direita pelo item **Painel operacional** da navegação; Esc ou o fundo escurecido fecham.
+Abre como gaveta à direita pelo item **Operação** da navegação; Esc ou o fundo escurecido fecham.
 
 - **Desempenho:** RAM e CPU do processo do NodeWatch e da máquina (lidas do sistema operacional pela biblioteca padrão), latência de cada consulta em ms, e, da análise ativa ou da última, duração, pico de memória e duas vazões com a fórmula: a da análise inteira (pontuadas ÷ duração total) e a só da pontuação (pontuadas ÷ tempo de atributos, inferência e gravação). No exemplo de 2.076.752 transações: 88,6 s no total, cerca de 23,4 mil por segundo; 47,2 s de pontuação, cerca de 44 mil por segundo.
 - **Logs do sistema** e **Logs de ML:** em `artefatos_ml/painel/logs/`. Não guardam contas, linhas do dataset, chaves nem caminhos.
