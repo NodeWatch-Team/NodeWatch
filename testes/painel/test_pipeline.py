@@ -16,7 +16,7 @@ from src.painel.datasets import ErroDataset
 from src.painel.util import gravar_json_atomico, ler_json
 from testes.painel.conftest import D, Ambiente, Portao, escrever, linha
 
-ETAPAS = ["leitura", "ordenacao", "tipologias", "pontuacao", "indices", "manifesto"]
+ETAPAS = ["leitura", "ordenacao", "pontuacao", "indices", "manifesto"]
 
 
 def _muitas(n: int = 30):
@@ -40,10 +40,10 @@ def test_analise_so_comeca_com_dataset_valido(ambiente, tmp_path):
 
 
 def test_analise_completa_registra_etapas_reais_e_manifesto(ambiente, cenario):
-    m = ambiente.analisar(cenario["dados"], cenario["padroes"])
+    m = ambiente.analisar(cenario["dados"])
     assert m["status"] == "concluida" and [e["id"] for e in m["etapas"]] == ETAPAS
     assert all(e["status"] == "concluida" and e["duracao_s"] is not None for e in m["etapas"])
-    leitura, pontuacao = m["etapas"][0], m["etapas"][3]
+    leitura, pontuacao = m["etapas"][0], m["etapas"][2]
     tamanho = cenario["dados"].stat().st_size
     assert leitura["progresso"]["unidade"] == "bytes" and leitura["progresso"]["feito"] == leitura["progresso"]["total"] == tamanho
     assert pontuacao["progresso"]["unidade"] == "transações" and pontuacao["progresso"]["feito"] == pontuacao["progresso"]["total"] == 13
@@ -66,10 +66,33 @@ def test_analise_completa_registra_etapas_reais_e_manifesto(ambiente, cenario):
     assert ambiente.cargas_do_modelo == 1
 
 
-def test_etapa_de_tipologias_e_pulada_sem_arquivo_de_padroes(ambiente, cenario):
+def test_analise_nao_tem_etapa_nem_dados_de_tipologias(ambiente, cenario):
+    # a etapa "Tipologias registradas no dataset" saiu do fluxo: nenhuma etapa pulada, nada de tipologias no manifesto
     m = ambiente.analisar(cenario["dados"])
-    assert m["etapas"][2]["status"] == "pulada" and m["tipologias"]["disponivel"] is False
-    assert "não tem tipologias" in m["tipologias"]["motivo"]
+    assert m["status"] == "concluida" and [e["id"] for e in m["etapas"]] == ETAPAS
+    assert not [e for e in m["etapas"] if e["status"] == "pulada"]
+    assert "tipologias" not in m and "padroes" not in m["dataset"]
+    assert "com_tipologia" in m["contagens"] and m["contagens"]["com_tipologia"] == 0
+    assert all("tipolog" not in e["nome"].lower() and "tipolog" not in e["detalhe"].lower() for e in m["etapas"])
+    con = ambiente.analises.conexao(m["id"])
+    try:
+        assert con.execute("SELECT COUNT(*) FROM transacoes WHERE tipologias <> '' OR tentativas <> ''").fetchone()[0] == 0
+        assert con.execute("SELECT COUNT(*) FROM tipologia_tx").fetchone()[0] == 0
+    finally:
+        con.close()
+
+
+def test_analise_gravada_por_versao_anterior_com_tipologias_continua_legivel(ambiente, cenario):
+    # manifesto antigo: etapa "tipologias" e tipologias no SQLite; reabrir não reprocessa e mostra o que foi gravado
+    m = ambiente.gravar_tipologias_legadas(ambiente.analisar(cenario["dados"]), cenario["padroes"])
+    m["etapas"].insert(2, {"id": "tipologias", "nome": "Tipologias registradas no dataset", "unidade": None,
+                           "status": "concluida", "inicio": None, "fim": None, "duracao_s": 0.0, "progresso": None,
+                           "detalhe": "3 transações com tipologia"})
+    gravar_json_atomico(ambiente.raiz / pl.PASTA / m["id"] / "manifesto.json", m)
+    outro = pl.GerenciadorAnalises(ambiente.raiz, ambiente.datasets, lambda: None, ambiente.registro)
+    reaberto = outro.obter(m["id"])
+    assert reaberto["status"] == "concluida" and reaberto["tipologias"]["disponivel"] is True
+    assert [e["id"] for e in reaberto["etapas"]][2] == "tipologias"
 
 
 def test_progresso_medido_durante_a_execucao(tmp_path, fabrica_modelo):
@@ -203,7 +226,7 @@ def test_uma_analise_por_vez(tmp_path, fabrica_modelo):
 
 
 def test_reabrir_analise_do_historico_sem_reprocessar(ambiente, cenario, fabrica_modelo):
-    m = ambiente.analisar(cenario["dados"], cenario["padroes"])
+    m = ambiente.analisar(cenario["dados"])
     db = ambiente.analises.caminho_db(m["id"])
     antes = (db.stat().st_mtime_ns, db.stat().st_size)
 
@@ -229,7 +252,7 @@ def test_analise_interrompida_por_reinicio_vira_parcial(ambiente, cenario):
     pasta = ambiente.raiz / pl.PASTA
     # simula a queda: manifesto "em andamento" e banco com 4 linhas gravadas, sem índices
     interrompida = dict(ler_json(pasta / m["id"] / "manifesto.json"), id="an-interrompida", status="em_andamento")
-    interrompida["etapas"][3]["status"] = "em_andamento"
+    interrompida["etapas"][2]["status"] = "em_andamento"  # pontuação
     (pasta / "an-interrompida").mkdir()
     con = arm.conectar(ambiente.analises.caminho_db(m["id"]))
     linhas = pd.read_sql_query("SELECT * FROM transacoes WHERE id_exibicao <= 4", con)
@@ -245,7 +268,7 @@ def test_analise_interrompida_por_reinicio_vira_parcial(ambiente, cenario):
     parcial = novo.obter("an-interrompida")
     assert parcial["status"] == "parcial" and parcial["resultados"] == {"disponiveis": True, "parciais": True,
                                                                         "pontuadas": 4, "de": 13}
-    assert "reiniciado" in parcial["motivo"] and parcial["etapas"][3]["status"] == "interrompida"
+    assert "reiniciado" in parcial["motivo"] and parcial["etapas"][2]["status"] == "interrompida"
     con = novo.conexao("an-interrompida")
     try:
         assert arm.pagina(con, arm.Filtros(), 1, 10)["total"] == 4

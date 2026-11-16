@@ -13,7 +13,7 @@ from google.genai import errors as gerros
 from src import api_painel, sentinel_ia
 from src.sentinel_ai import app
 from testes.painel.conftest import abrir_cliente
-from testes.painel.test_api_painel import _analisar, _cenario, _enviar, PADROES
+from testes.painel.test_api_painel import _analisar, _cenario, _enviar
 
 CHAVE_FALSA = "AIzaSyTESTE0000000000000000000000000000"  # inventada; 39 caracteres como uma real
 
@@ -54,7 +54,7 @@ def cliente(tmp_path, fabrica_modelo):
 
 @pytest.fixture
 def analise(cliente, tmp_path):
-    _, reg = _enviar(cliente, _cenario(tmp_path), padroes=PADROES.encode("utf-8"))
+    _, reg = _enviar(cliente, _cenario(tmp_path))
     return _analisar(cliente, reg["id"])
 
 

@@ -1,7 +1,7 @@
 """Datasets sintéticos do ambiente de teste local (scripts/ambiente_teste.py).
 
 Garante que o ambiente continua útil: os arquivos gerados passam na validação do painel, a análise conclui,
-o rótulo bate com as tentativas e o arquivo de padrões casa com todas as transações listadas.
+o rótulo bate com as tentativas (a análise não usa arquivo de padrões nem tem etapa de tipologias).
 """
 
 from __future__ import annotations
@@ -24,19 +24,16 @@ def test_geracao_e_deterministica():
     assert set(a.loc[a["rotulo"] == 1, "tipologia"]) == {"FAN-OUT", "FAN-IN", "CYCLE"}
 
 
-def test_dataset_sintetico_e_analisado_com_rotulo_e_tipologias(ambiente, tmp_path):
+def test_dataset_sintetico_e_analisado_com_rotulo(ambiente, tmp_path):
     df = amb.gerar(3_000, amb.SEMENTE)
-    csv, pad = tmp_path / "sintetico.csv", tmp_path / "padroes.txt"
+    csv = tmp_path / "sintetico.csv"
     amb.escrever_csv(df, csv, com_rotulo=True)
-    amb.escrever_padroes(df, pad)
-    m = ambiente.analisar(csv, pad)
+    m = ambiente.analisar(csv)
     assert m["status"] == "concluida", m
     assert m["contagens"]["validas"] == m["contagens"]["pontuadas"] == 3_000 and m["contagens"]["recusadas"] == 0
     assert m["rotulo"]["disponivel"] is True
     assert m["contagens"]["rotuladas_lavagem"] == int((df["rotulo"] == 1).sum())
-    casamento = m["tipologias"]["casamento"]
-    assert m["tipologias"]["disponivel"] and casamento["sem_correspondencia"] == 0
-    assert casamento["transacoes_com_tipologia"] == int((df["tentativa"] > 0).sum())
+    assert "tipologias" not in m and not hasattr(amb, "escrever_padroes")
 
 
 def test_sem_rotulo_nao_tem_a_coluna(tmp_path):

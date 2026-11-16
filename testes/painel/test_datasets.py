@@ -73,7 +73,7 @@ def test_retencao_dos_enviados(ambiente, cenario, monkeypatch):
 
 # -- datasets válidos ----------------------------------------------------------
 def test_validacao_do_formato_ibm(ambiente, cenario):
-    reg = ambiente.enviar(cenario["dados"], cenario["padroes"])
+    reg = ambiente.enviar(cenario["dados"])
     v = reg["validacao"]
     assert reg["status"] == "valido" and v["formato"] == "hismall_v1"
     assert v["linhas"] == {"lidas": 13, "validas": 13, "recusadas": 0}
@@ -82,7 +82,7 @@ def test_validacao_do_formato_ibm(ambiente, cenario):
     formatos = {m["valor"]: m["n"] for m in v["formatos_pagamento"]}
     assert formatos == {"Wire": 5, "ACH": 3, "Cash": 2, "Cheque": 1, ds.NAO_INFORMADO: 2}
     assert v["rotulo"] == {"disponivel": True, "coluna": "Is Laundering", "positivos": 4}
-    assert v["tipologias"]["disponivel"] and v["tipologias"]["tentativas"] == 3
+    assert "tipologias" not in v and "padroes" not in reg  # sem arquivo de padrões nem tipologias na validação
     assert [c["original"] for c in v["colunas"]][:5] == ["Timestamp", "From Bank", "Account", "To Bank", "Account (2ª ocorrência)"]
     assert v["contas_distintas"] == 10 and len(v["sha256"]) == 64 and reg["bytes"] == cenario["dados"].stat().st_size
     assert any("ordem cronológica" in a for a in v["avisos"])
@@ -102,7 +102,6 @@ def test_validacao_do_formato_em_portugues_com_coluna_extra(ambiente, tmp_path):
     v = reg["validacao"]
     assert reg["status"] == "valido" and v["formato"] == "transacao_hismall_v1"
     assert v["colunas_nao_reconhecidas"] == ["canal"] and v["rotulo"]["disponivel"] is False
-    assert v["tipologias"]["disponivel"] is False and "arquivo de padrões" in v["tipologias"]["motivo"]
     assert v["periodo"]["inicio"] == "2024-03-01T08:00" and v["periodo"]["fim"] == "2024-03-01T08:10"
 
 

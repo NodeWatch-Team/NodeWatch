@@ -17,8 +17,11 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import numpy as np
+import pandas as pd
 import pytest
 
+from src.painel import armazenamento as arm
+from src.painel import tipologias as tp
 from src.painel.datasets import RepositorioDatasets
 from src.painel.pipeline import GerenciadorAnalises
 from src.painel.sistema import Registro
@@ -139,20 +142,46 @@ class Ambiente:
 
         self.analises = GerenciadorAnalises(raiz, self.datasets, obter, self.registro, bloco, max_analises)
 
-    def enviar(self, caminho: Path, padroes: Optional[Path] = None, nome: Optional[str] = None) -> Dict[str, Any]:
+    def enviar(self, caminho: Path, nome: Optional[str] = None) -> Dict[str, Any]:
         with open(caminho, "rb") as fh:
-            if padroes is not None:
-                with open(padroes, "rb") as fp:
-                    reg = self.datasets.enviar(fh, nome or caminho.name, fp, padroes.name, validar=False)
-            else:
-                reg = self.datasets.enviar(fh, nome or caminho.name, validar=False)
+            reg = self.datasets.enviar(fh, nome or caminho.name, validar=False)
         return self.datasets.validar(reg["id"], esperar=True)
 
-    def analisar(self, caminho: Path, padroes: Optional[Path] = None) -> Dict[str, Any]:
-        reg = self.enviar(caminho, padroes)
+    def analisar(self, caminho: Path) -> Dict[str, Any]:
+        reg = self.enviar(caminho)
         assert reg["status"] in ("valido", "valido_com_recusas"), reg
         m = self.analises.iniciar(reg["id"])
         return self.analises.esperar(m["id"], 120)
+
+    def gravar_tipologias_legadas(self, m: Dict[str, Any], padroes: Path) -> Dict[str, Any]:
+        """Reproduz uma análise gravada por uma versão anterior do painel, que recebia o arquivo de padrões.
+
+        A análise atual não tem etapa de tipologias; resultados antigos ainda trazem as colunas ``tipologias`` e
+        ``tentativas``, a tabela ``tipologia_tx`` e ``tipologias`` no manifesto, e o painel continua a exibi-los.
+        O casamento usa a mesma regra da antiga etapa (``tipologias.casar``) sobre as transações gravadas.
+        """
+        db = self.analises.caminho_db(m["id"])
+        con = arm.conectar(db, leitura=False)
+        try:
+            trans = pd.read_sql_query("SELECT id_exibicao, minuto, no_origem, no_destino, valor_pago, moeda_pagamento, "
+                                      "formato FROM transacoes ORDER BY id_exibicao", con)
+            pad = tp.ler_arquivo_padroes(padroes)
+            tipos, tents, casamento = tp.casar(pad, trans)
+            ids = trans["id_exibicao"].astype(int).tolist()
+            con.executemany("UPDATE transacoes SET tipologias = ?, tentativas = ? WHERE id_exibicao = ?",
+                            zip(tipos.tolist(), tents.tolist(), ids))
+            con.executemany("INSERT OR IGNORE INTO tipologia_tx (tipologia, id_exibicao) VALUES (?, ?)",
+                            [(t, i) for i, ts in zip(ids, tipos.tolist()) if ts for t in ts.split(tp.SEPARADOR)])
+            con.commit()
+        finally:
+            con.close()
+        with self.analises._trava:
+            gravado = self.analises._manifestos[m["id"]]
+            gravado["tipologias"] = {"disponivel": True, "origem": "registrada no dataset (arquivo de padrões); não é previsão",
+                                     "arquivo": {"nome": padroes.name, "bytes": padroes.stat().st_size},
+                                     **tp.resumo_arquivo(pad), "casamento": casamento}
+            self.analises._gravar(gravado)
+        return self.analises.obter(m["id"])
 
 
 @pytest.fixture
@@ -172,9 +201,11 @@ def cenario(tmp_path: Path) -> Dict[str, Path]:
 
 @pytest.fixture
 def analise_cenario(ambiente: Ambiente, cenario: Dict[str, Path]):
-    """Cenário analisado com tipologias: ``(ambiente, manifesto, conexão de leitura)``."""
-    m = ambiente.analisar(cenario["dados"], cenario["padroes"])
+    """Cenário analisado, com as tipologias de uma análise gravada por versão anterior:
+    ``(ambiente, manifesto, conexão de leitura)``."""
+    m = ambiente.analisar(cenario["dados"])
     assert m["status"] == "concluida", m
+    m = ambiente.gravar_tipologias_legadas(m, cenario["padroes"])
     con = ambiente.analises.conexao(m["id"])
     yield ambiente, m, con
     con.close()

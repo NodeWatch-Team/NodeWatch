@@ -115,7 +115,7 @@ def test_fluxo_responde_durante_a_analise_com_o_prefixo_gravado(em_curso):
     d = r.get_json()
     assert d["gravadas"] == 10 and d["validas"] == 30 and d["analise"] == {"id": aid, "status": "em_andamento"}
     assert [x["id_exibicao"] for x in d["linhas"]] == list(range(1, 11))
-    assert d["rotulo_disponivel"] is True and d["tipologias_disponiveis"] is False and d["motivo_sem_tipologias"]
+    assert d["rotulo_disponivel"] is True and d["tipologias_disponiveis"] is False and "motivo_sem_tipologias" not in d
     primeira = d["linhas"][0]
     for campo in ("data_hora", "banco_origem", "conta_origem", "banco_destino", "conta_destino", "valor_pago",
                   "moeda_pagamento", "formato", "score", "faixa", "alerta", "rotulo", "tipologias"):

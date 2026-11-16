@@ -14,7 +14,7 @@ pytest.importorskip("flask")
 
 from src import api_painel  # noqa: E402
 from src.sentinel_ai import app  # noqa: E402
-from testes.painel.conftest import CENARIO, PADROES, abrir_cliente, escrever  # noqa: E402
+from testes.painel.conftest import CENARIO, abrir_cliente, escrever  # noqa: E402
 
 INTERFACE = Path(__file__).resolve().parents[2] / "interface"
 
@@ -25,10 +25,8 @@ def cliente(tmp_path, fabrica_modelo):
     api_painel._ctx.clear()  # as rotas reais se reconfiguram sozinhas no próximo uso
 
 
-def _enviar(cliente, conteudo: bytes, nome: str = "cenario.csv", padroes: bytes = None):
+def _enviar(cliente, conteudo: bytes, nome: str = "cenario.csv"):
     dados = {"arquivo": (io.BytesIO(conteudo), nome)}
-    if padroes is not None:
-        dados["padroes"] = (io.BytesIO(padroes), "padroes.txt")
     r = cliente.post("/api/painel/datasets", data=dados, content_type="multipart/form-data")
     if r.status_code != 201:
         return r, r.get_json()
@@ -59,7 +57,7 @@ def _cenario(tmp_path) -> bytes:
 
 @pytest.fixture
 def analise(cliente, tmp_path):
-    _, reg = _enviar(cliente, _cenario(tmp_path), padroes=PADROES.encode("utf-8"))
+    _, reg = _enviar(cliente, _cenario(tmp_path))
     assert reg["status"] == "valido", reg
     return _analisar(cliente, reg["id"])
 
@@ -106,7 +104,8 @@ def test_envio_valido_e_invalidos_pela_api(cliente, tmp_path):
 def test_fluxo_completo_pela_api(cliente, analise):
     aid = analise["id"]
     assert analise["status"] == "concluida" and analise["contagens"]["pontuadas"] == 13 and analise["contagens"]["alertas"] == 5
-    assert [e["status"] for e in analise["etapas"]] == ["concluida"] * 6 and analise["descricao_status"].startswith("Concluída")
+    assert [e["id"] for e in analise["etapas"]] == ["leitura", "ordenacao", "pontuacao", "indices", "manifesto"]
+    assert [e["status"] for e in analise["etapas"]] == ["concluida"] * 5 and analise["descricao_status"].startswith("Concluída")
     base = f"/api/painel/analises/{aid}"
     visao = cliente.get(base + "/visao").get_json()
     assert visao["registros"]["recorte"] == 13 and visao["alertas"]["n"] == 5 and visao["analise"]["parcial"] is False
@@ -116,7 +115,8 @@ def test_fluxo_completo_pela_api(cliente, analise):
     t = det["transacao"]
     assert t["alerta"] and t["faixa"] == "alta" and 0 <= t["score_bruto"] <= 1 and t["historico_incompleto"] is True
     assert det["modelo"]["versao"] == "teste-painel-v1" and det["modelo"]["limiar_alerta"] == 0.5
-    assert det["rotulo_disponivel"] and det["tipologias_disponiveis"] and "não há integração bancária" in det["aviso_faixas"]
+    assert det["rotulo_disponivel"] and det["tipologias_disponiveis"] is False and "não há integração bancária" in det["aviso_faixas"]
+    assert "motivo_sem_tipologias" not in det and visao["tipologias"]["disponivel"] is False
     assert isinstance(t["motivos"], list)
     assert cliente.get(base + "/transacoes/999").status_code == 404
     # grafo: foco pelo filtro de origem, pelo de destino ou pela conta escolhida

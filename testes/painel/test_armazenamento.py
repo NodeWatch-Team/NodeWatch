@@ -202,11 +202,12 @@ def test_tipologias_nenhuma_uma_e_varias(analise_cenario):
         **{t_: 0 for t_ in tp.TIPOLOGIAS}, "CYCLE": 1, "STACK": 1, tp.NAO_IDENTIFICADO: 1}
 
 
-def test_dataset_sem_tipologias_diz_isso_em_vez_de_zeros(ambiente, cenario):
-    m = ambiente.analisar(cenario["dados"])  # sem arquivo de padrões
+def test_analise_atual_sem_tipologias_diz_isso_em_vez_de_zeros(ambiente, cenario):
+    m = ambiente.analisar(cenario["dados"])  # a análise atual não tem tipologias
     con = ambiente.analises.conexao(m["id"])
     try:
-        tip = arm.visao_geral(con, arm.Filtros(), 13, m["tipologias"]["disponivel"], True, m["tipologias"]["motivo"])["tipologias"]
+        assert "tipologias" not in m
+        tip = arm.visao_geral(con, arm.Filtros(), 13, False, True)["tipologias"]
         assert tip["disponivel"] is False and "itens" not in tip and "não tem tipologias" in tip["motivo"]
         g = arm.grafo(con, arm.Filtros(), "1-A", 2, tem_tipologias=False)
         assert g["tipologias"]["predominante"] == tp.NAO_IDENTIFICADO and g["tipologias"]["disponivel"] is False
