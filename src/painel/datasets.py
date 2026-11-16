@@ -361,8 +361,7 @@ def sha256_arquivo(caminho: Path) -> str:
     return h.hexdigest()
 
 
-def validar_arquivo(caminho: Path, caminho_padroes: Optional[Path] = None,
-                    progresso: Optional[Callable[[int, int, int], None]] = None,
+def validar_arquivo(caminho: Path, progresso: Optional[Callable[[int, int, int], None]] = None,
                     cancelar: Optional[Callable[[], bool]] = None) -> Dict[str, Any]:
     """Valida o arquivo inteiro e devolve o resumo mostrado ao analista (não guarda as linhas)."""
     inicio = time.monotonic()
@@ -428,16 +427,6 @@ def validar_arquivo(caminho: Path, caminho_padroes: Optional[Path] = None,
         "problemas": problemas, "avisos": avisos,
         "duracao_s": round(time.monotonic() - inicio, 3), "validado_em": agora_iso(),
     }
-    if caminho_padroes is not None and Path(caminho_padroes).is_file():
-        try:
-            saida["tipologias"] = {"disponivel": True, "origem": "registrada no dataset (arquivo de padrões)",
-                                   **tp.resumo_arquivo(tp.ler_arquivo_padroes(Path(caminho_padroes)))}
-        except tp.ErroPadroes as exc:
-            saida["tipologias"] = {"disponivel": False, "motivo": f"arquivo de padrões recusado: {exc}"}
-            saida["avisos"].append(f"O arquivo de padrões não pôde ser lido ({exc}); a análise seguirá sem tipologias.")
-    else:
-        saida["tipologias"] = {"disponivel": False,
-                               "motivo": "nenhum arquivo de padrões (tipologias) acompanha este dataset"}
     if validas == 0:
         raise ErroDataset([problema(f"nenhuma das {lidas} linhas é válida", "Corrija os problemas listados abaixo "
                                     "e envie de novo.")] + problemas)
@@ -489,13 +478,11 @@ class RepositorioDatasets:
                 if caminho.is_file() and caminho.suffix.lower() in EXTENSOES:
                     rel = f"{pasta}/{caminho.name}"
                     did = "srv-" + hashlib.sha1(rel.encode("utf-8")).hexdigest()[:12]
-                    achados[did] = {"caminho": caminho, "procedencia": procedencia, "padroes": None}
+                    achados[did] = {"caminho": caminho, "procedencia": procedencia}
         trans = self.config_financeiro.get("transacoes")
         if trans and Path(trans).is_file() and Path(trans).suffix.lower() in EXTENSOES:
             did = "srv-" + hashlib.sha1(b"config:financeiro.transacoes").hexdigest()[:12]
-            pad = self.config_financeiro.get("padroes")
-            achados[did] = {"caminho": Path(trans), "procedencia": "configurado em ml_config.local.toml",
-                            "padroes": Path(pad) if pad and Path(pad).is_file() else None}
+            achados[did] = {"caminho": Path(trans), "procedencia": "configurado em ml_config.local.toml"}
         return achados
 
     def _registro_servidor(self, did: str, info: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -511,8 +498,6 @@ class RepositorioDatasets:
             return None
         return {"id": did, "origem": "servidor", "nome": caminho.name, "bytes": st.st_size,
                 "procedencia": info["procedencia"], "assinatura": assinatura, "status": "nao_validado",
-                "padroes": ({"nome": info["padroes"].name, "bytes": info["padroes"].stat().st_size}
-                            if info["padroes"] else None),
                 "validacao": None}
 
     # -- consulta ---------------------------------------------------------------
@@ -550,19 +535,18 @@ class RepositorioDatasets:
                 raise KeyError(did)
             return self._com_progresso(reg)
 
-    def caminhos(self, did: str) -> Tuple[Path, Optional[Path]]:
-        """Arquivo de dados e de padrões no disco (uso interno; nunca vem do cliente)."""
+    def caminho(self, did: str) -> Path:
+        """Arquivo de dados no disco (uso interno; nunca vem do cliente)."""
         if did.startswith("srv-"):
             info = self._descobrir().get(did)
             if not info:
                 raise KeyError(did)
-            return info["caminho"], info["padroes"]
+            return info["caminho"]
         d = self.pasta / did
         dados = next((p for p in (d / "dados.csv", d / "dados.zip") if p.is_file()), None)
         if dados is None:
             raise KeyError(did)
-        pad = d / "padroes.txt"
-        return dados, pad if pad.is_file() else None
+        return dados
 
     # -- envio ---------------------------------------------------------------------
     @staticmethod
@@ -581,8 +565,7 @@ class RepositorioDatasets:
                 fh.write(bloco)
         return total
 
-    def enviar(self, arquivo: BinaryIO, nome: Optional[str], padroes: Optional[BinaryIO] = None,
-               nome_padroes: Optional[str] = None, validar: bool = True,
+    def enviar(self, arquivo: BinaryIO, nome: Optional[str], validar: bool = True,
                ativa: Optional[Callable[[], bool]] = None) -> Dict[str, Any]:
         """Grava o envio com nome interno fixo e inicia a validação em segundo plano."""
         rotulo = nome_seguro(nome)
@@ -600,19 +583,7 @@ class RepositorioDatasets:
                 raise ErroDataset([problema("o arquivo está vazio", "Envie um CSV com cabeçalho e dados.", linha=1)])
             reg: Dict[str, Any] = {"id": did, "origem": "enviado", "nome": rotulo, "bytes": n,
                                    "enviado_em": agora_iso(), "ordem": time.time_ns(), "status": "validando",
-                                   "padroes": None,
                                    "validacao": None}
-            if padroes is not None:
-                rotulo_p = nome_seguro(nome_padroes, "padroes.txt")
-                if Path(rotulo_p).suffix.lower() not in EXTENSOES_PADROES:
-                    raise ErroDataset([problema("o arquivo de padrões precisa ser .txt",
-                                                "Envie o arquivo de padrões do dataset (por exemplo "
-                                                "HI-Small_Patterns.txt) ou deixe o campo vazio.")], 415)
-                np_ = self._salvar(padroes, d / "padroes.txt", LIMITE_PADROES_BYTES, "o arquivo de padrões")
-                if np_:
-                    reg["padroes"] = {"nome": rotulo_p, "bytes": np_}
-                else:
-                    (d / "padroes.txt").unlink()
         except ErroDataset as exc:
             shutil.rmtree(d, ignore_errors=True)
             self._log("envio_recusado", f"Envio recusado: {exc.problemas[0]['problema']}", "aviso", nome=rotulo)
@@ -622,8 +593,7 @@ class RepositorioDatasets:
             raise
         with self._trava:
             self._gravar(reg)
-        self._log("envio", "Dataset enviado", dataset=did, nome=rotulo, bytes=n,
-                  com_padroes=reg["padroes"] is not None)
+        self._log("envio", "Dataset enviado", dataset=did, nome=rotulo, bytes=n)
         self._aplicar_retencao(manter=did)
         if validar:
             self.validar(did, ativa=ativa)
@@ -682,8 +652,7 @@ class RepositorioDatasets:
         self._log("validacao_inicio", "Validação iniciada", dataset=did)
         reg = ler_json(self._arq(did)) or {}
         try:
-            dados, pad = self.caminhos(did)
-            val = validar_arquivo(dados, pad, progresso, (lambda: not ativa()) if ativa else None)
+            val = validar_arquivo(self.caminho(did), progresso, (lambda: not ativa()) if ativa else None)
             status = "valido_com_recusas" if val["linhas"]["recusadas"] else "valido"
             reg.update(status=status, validacao=val)
             self._log("validacao_fim", "Validação concluída", dataset=did, situacao=status,

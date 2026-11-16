@@ -39,7 +39,8 @@ LIMITES = [
     "As importâncias globais dizem quais atributos a floresta mais usou no conjunto do treino; não dizem quais "
     "pesaram numa transação específica.",
     "O score (0 a 1000) é ordem de prioridade, não probabilidade; o score original (0 a 1) não é calibrado.",
-    "Tipologias e rótulo vêm do arquivo do dataset (simulador), não do modelo, e não entram no cálculo do score.",
+    "O rótulo vem do arquivo do dataset (simulador), não do modelo, e não entra no cálculo do score. Tipologias só "
+    "existem em análises gravadas por versões anteriores (arquivo de padrões); o modelo não as prevê.",
     "Horário compatível entre transações no grafo não prova que é o mesmo dinheiro.",
     "Cada análise começa sem histórico anterior ao arquivo: contas com menos de 72 h observadas têm atributos "
     "incompletos (historico_incompleto).",
@@ -124,7 +125,7 @@ def montar(manifesto: Optional[Dict[str, Any]], conexao: Optional[Callable[[], A
         "aberta": True, "id": m["id"], "dataset": m["dataset"]["nome"], "status": m["status"],
         "descricao_status": m.get("descricao_status"), "contagens": _cortar(m.get("contagens") or {}),
         "modelo_usado": m.get("modelo"), "avisos": (m.get("avisos") or [])[:MAX_ITENS],
-        "tipologias_disponiveis": m.get("tipologias", {}).get("disponivel"),
+        "tipologias_disponiveis": bool((m.get("tipologias") or {}).get("disponivel")),
         "rotulo_disponivel": m.get("rotulo", {}).get("disponivel"),
     }
     if conexao is None:
@@ -132,8 +133,8 @@ def montar(manifesto: Optional[Dict[str, Any]], conexao: Optional[Callable[[], A
         return ctx
     con = conexao()
     try:
-        v = arm.visao_geral(con, filtros, m["contagens"]["pontuadas"], m["tipologias"]["disponivel"],
-                            m["rotulo"]["disponivel"], m["tipologias"].get("motivo", ""))
+        v = arm.visao_geral(con, filtros, m["contagens"]["pontuadas"],
+                            bool((m.get("tipologias") or {}).get("disponivel")), m["rotulo"]["disponivel"])
         ativos = {k: x for k, x in params_filtros.items() if str(x).strip()}
         contas = (v.get("contas_risco") or {}).get("contas", [])[:MAX_CONTAS]
         recorte = _cortar({k: x for k, x in v.items() if k != "contas_risco"})

@@ -1,5 +1,11 @@
 """Tipologias de lavagem **registradas no dataset** (arquivo de padrões).
 
+Situação atual: o painel não recebe mais arquivo de padrões e a análise não
+tem etapa de tipologias. Este módulo continua como vocabulário (nomes,
+descrições e separador) para exibir análises gravadas por versões anteriores,
+que trazem as tipologias no SQLite e no manifesto, e como leitor do formato
+do arquivo de padrões (usado pelos testes que reproduzem essas análises).
+
 Origem (conferida no código e nos dados): no IBM AML, as tipologias não saem
 do modelo. Elas vêm de um arquivo de texto que acompanha as transações
 (``HI-Small_Patterns.txt``), escrito pelo simulador, com blocos::

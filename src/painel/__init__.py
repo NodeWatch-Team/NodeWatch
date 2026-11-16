@@ -3,7 +3,7 @@
 Módulos:
     score          conversão do score bruto do modelo para a escala 0–1000 e faixas
     datasets       envio seguro, catálogo e validação de datasets de transações
-    tipologias     tipologias registradas no dataset (arquivo de padrões)
+    tipologias     vocabulário das tipologias (só para exibir análises gravadas por versões anteriores)
     armazenamento  resultados por transação em SQLite (filtros, página, contas, grafo)
     pipeline       execução da análise com etapas, progresso medido e manifesto
     sistema        medidas de desempenho e logs (sistema e ML)

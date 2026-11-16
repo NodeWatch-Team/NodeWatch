@@ -4,12 +4,15 @@ Etapas (todas medidas; nenhuma é simulada):
 
 1. ``leitura``     leitura e validação do arquivo, em blocos (bytes lidos / total);
 2. ``ordenacao``   ordenação cronológica e atribuição dos IDs de exibição;
-3. ``tipologias``  casamento com o arquivo de padrões (pulada se não houver);
-4. ``pontuacao``   por blocos: preparação de atributos (estado incremental por
+3. ``pontuacao``   por blocos: preparação de atributos (estado incremental por
                    conta), inferência com o modelo salvo e gravação no SQLite
                    (transações pontuadas / total);
-5. ``indices``     índices dos campos filtráveis e contagens gerais;
-6. ``manifesto``   gravação final do manifesto.
+4. ``indices``     índices dos campos filtráveis e contagens gerais;
+5. ``manifesto``   gravação final do manifesto.
+
+Tipologias: a análise não usa arquivo de padrões nem tem etapa de tipologias.
+Manifestos gravados por versões anteriores podem trazer ``tipologias`` e a
+etapa ``tipologias``; eles continuam legíveis e exibidos como foram gravados.
 
 A estimativa de tempo restante só existe quando há base medida (ao menos
 ``ESTIMATIVA_MIN_S`` segundos de etapa e algum progresso): restante = o que
@@ -56,7 +59,6 @@ from src.ml.incremental import EstadoFinanceiro
 from src.ml.previsao import pontuar_lavagem
 from src.painel import armazenamento as arm
 from src.painel import score as sc
-from src.painel import tipologias as tp
 from src.painel.datasets import Cancelado, ErroDataset, RepositorioDatasets, identificar, ler_validando
 from src.painel.sistema import memoria_processo
 from src.painel.util import agora_iso, gravar_json_atomico, ler_json
@@ -70,7 +72,6 @@ STATUS_FINAIS = ("concluida", "cancelada", "parcial", "erro")
 ETAPAS = (
     ("leitura", "Leitura e validação do arquivo", "bytes"),
     ("ordenacao", "Ordenação cronológica e IDs de exibição", None),
-    ("tipologias", "Tipologias registradas no dataset", None),
     ("pontuacao", "Atributos, inferência e gravação (em blocos)", "transações"),
     ("indices", "Índices e contagens gerais", "passos"),
     ("manifesto", "Gravação do manifesto", None),
@@ -299,14 +300,12 @@ class GerenciadorAnalises:
                 "status": "em_andamento", "motivo": "",
                 "dataset": {"id": reg["id"], "nome": reg["nome"], "origem": reg["origem"], "bytes": reg["bytes"],
                             "sha256": val["sha256"], "formato": val["formato"], "formato_nome": val["formato_nome"],
-                            "colunas": val["colunas"], "colunas_nao_reconhecidas": val["colunas_nao_reconhecidas"],
-                            "padroes": reg.get("padroes")},
+                            "colunas": val["colunas"], "colunas_nao_reconhecidas": val["colunas_nao_reconhecidas"]},
                 "etapas": [{"id": i, "nome": n, "unidade": u, "status": "pendente", "inicio": None, "fim": None,
                             "duracao_s": None, "progresso": None, "detalhe": ""} for i, n, u in ETAPAS],
                 "duracao_s": None, "modelo": None, "conversao_score": None, "faixas": sc.FAIXAS,
                 "contagens": {"lidas": 0, "validas": 0, "recusadas": 0, "pontuadas": 0, "alertas": 0},
                 "resultados": {"disponiveis": False, "parciais": False, "pontuadas": 0},
-                "tipologias": {"disponivel": False, "motivo": val["tipologias"].get("motivo", "")},
                 "rotulo": {"disponivel": bool(val["rotulo"]["disponivel"])},
                 "desempenho": {}, "avisos": [], "erros": [], "cancelamento_solicitado": False,
                 "retencao": {"max_analises": self.max_analises},
@@ -402,7 +401,7 @@ class GerenciadorAnalises:
         etapa_atual = "leitura"
         status, motivo = "concluida", ""
         try:
-            dados, padroes = self.datasets.caminhos(m["dataset"]["id"])
+            dados = self.datasets.caminho(m["dataset"]["id"])
             # 1. leitura e validação
             self._abrir_etapa(m, "leitura")
             ident = identificar(dados)
@@ -431,36 +430,10 @@ class GerenciadorAnalises:
             df["id_exibicao"] = np.arange(1, len(df) + 1, dtype=np.int64)
             self._fechar_etapa(m, "ordenacao", detalhe=f"IDs de 1 a {_n(len(df))}, por data e hora; empates pela "
                                                        "ordem da linha")
-            # 3. tipologias registradas (arquivo de padrões)
-            etapa_atual = "tipologias"
+            # 3. pontuação em blocos
+            etapa_atual = "pontuacao"
             if self._interromper(aid):
                 raise Cancelado()
-            if padroes is not None:
-                self._abrir_etapa(m, "tipologias")
-                try:
-                    pad = tp.ler_arquivo_padroes(padroes)
-                    tipos, tents, casamento = tp.casar(pad, df)
-                    df["tipologias"], df["tentativas"] = tipos, tents
-                    m["tipologias"] = {"disponivel": True,
-                                       "origem": "registrada no dataset (arquivo de padrões); não é previsão",
-                                       "arquivo": m["dataset"]["padroes"], **tp.resumo_arquivo(pad),
-                                       "casamento": casamento}
-                    self._fechar_etapa(m, "tipologias", detalhe=f"{_n(casamento['transacoes_com_tipologia'])} "
-                                       f"transações com tipologia; {_n(casamento['sem_correspondencia'])} linhas do "
-                                       "arquivo de padrões sem transação correspondente")
-                except tp.ErroPadroes as exc:
-                    df["tipologias"], df["tentativas"] = "", ""
-                    m["tipologias"] = {"disponivel": False, "motivo": f"Arquivo de padrões recusado: {exc}."}
-                    m["avisos"].append(f"Tipologias indisponíveis: {exc}.")
-                    self._fechar_etapa(m, "tipologias", "pulada", f"arquivo de padrões recusado: {exc}")
-            else:
-                df["tipologias"], df["tentativas"] = "", ""
-                m["tipologias"] = {"disponivel": False, "motivo": "Este dataset não tem tipologias registradas: "
-                                   "nenhum arquivo de padrões foi enviado com ele."}
-                with self._trava:
-                    self._etapa(m, "tipologias").update(status="pulada", detalhe="sem arquivo de padrões")
-            # 4. pontuação em blocos
-            etapa_atual = "pontuacao"
             self._abrir_etapa(m, "pontuacao")
             gravador = arm.Gravador(self.caminho_db(aid))
             self._pontuar(m, df, gravador)
@@ -490,7 +463,7 @@ class GerenciadorAnalises:
             m["erros"].append({"quando": agora_iso(), "etapa": etapa_atual,
                                "causa": f"{type(exc).__name__}: {str(exc)[:300]}", "acao": _acao_para(exc)})
             self._fechar_etapa(m, etapa_atual, "erro")
-        # 5 e 6: o que foi gravado fica consultável, mesmo em cancelamento ou erro
+        # 4 e 5: o que foi gravado fica consultável, mesmo em cancelamento ou erro
         try:
             if gravador is not None and gravador.gravadas > 0:
                 self._abrir_etapa(m, "indices")
@@ -531,7 +504,7 @@ class GerenciadorAnalises:
             pontuadas = m["contagens"].get("pontuadas", 0)
             m["desempenho"].update(
                 duracao_total_s=duracao, pico_memoria_processo_bytes=memoria_processo()["pico_bytes"],
-                # pontuadas ÷ duração total (leitura, ordenação, tipologias, pontuação, índices e manifesto)
+                # pontuadas ÷ duração total (leitura, ordenação, pontuação, índices e manifesto)
                 vazao_total_transacoes_por_s=(pontuadas / duracao) if duracao > 0 and pontuadas else None)
             e = self._etapa(m, "manifesto")
             e.update(status="concluida", fim=agora_iso(), duracao_s=0.0)

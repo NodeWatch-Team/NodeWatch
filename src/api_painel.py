@@ -166,6 +166,11 @@ def _sid() -> str:
     return request.headers.get(CABECALHO_SESSAO, "")
 
 
+def _tem_tipologias(m: Dict[str, Any]) -> bool:
+    """Tipologias só existem em análises gravadas por versões anteriores (com arquivo de padrões)."""
+    return bool((m.get("tipologias") or {}).get("disponivel"))
+
+
 def _sessao() -> str:
     """Sessão ativa do pedido; sem ela, nada é processado."""
     from src.painel.pipeline import SessaoInativa
@@ -459,8 +464,7 @@ def analises_fluxo(aid: str):
     saida: Dict[str, Any] = {
         "analise": {"id": aid, "status": m["status"]}, "gravadas": gravadas,
         "validas": m.get("contagens", {}).get("validas"),
-        "tipologias_disponiveis": bool(m.get("tipologias", {}).get("disponivel")),
-        "motivo_sem_tipologias": m.get("tipologias", {}).get("motivo", ""),
+        "tipologias_disponiveis": _tem_tipologias(m),
         "rotulo_disponivel": bool(m.get("rotulo", {}).get("disponivel")), "linhas": []}
     ate = min(ate, gravadas)
     if ate < de:
@@ -483,8 +487,7 @@ def analises_visao(aid: str):
     f = _filtros()
     m, con = _aberta(aid)
     try:
-        dados = arm.visao_geral(con, f, m["contagens"]["pontuadas"], m["tipologias"]["disponivel"],
-                                m["rotulo"]["disponivel"], m["tipologias"].get("motivo", ""))
+        dados = arm.visao_geral(con, f, m["contagens"]["pontuadas"], _tem_tipologias(m), m["rotulo"]["disponivel"])
     finally:
         con.close()
     dados["analise"] = {"id": aid, "status": m["status"], "parcial": m["resultados"]["parciais"]}
@@ -522,8 +525,7 @@ def analises_detalhe(aid: str, id_exibicao: int):
         con.close()
     return _json({"transacao": d, "modelo": m.get("modelo"), "conversao_score": m.get("conversao_score"),
                   "faixas": sc.FAIXAS, "aviso_faixas": sc.AVISO_FAIXAS,
-                  "rotulo_disponivel": m["rotulo"]["disponivel"], "tipologias_disponiveis": m["tipologias"]["disponivel"],
-                  "motivo_sem_tipologias": m["tipologias"].get("motivo", ""),
+                  "rotulo_disponivel": m["rotulo"]["disponivel"], "tipologias_disponiveis": _tem_tipologias(m),
                   "dataset": {"nome": m["dataset"]["nome"], "colunas": m["dataset"]["colunas"]}})
 
 
@@ -554,7 +556,7 @@ def analises_grafo(aid: str):
         if len(candidatas) > 1:
             return _json({"ambiguo": True, "pedido": pedido, "candidatas": candidatas[:20],
                           "motivo": f"'{pedido}' corresponde a mais de uma conta (bancos diferentes). Escolha uma."})
-        dados = arm.grafo(con, f, candidatas[0], profundidade, tem_tipologias=m["tipologias"]["disponivel"])
+        dados = arm.grafo(con, f, candidatas[0], profundidade, tem_tipologias=_tem_tipologias(m))
     finally:
         con.close()
     dados["escolha"] = origem_escolha
@@ -596,7 +598,7 @@ def operacao_desempenho():
             "vazao_total_por_s": ((m["contagens"].get("pontuadas") or 0) / m["duracao_s"]
                                   if m.get("duracao_s") and m["contagens"].get("pontuadas") else None),
             "vazao_total_formula": "transações pontuadas ÷ duração total da análise (leitura, ordenação, "
-                                   "tipologias, pontuação, índices e manifesto)",
+                                   "pontuação, índices e manifesto)",
             "tempo_pontuacao_s": (sum(m.get("desempenho", {}).get(k) or 0 for k in
                                       ("tempo_atributos_s", "tempo_inferencia_s", "tempo_gravacao_s")) or None),
             "pico_memoria_bytes": m.get("desempenho", {}).get("pico_memoria_processo_na_pontuacao_bytes"),
@@ -806,8 +808,7 @@ def assistente():
             con = conexao()
             try:
                 return arm.visao_geral(con, filtros, manifesto["contagens"]["pontuadas"],
-                                       manifesto["tipologias"]["disponivel"], manifesto["rotulo"]["disponivel"],
-                                       manifesto["tipologias"].get("motivo", ""))
+                                       _tem_tipologias(manifesto), manifesto["rotulo"]["disponivel"])
             finally:
                 con.close()
 

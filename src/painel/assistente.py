@@ -64,7 +64,8 @@ GLOSSARIO: List[Tuple[Tuple[str, ...], str, str]] = [
      "decisão do modelo."),
     (("tipologia", "padrao"), "Tipologias", "Formas de movimentação registradas no arquivo de padrões do dataset: "
      + ", ".join(tp.TIPOLOGIAS) + f" e {tp.NAO_IDENTIFICADO} (sem tipologia registrada). São rótulos do dataset, "
-     "não previsões do modelo."),
+     "não previsões do modelo. O painel não recebe mais esse arquivo: só análises gravadas por versões anteriores "
+     "têm tipologias."),
     (("vertice", "no do grafo"), "Vértice", "Uma conta no grafo. A conta em foco tem contorno duplo; contas "
      "ligadas a alertas aparecem em vermelho com a palavra 'alerta'."),
     (("aresta", "seta"), "Aresta", "Uma ou mais transações entre duas contas, na mesma moeda. A seta aponta da "

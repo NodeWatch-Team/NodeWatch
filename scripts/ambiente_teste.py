@@ -17,8 +17,8 @@ Datasets gerados (sintéticos, determinísticos: mesma semente, mesmo arquivo):
     dados/sintetico_5k_rotulado.csv      5 mil transações com rótulo: análise em poucos segundos
     dados/sintetico_5k_sem_rotulo.csv    as mesmas, sem a coluna de rótulo (precisão e recall "não disponível")
     dados/sintetico_200k_rotulado.csv    200 mil com rótulo: o log passa de 8 M px e usa a rolagem proporcional
-    para_enviar/sintetico_5k_rotulado.csv + sintetico_5k_padroes.txt
-                                         para testar o envio pela tela com o arquivo de padrões (tipologias)
+    para_enviar/sintetico_5k_rotulado.csv
+                                         para testar o envio pela tela
 
 Só o painel do analista (``/`` e ``/api/painel``) usa a pasta isolada. A interface antiga (``/legado``) e as
 rotas ``/api/ml`` continuam lendo a pasta do projeto.
@@ -129,20 +129,6 @@ def escrever_csv(df: pd.DataFrame, caminho: Path, com_rotulo: bool) -> None:
         saida.to_csv(fh, header=False, index=False, float_format="%.2f", lineterminator="\n")
 
 
-def escrever_padroes(df: pd.DataFrame, caminho: Path) -> None:
-    """Arquivo de padrões no formato do IBM AML (HI-Small_Patterns.txt)."""
-    partes: List[str] = []
-    for t, g in df[df["tentativa"] > 0].groupby("tentativa", sort=True):
-        tipo = g["tipologia"].iloc[0]
-        partes.append(f"BEGIN LAUNDERING ATTEMPT - {tipo}:  sintético, {len(g)} transações")
-        for r in g.itertuples():
-            partes.append(f"{r.ts},{r.banco_o:03d},{r.conta_o},{r.banco_d:03d},{r.conta_d},{r.valor:.2f},{r.moeda},"
-                          f"{r.valor:.2f},{r.moeda},{r.formato},1")
-        partes.append(f"END LAUNDERING ATTEMPT - {tipo}")
-        partes.append("")
-    caminho.write_text("\n".join(partes), encoding="utf-8")
-
-
 # ---------------------------------------------------------------------------------------------------------------
 # Pasta isolada
 # ---------------------------------------------------------------------------------------------------------------
@@ -164,8 +150,6 @@ def preparar(pasta: Path, hismall: Path | None = None, linhas_grande: int = 200_
                              (envio / "sintetico_5k_rotulado.csv", pequeno, True)):
         if not caminho.exists():
             escrever_csv(df, caminho, rot)
-    if not (envio / "sintetico_5k_padroes.txt").exists():
-        escrever_padroes(pequeno, envio / "sintetico_5k_padroes.txt")
     grande = dados / f"sintetico_{linhas_grande // 1000}k_rotulado.csv"
     if not grande.exists():
         escrever_csv(gerar(linhas_grande, SEMENTE + 1), grande, True)

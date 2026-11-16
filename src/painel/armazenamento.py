@@ -255,7 +255,9 @@ class Gravador:
         self.gravadas = 0
 
     def inserir(self, bloco: pd.DataFrame) -> int:
-        """``bloco`` traz as colunas de ``_COLUNAS`` (``rotulo`` e ``extras`` opcionais)."""
+        """``bloco`` traz as colunas de ``_COLUNAS`` (``rotulo``, ``extras``, ``tipologias`` e ``tentativas``
+        opcionais). A análise atual não tem tipologias: as duas colunas ficam vazias; elas só têm conteúdo em
+        resultados gravados por versões anteriores, que ainda são lidos."""
         n = len(bloco)
         if not n:
             return 0
@@ -264,12 +266,12 @@ class Gravador:
             if c in bloco:
                 valores = bloco[c].tolist()
             else:
-                valores = [None] * n
+                valores = [""] * n if c in ("tipologias", "tentativas") else [None] * n
             cols.append(valores)
         self.con.executemany(f"INSERT INTO transacoes ({','.join(_COLUNAS)}) VALUES ({','.join('?' * len(_COLUNAS))})",
                              zip(*cols))
         pares = [(t, int(i)) for i, tipos in zip(bloco["id_exibicao"].tolist(), bloco["tipologias"].tolist()) if tipos
-                 for t in tipos.split(tp.SEPARADOR)]
+                 for t in tipos.split(tp.SEPARADOR)] if "tipologias" in bloco else []
         if pares:
             self.con.executemany("INSERT OR IGNORE INTO tipologia_tx (tipologia, id_exibicao) VALUES (?, ?)", pares)
         self.con.commit()
