@@ -2,7 +2,7 @@
    O servidor decide o que entra (limites, totais, tipologia e ordem temporal); aqui só se calcula a posição e o desenho. */
 (function () {
   'use strict';
-  const { h, f, api, consulta, Icone, Aviso, Legenda, Pares, Selo, Vazio, Erro, Carregando, SITUACAO_ALERTA } = window.NW;
+  const { h, f, api, consulta, Icone, Dica, Aviso, Legenda, Pares, Selo, Vazio, Erro, Carregando, SITUACAO_ALERTA } = window.NW;
   const L = 900, RAIO = 17;
   const MAX_ROTULOS = 16; // acima disso, os valores nas arestas ficam ocultos por legibilidade
 
@@ -115,7 +115,7 @@
       h('summary', null, h(Icone, { nome: 'legenda' }), 'Legenda do grafo'),
       h('ul', { className: 'legenda-grafo' },
         item(h('g', { className: 'g-no foco' }, h('circle', { className: 'anel', cx: 24, cy: 12, r: 11 }), h('circle', { className: 'corpo', cx: 24, cy: 12, r: 7 })),
-          h(React.Fragment, null, h('strong', null, 'Conta em foco'), ': contorno duplo azul e a palavra "foco".')),
+          h(React.Fragment, null, h('strong', null, 'Conta em foco'), ': contorno duplo branco, halo vermelho e a palavra "foco".')),
         item(h('g', { className: 'g-no' }, h('circle', { className: 'corpo', cx: 24, cy: 12, r: 8 })),
           h(React.Fragment, null, h('strong', null, 'Conta'), ' (vértice): o rótulo é o mesmo "banco-conta" da tabela.')),
         item(h('g', { className: 'g-no alerta' }, h('circle', { className: 'corpo', cx: 24, cy: 12, r: 8 }), h('text', { className: 'marca-alerta', x: 24, y: 16 }, '!')),
@@ -129,7 +129,7 @@
         item(seta('sem-ordem', 'm-seta'),
           h(React.Fragment, null, h('strong', null, 'Traço tracejado'), ': relação do recorte sem ordem temporal confirmada. Não é uma etapa seguinte do dinheiro.')),
         item(seta('na-sequencia', 'm-seta-seq'),
-          h(React.Fragment, null, h('strong', null, 'Traço azul brilhante'), ': sequência selecionada, com horários compatíveis.'))),
+          h(React.Fragment, null, h('strong', null, 'Traço branco animado'), ': sequência selecionada, com horários compatíveis.'))),
       h(Legenda, null, h('strong', null, 'Valor, moeda e horário: '), 'cada aresta mostra o valor pago, a moeda de pagamento e o horário (ou o intervalo, se agrupada). Moedas diferentes ficam em arestas separadas e nunca são somadas. Selecione a aresta para ver cada transação.'),
       h(Legenda, null, h('strong', null, 'Ordem no tempo: '), g.ordem_temporal.regra),
       h(Legenda, null, h('strong', null, 'Limites ativos: '), 'até ' + lim.profundidade + ' salto(s) a partir da conta em foco, ' + lim.max_nos + ' vértices e ' + lim.max_arestas +
@@ -228,12 +228,12 @@
       h('div', { className: 'barra-tabela' },
         h('p', null, h('span', { className: 'suave' }, 'Conta em foco '), h(Selo, { tom: 'acao' }, h('span', { className: 'mono' }, g.foco)), g.escolha ? h('span', { className: 'suave', style: { fontSize: 'var(--t-s)' } }, ' (' + g.escolha + ')') : null),
         h('div', { className: 'controles' },
-          h('label', { htmlFor: 'grafo-saltos', style: { margin: 0 } }, 'Saltos a partir do foco'),
+          h('label', { htmlFor: 'grafo-saltos', style: { margin: 0 }, title: 'Saltos a partir da conta em foco' }, 'Saltos'),
           h('select', { id: 'grafo-saltos', style: { width: 'auto' }, value: profundidade, onChange: e => aoProfundidade(+e.target.value) },
             Array.from({ length: g.limites.profundidade_max }, (_, i) => h('option', { key: i + 1, value: i + 1 }, i + 1))),
           h('label', { style: { margin: 0, fontWeight: 400 } },
-            h('input', { type: 'checkbox', checked: comValores, disabled: muitos, onChange: e => setMostrarValores(e.target.checked) }), ' Valores e horários nas arestas'))),
-      muitos ? h(Legenda, null, 'Há ' + g.arestas.length + ' arestas: valores e horários ficam ocultos por legibilidade. Selecione uma aresta, ou use a lista abaixo, para ver valor, moeda, horário e transações.') : null,
+            h('input', { type: 'checkbox', checked: comValores, disabled: muitos, onChange: e => setMostrarValores(e.target.checked) }), ' Valores'),
+          muitos ? h(Dica, { texto: 'Há ' + g.arestas.length + ' arestas: valores e horários ficam ocultos por legibilidade. Passe o ponteiro, selecione uma aresta ou use a lista abaixo.', lado: 'esquerda' }) : null)),
       h('dl', { className: 'estatisticas' },
         h('div', { className: 'estatistica', title: 'De ' + f.inteiro(t.contas_relacionadas) + ' contas e ' + f.inteiro(t.arestas_relacionadas) + ' arestas relacionadas.' },
           h('dt', null, 'Desenhados'), h('dd', null, f.inteiro(t.vertices) + ' vértices · ' + f.inteiro(t.arestas) + ' arestas',
@@ -253,7 +253,7 @@
         h('li', null, h('svg', { viewBox: '0 0 28 16', 'aria-hidden': 'true' }, h('g', { className: 'g-aresta alerta' }, h('path', { className: 'traco', d: 'M 2 8 L 26 8' }))), 'Caminho com alerta'),
         h('li', null, h('svg', { viewBox: '0 0 28 16', 'aria-hidden': 'true' }, h('g', { className: 'g-aresta sem-ordem' }, h('path', { className: 'traco', d: 'M 2 8 L 26 8' }))), 'Sem ordem confirmada'),
         h('li', null, h('svg', { viewBox: '0 0 28 16', 'aria-hidden': 'true' }, h('g', { className: 'g-aresta na-sequencia' }, h('path', { className: 'traco', d: 'M 2 8 L 26 8' }))), 'Sequência selecionada'),
-        h('li', { className: 'fraco' }, 'Ctrl + roda ou botões: zoom · arraste o fundo para mover')),
+        h('li', { className: 'fraco' }, 'Ctrl + roda: zoom · arraste: mover')),
       h('div', { className: 'grafo-moldura', ref: refMoldura },
         h('div', { className: 'grafo-controles', role: 'group', 'aria-label': 'Zoom do grafo' },
           h('button', { type: 'button', className: 'botao', onClick: () => ampliar(1.25), 'aria-label': 'Aproximar', title: 'Aproximar' }, h(Icone, { nome: 'mais' })),
@@ -301,7 +301,7 @@
         h(Sequencias, { ordem: g.ordem_temporal, selecionada: seq, aoSelecionar: i => { setSel(null); setSeq(i); }, total }),
         h('div', { className: 'bloco', 'aria-live': 'polite' },
           h('h3', null, h(Icone, { nome: 'info' }), 'Seleção no grafo'),
-          !sel ? h(Legenda, null, 'Selecione uma conta (vértice) ou uma aresta para destacar as conexões e ver os detalhes. Teclado: Tab percorre arestas e contas; Enter seleciona.') : null,
+          !sel ? h(Legenda, null, 'Selecione uma conta ou aresta para ver os detalhes. Teclado: Tab e Enter.') : null,
           noSel ? h(React.Fragment, null,
             h(Pares, { itens: [['Conta (completa)', h('span', { className: 'mono' }, noSel.id)], ['Banco', noSel.banco], ['Número da conta', noSel.conta],
               ['Papel no grafo', PAPEL[noSel.tipo]], ['Transações relacionadas com alerta', noSel.alerta ? h(Selo, { tom: 'alerta' }, '⚠ ' + f.inteiro(noSel.alertas_relacionados)) : 'nenhuma']] }),
