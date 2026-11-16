@@ -79,7 +79,7 @@ O terminal confirma com `Origens extras liberadas (NODEWATCH_ORIGENS): null` e m
 
 ## Fluxo de uso
 
-A navegação lateral separa o painel em vistas; o endereço guarda a vista (`#analise=…&conta=…&vista=…`). No desktop ela pode ser recolhida para só ícones (**Recolher menu**, no rodapé; a escolha fica guardada no navegador). Abaixo de 1024 px vira gaveta, aberta pelo botão ☰. O topo mostra a vista atual, o dataset da análise aberta com o status e a sessão (ponto verde; o detalhe fica na dica). Com uma análise em andamento, um chip mostra a etapa real e o percentual, com uma linha de progresso na borda inferior do topo; o clique leva à vista Análise. A Legenda tem um único ponto de entrada, no menu.
+A navegação lateral separa o painel em vistas; o endereço guarda a vista (`#analise=…&conta=…&vista=…`). No desktop ela pode ser recolhida para só ícones (**Recolher menu**, no rodapé; a escolha fica guardada no navegador). Abaixo de 1024 px vira gaveta, aberta pelo botão ☰. O topo mostra a vista atual, o dataset da análise aberta com o status e a sessão (ponto verde; o detalhe fica na dica). Com uma análise em andamento, um chip mostra a etapa real e o percentual, com uma linha de progresso na borda inferior do topo; o clique leva à vista Análise. A legenda geral fica na vista Detalhes (seção **Legenda**); não há item próprio no menu.
 
 | vista | o que mostra |
 |---|---|
@@ -87,11 +87,11 @@ A navegação lateral separa o painel em vistas; o endereço guarda a vista (`#a
 | **Visão geral** | leitura do recorte (frases curtas com os números reais), três indicadores (Recorte, Alertas, Score), score e faixas, 5 contas prioritárias (acesso rápido à Investigação), formato de pagamento e tipologias |
 | **Investigação** | área de trabalho na altura da tela: contas prioritárias, grafo da conta em foco e o inspetor (leitura, seleção e ordem no tempo) |
 | **Transações** | tabela de registros, com linhas expansíveis e detalhes da transação |
-| **Detalhes** | lugar único da informação técnica: score e metodologia, faixas, conversão, finalidade e limites, definição dos indicadores (com a regra completa das contas prioritárias) e tipologias |
+| **Detalhes** | lugar único da informação técnica e da legenda: score e metodologia, faixas, conversão, finalidade e limites, definição dos indicadores (com a regra completa das contas prioritárias) e, em análises antigas com tipologias, a descrição delas; depois a **Legenda** (cores e ícones, estados, tabela, sessão e símbolos do grafo). Um índice fixo, agrupado pelas duas seções, abre cada bloco |
 
 **Cada informação tem um lugar principal.** As outras vistas mostram só o necessário para contextualizar e um atalho (por exemplo, "Como ler" leva a Detalhes, "Abrir Operação" leva ao painel operacional). Hierarquia em três níveis: o essencial fica visível; o contexto vem em frases curtas; o técnico fica em dicas, blocos recolhíveis ou em Detalhes.
 
-Visão geral, Investigação e Transações só ficam disponíveis com resultados gravados; o item **Transações** mostra quantos alertas a análise tem (um ponto vermelho com o menu recolhido). Em **Sistema** ficam **Operação** (o painel operacional) e **Legenda**.
+Visão geral, Investigação e Transações só ficam disponíveis com resultados gravados; o item **Transações** mostra quantos alertas a análise tem (um ponto vermelho com o menu recolhido). Em **Sistema** fica **Operação** (o painel operacional).
 
 1. **Dataset e análise.** Envie um `.csv` (ou `.zip` com um CSV) ou escolha um dataset já disponível. Sem dataset escolhido, o bloco de escolha resume a própria lista: quantos datasets há, quantos foram enviados e quantos estão no servidor, e quantos em cada situação. O servidor valida o arquivo e mostra formato, linhas, contas, período, colunas reconhecidas, moedas e formatos de pagamento. Cada problema traz coluna, linha de exemplo e o que corrigir.
 2. **Analisar.** Só o clique em **Analisar**, com um dataset válido, inicia o processamento. Abrir a página, enviar ou validar não analisa nada.
@@ -101,7 +101,7 @@ Visão geral, Investigação e Transações só ficam disponíveis com resultado
 6. **Tabela e detalhes.** Página a página, com seletor de colunas. Por padrão, oito colunas; as demais aparecem ao expandir a linha (›). O ID de exibição abre os detalhes da transação: medidor do score, faixa e alerta em destaque, origem → destino, motivos verificáveis, tipologias e, recolhidos, os dados técnicos do score.
 7. **Análises recentes.** Abrem os resultados gravados, sem reprocessar.
 
-**Legenda** reúne cores, ícones, setas, estados e termos. **Assistente de dúvidas** é um botão fixo no canto inferior direito, visível em qualquer ponto da rolagem; o painel abre acima dele (detalhes em Assistente de dúvidas, abaixo). Até 480 px de largura, Legenda mostra só o ícone; o nome continua para leitores de tela.
+A **Legenda** (cores e ícones, estados da análise e do dataset, convenções da tabela, sessão da interface e símbolos do grafo) é a segunda seção da vista **Detalhes**, em blocos recolhíveis, com o mesmo índice fixo da seção Score e metodologia. O que a seção Score e metodologia já explica (score, score original, limiar, alerta e recomendações das faixas) não se repete na Legenda. **Assistente de dúvidas** é um botão fixo no canto inferior direito, visível em qualquer ponto da rolagem; o painel abre acima dele (detalhes em Assistente de dúvidas, abaixo).
 
 ## Datasets
 
@@ -354,8 +354,8 @@ Não verificados nesta rodada: NVDA (fala), `forced-colors` e `prefers-reduced-m
 ## Evolução 3.0 — inteligência visual (16/11/2026)
 
 - **Investigação:** o grafo virou uma área de trabalho na altura da tela, com enquadramento automático, quatro disposições, grupos expansíveis, rótulos adaptativos, caminho até o foco, tela cheia e o inspetor com a leitura do recorte (ver **Grafo**). Antes, numa conta com 30 vértices, o SVG tinha 910 px de altura e começava a 510 px do topo, e a página precisava de 1.911 px; agora, em 1440×900, o palco termina antes do fim da janela, e o mesmo vale em 1024×768 e no celular, sem rolagem horizontal. Capturas em `docs/ui/capturas/vivo/`.
-- **Informação sem cópias:** o ranking de contas tem um nome só (**Contas prioritárias**: 5 na Visão geral como acesso rápido, 10 na Investigação); score mínimo/mediano/máximo, alertas e registros aparecem uma vez na Visão geral; a regra completa das contas, a interpretação do score e as descrições das tipologias ficam só em Detalhes; símbolos e cores ficam só na Legenda; RAM, CPU e latência ficam em Operação; nome e status do dataset ficam no topo.
-- **Estados reais do pipeline:** a execução mostra uma faixa com as etapas do manifesto (leitura, ordenação, tipologias, pontuação — "Carregando o modelo" até o primeiro bloco, depois "Pontuando transações" —, índices e manifesto), um tique a cada bloco gravado (`ultimo_bloco.medido_em`), contadores que sobem até o valor real e um cartão de conclusão (concluída, parcial, cancelada ou erro, com causa e o que fazer). Nenhuma etapa fictícia: atributos, inferência e gravação acontecem dentro de cada bloco e aparecem só como tempos do último bloco.
+- **Informação sem cópias:** o ranking de contas tem um nome só (**Contas prioritárias**: 5 na Visão geral como acesso rápido, 10 na Investigação); score mínimo/mediano/máximo, alertas e registros aparecem uma vez na Visão geral; a regra completa das contas, a interpretação do score e as descrições das tipologias ficam só em Detalhes; símbolos e cores ficam só na Legenda, a segunda seção de Detalhes; RAM, CPU e latência ficam em Operação; nome e status do dataset ficam no topo.
+- **Estados reais do pipeline:** a execução mostra uma faixa com as etapas do manifesto (leitura, ordenação, pontuação — "Carregando o modelo" até o primeiro bloco, depois "Pontuando transações" —, índices e manifesto), um tique a cada bloco gravado (`ultimo_bloco.medido_em`), contadores que sobem até o valor real e um cartão de conclusão (concluída, parcial, cancelada ou erro, com causa e o que fazer). Nenhuma etapa fictícia: atributos, inferência e gravação acontecem dentro de cada bloco e aparecem só como tempos do último bloco.
 - **Acabamento:** indicador ativo do menu, topo com vidro discreto e linha de luz, cartões com hierarquia tipográfica, tabelas com separadores finos e marcador vermelho nas linhas com alerta, luz ambiente vermelha muito lenta no fundo. Tudo para com `prefers-reduced-motion`.
 - **Sem dependências novas** e sem mudança no modelo, nas features, no pipeline, no score, no limiar, nos dados, no backend ou na API.
 
@@ -373,7 +373,7 @@ python -m pytest testes/painel -q
 
 | Chave | Hoje | O que esconde |
 |---|---|---|
-| `rotulo` | `false` | Rótulo do dataset no resumo, na visão geral, na coluna da tabela, nos detalhes, na legenda geral, na entrada do log e na evidência de não calibração. Precisão e recall continuam visíveis, com redação neutra ("conferíveis", "casos de referência"): `TEXTO_METRICAS` em `painel-log.js`. |
+| `rotulo` | `false` | Rótulo do dataset no resumo, na visão geral, na coluna da tabela, nos detalhes, na Legenda (em Detalhes), na entrada do log e na evidência de não calibração. Precisão e recall continuam visíveis, com redação neutra ("conferíveis", "casos de referência"): `TEXTO_METRICAS` em `painel-log.js`. |
 | `coluna_rotulo` | `false` | A coluna de rótulo (Is Laundering) em "Colunas reconhecidas" e no contador. Ela não é atributo do modelo. |
 | `base_treino` | `false` | A marcação "Base usada no treino do modelo" no log e nas métricas do painel operacional. As métricas de um dataset de treino (o HI-Small inteiro) aparecem sem essa ressalva. |
 | `fuso` | `false` | A nota de fuso ao lado do período do dataset. Datas, filtros e ordenação não mudam (minuto em UTC ingênuo). |
