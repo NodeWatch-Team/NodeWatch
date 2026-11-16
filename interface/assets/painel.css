@@ -590,8 +590,11 @@ dl.pares dd { min-width: 0; overflow-wrap: anywhere; }
 .log-analise > h3 .ico { color: var(--marca-2); }
 .log-notas { display: flex; flex-wrap: wrap; gap: 6px; font-size: var(--t-xs); color: var(--texto-suave); align-items: center; }
 .log-notas strong { color: var(--texto); }
-/* contêiner rolável: altura limitada, para o aviso de sessão e o Cancelar continuarem à vista ao lado */
-.log-rolagem { position: relative; max-height: min(80vh, 960px); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+/* contêiner rolável: altura limitada, para o aviso de sessão e o Cancelar continuarem à vista ao lado.
+   A rolagem vertical encadeia com a da página (overscroll-behavior-y: auto): no início ou no fim da lista, a roda
+   do mouse, o touchpad e o toque continuam movendo a página. Com "contain", o log segurava a rolagem nos limites e
+   a página não descia nem subia com o cursor sobre ele. Na horizontal não há rolagem (overflow-x: hidden). */
+.log-rolagem { position: relative; max-height: min(80vh, 960px); overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: auto;
   border: 1px solid var(--borda-media); border-radius: var(--r-l); background: var(--poco);
   --log-linha: 11.2rem; }
 /* área de métricas: primeiro filho do contêiner, fixa no topo dele, fundo opaco */
@@ -615,7 +618,9 @@ dl.pares dd { min-width: 0; overflow-wrap: anywhere; }
 .log-barra input.log-ir { width: 6.5em; min-height: 28px; padding: 2px 8px; font-size: var(--t-s); }
 .log-erro { display: grid; gap: 6px; justify-items: start; }
 /* lista virtualizada: só as linhas visíveis (e uma sobra) estão no DOM, em posição absoluta */
-.log-lista { position: relative; }
+/* overflow: clip (sem criar outro contêiner rolável): nenhuma entrada posicionada além do fim da lista aumenta a
+   área rolável do log, que assim tem um fim estável onde a rolagem passa para a página */
+.log-lista { position: relative; overflow: clip; }
 .log-sonda { position: absolute; top: 0; left: 0; width: 1px; height: calc(var(--log-linha) - var(--log-menos, 0rem)); visibility: hidden; pointer-events: none; }
 .log-entrada { position: absolute; left: 0; right: 0; height: calc(var(--log-linha) - var(--log-menos, 0rem)); padding: 7px var(--e-3) 6px 16px;
   display: grid; align-content: start; gap: 1px; font-size: 0.8rem; line-height: 1.35; overflow-wrap: anywhere; color: var(--texto-suave);

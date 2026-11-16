@@ -227,7 +227,13 @@
     // janela vem da âncora e não do scrollTop antigo; senão cada atualização desenharia outras linhas por um
     // instante e recriaria todas as entradas visíveis (perdendo o foco e pedindo páginas à toa).
     const ancorado = !seguir && ancora.current !== null && fator !== fatorAnterior.current;
-    const inicioVirtual = ancorado ? ancora.current : s * fator;
+    /* No fim da rolagem, a janela encosta exatamente no fim da lista virtual. Na rolagem proporcional o fator passa de
+       100 (HI-Small: ~123), e um scrollTop fracionário (zoom, densidade de pixels) multiplicado por ele empurrava as
+       últimas entradas dezenas de px além do fim da lista: a área rolável crescia a cada giro da roda, o fim "fugia"
+       e a rolagem nunca chegava ao limite que a passa para a página. */
+    const fimVirtual = Math.max(0, real - geo.visivel);
+    const fimRolagem = Math.max(0, alturaLista - geo.visivel);
+    const inicioVirtual = ancorado ? ancora.current : (s >= fimRolagem - 1 ? fimVirtual : Math.min(fimVirtual, s * fator));
     const primeiro = total ? Math.max(1, Math.floor(inicioVirtual / H) + 1 - SOBRA) : 0;
     const ultimo = total ? Math.min(total, Math.ceil((inicioVirtual + geo.visivel) / H) + SOBRA) : -1;
 
@@ -250,6 +256,28 @@
         medir();
       });
     };
+    /* Limites do log → página. O encadeamento nativo (overscroll-behavior-y: auto, no CSS) passa a rolagem para a
+       página quando o log não pode mais rolar. Com zoom ou densidade de pixels fracionária (125%, por exemplo), a
+       altura do log é fracionária e a rolagem por programa ("Seguindo", "Mais recentes") para até ~2 px antes do
+       máximo que a roda alcança: cada giro gastava essa sobra no log e nunca chegava à página, e o próximo bloco
+       gravado deixava a sobra de novo. Este tratador é só do contêiner do log (não é global): no início ou no fim,
+       com folga de 2 px, o giro vertical rola a página; fora dos limites, nada muda e o log rola normalmente. */
+    React.useEffect(() => {
+      const el = ref.current;
+      if (!el) return undefined;
+      const passar = ev => {
+        if (ev.ctrlKey || Math.abs(ev.deltaY) <= Math.abs(ev.deltaX)) return;   // zoom (pinça) ou gesto horizontal
+        const resta = el.scrollHeight - el.clientHeight - el.scrollTop;
+        if (!(ev.deltaY > 0 ? resta <= 2 : el.scrollTop <= 2)) return;
+        const dy = ev.deltaY * (ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? window.innerHeight : 1);
+        ev.preventDefault();
+        let reduzir = false;
+        try { reduzir = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { /* sem matchMedia */ }
+        window.scrollBy({ top: dy, behavior: !reduzir && Math.abs(dy) >= 50 ? 'smooth' : 'auto' });
+      };
+      el.addEventListener('wheel', passar, { passive: false });
+      return () => el.removeEventListener('wheel', passar);
+    }, []);
     const rolarPara = y => { const el = ref.current; if (!el) return; el.scrollTop = y; posProgramada.current = el.scrollTop; topoAnterior.current = el.scrollTop; medir(); };
     React.useLayoutEffect(() => { if (seguir && ref.current) rolarPara(ref.current.scrollHeight); }, [seguir, total, H, geo.inicio]);
     React.useEffect(() => { if (!emAndamento) { setSeguir(false); setLote(null); } }, [emAndamento]);
