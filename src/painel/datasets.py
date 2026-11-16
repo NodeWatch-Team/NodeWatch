@@ -1,7 +1,9 @@
 """Datasets do painel: envio seguro, catálogo e validação no servidor.
 
 Envio
-    * limite de tamanho (``LIMITE_BYTES``) conferido durante a gravação;
+    * sem limite de tamanho imposto pela aplicação: o arquivo é copiado para o
+      disco em blocos de 1 MB (nunca inteiro na memória) e a validação lê em
+      blocos de ``LINHAS_POR_BLOCO`` linhas; o espaço em disco é o único teto;
     * o nome enviado pelo navegador é **só um rótulo**: é sanitizado e guardado
       no registro; no disco o arquivo sempre se chama ``dados.csv``/``dados.zip``
       dentro de uma pasta com identificador gerado pelo servidor;
@@ -41,14 +43,10 @@ import pandas as pd
 from src.ml.analises import CAMPOS_PT, FORMATOS, _tempo, detectar_formato
 from src.ml.esquemas import COLUNAS_HISMALL
 from src.ml.ingestao import _normalizar_cabecalho
-from src.painel import tipologias as tp
 from src.painel.util import agora_iso, gravar_json_atomico, ler_json, minuto_iso
 
-LIMITE_BYTES = 256_000_000
-LIMITE_PADROES_BYTES = 32_000_000
-LIMITE_DESCOMPACTADO_BYTES = 2_000_000_000
 EXTENSOES = (".csv", ".zip")
-EXTENSOES_PADROES = (".txt", ".csv")
+BLOCO_COPIA = 1 << 20  # cópia do envio para o disco, 1 MB por vez
 MAX_ENVIADOS = 10
 LINHAS_POR_BLOCO = 200_000
 MAX_EXTRAS = 20
@@ -141,11 +139,6 @@ class _Leitor:
                 self._zip.close()
                 raise ErroDataset([problema(f"o ZIP precisa conter exatamente 1 arquivo CSV; contém {len(csvs)}",
                                             "Deixe um único CSV dentro do ZIP.")])
-            if csvs[0].file_size > LIMITE_DESCOMPACTADO_BYTES:
-                self._zip.close()
-                raise ErroDataset([problema(
-                    f"o CSV dentro do ZIP tem {csvs[0].file_size / 1e6:.0f} MB descompactado; o limite é "
-                    f"{LIMITE_DESCOMPACTADO_BYTES / 1e6:.0f} MB", "Divida o arquivo por período.")], 413)
             self.total = csvs[0].file_size
             self.fh = self._zip.open(csvs[0])
         else:
@@ -550,18 +543,15 @@ class RepositorioDatasets:
 
     # -- envio ---------------------------------------------------------------------
     @staticmethod
-    def _salvar(origem: BinaryIO, destino: Path, limite: int, o_que: str) -> int:
+    def _salvar(origem: BinaryIO, destino: Path) -> int:
+        """Copia o envio para o disco em blocos: a memória usada não cresce com o tamanho do arquivo."""
         total = 0
         with open(destino, "wb") as fh:
             while True:
-                bloco = origem.read(1 << 20)
+                bloco = origem.read(BLOCO_COPIA)
                 if not bloco:
                     break
                 total += len(bloco)
-                if total > limite:
-                    raise ErroDataset([problema(
-                        f"{o_que} passa do limite de {limite / 1e6:.0f} MB",
-                        "Divida o arquivo por período, ou compacte o CSV em um ZIP.")], 413)
                 fh.write(bloco)
         return total
 
@@ -578,7 +568,7 @@ class RepositorioDatasets:
         d = self.pasta / did
         d.mkdir(parents=True)
         try:
-            n = self._salvar(arquivo, d / f"dados{ext}", LIMITE_BYTES, "o dataset")
+            n = self._salvar(arquivo, d / f"dados{ext}")
             if n == 0:
                 raise ErroDataset([problema("o arquivo está vazio", "Envie um CSV com cabeçalho e dados.", linha=1)])
             reg: Dict[str, Any] = {"id": did, "origem": "enviado", "nome": rotulo, "bytes": n,
