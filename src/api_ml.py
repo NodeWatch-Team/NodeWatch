@@ -89,11 +89,8 @@ def _filtros(prev):
 
 @bp.app_errorhandler(413)
 def muito_grande(_erro):
-    if request.path.startswith("/api/painel/"):  # envio pelo painel do analista: o texto da interface antiga não se aplica
-        from src.painel.datasets import LIMITE_BYTES
-        return jsonify({"erro": "arquivo grande demais",
-                        "problemas": [f"o envio passou do limite do painel ({LIMITE_BYTES / 1e6:.0f} MB por arquivo)"],
-                        "acao": "Compacte o CSV em um ZIP ou divida o arquivo por período e envie uma parte por vez."}), 413
+    # O envio de datasets do painel (/api/painel/datasets) não tem limite de tamanho e nunca chega aqui;
+    # este texto vale para as importações da interface antiga.
     limite = _ex.LIMITE_IMPORTACAO_BYTES / 1e6 if _ex else 64
     return jsonify({"erro": "arquivo grande demais",
                     "problemas": [f"o envio passou do limite de importação ({limite:.0f} MB)"],

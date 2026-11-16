@@ -21,7 +21,7 @@ Rotas:
     POST /api/painel/sessao/encerrar                encerra a sessão (a análise dela para no ponto seguro)
     GET  /api/painel/sessao                         situação da sessão e política de expiração
     GET  /api/painel/datasets                       enviados e disponíveis no servidor
-    POST /api/painel/datasets                       [sessão] envia (``arquivo`` e, opcional, ``padroes``) e valida
+    POST /api/painel/datasets                       [sessão] envia ``arquivo`` (sem limite de tamanho) e valida
     GET  /api/painel/datasets/<id>                  situação e resultado da validação
     POST /api/painel/datasets/<id>/validar          [sessão] valida (ou revalida) um dataset
     GET  /api/painel/analises                       análises recentes (manifestos)
@@ -55,6 +55,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
 from flask import Blueprint, jsonify, request
+from werkzeug.formparser import parse_form_data
 
 _RAIZ = Path(__file__).resolve().parent.parent
 CABECALHO_SESSAO = "X-NodeWatch-Sessao"
@@ -219,8 +220,7 @@ def estado():
                     "aviso": lav.get("aviso")} if lav and tem_modelo else
                    {"disponivel": tem_modelo, "motivo": None if tem_modelo else motivo}),
         "analise_em_andamento": c["analises"].em_andamento(),
-        "limites": {"envio_bytes": ds.LIMITE_BYTES, "padroes_bytes": ds.LIMITE_PADROES_BYTES,
-                    "extensoes": list(ds.EXTENSOES), "datasets_enviados_guardados": ds.MAX_ENVIADOS,
+        "limites": {"extensoes": list(ds.EXTENSOES), "datasets_enviados_guardados": ds.MAX_ENVIADOS,
                     "analises_guardadas": c["analises"].max_analises, "pagina_max": arm.TAMANHO_PAGINA_MAX,
                     "contas_risco": arm.MAX_CONTAS_RISCO,
                     "grafo": {"profundidade_padrao": arm.GRAFO_PROFUNDIDADE_PADRAO,
@@ -356,13 +356,22 @@ def datasets_enviar():
     from src.painel.datasets import ErroDataset, problema
     sid = _sessao()
     sessoes = _c()["sessoes"]
-    arquivo = request.files.get("arquivo")
-    if arquivo is None or not arquivo.filename:
-        raise ErroDataset([problema("nenhum arquivo foi enviado", "Escolha um arquivo .csv ou .zip.")], 400)
-    padroes = request.files.get("padroes")
-    com_padroes = padroes is not None and bool(padroes.filename)
-    reg = _c()["datasets"].enviar(arquivo.stream, arquivo.filename, padroes.stream if com_padroes else None,
-                                  padroes.filename if com_padroes else None, ativa=lambda: sessoes.ativa(sid))
+    # Sem limite de tamanho no envio de datasets. O MAX_CONTENT_LENGTH do app protege as rotas da interface antiga,
+    # que leem o corpo inteiro na memória; aqui o formulário é lido sem ele (max_content_length=None). O Werkzeug
+    # grava a parte do arquivo num temporário em disco enquanto lê o corpo, e RepositorioDatasets.enviar copia esse
+    # temporário em blocos de 1 MB: a memória usada não cresce com o tamanho do arquivo. Campos que não são arquivo
+    # continuam limitados por max_form_memory_size e max_form_parts (padrões do Werkzeug).
+    _, _, arquivos = parse_form_data(request.environ, max_content_length=None,
+                                     max_form_memory_size=request.max_form_memory_size,
+                                     max_form_parts=request.max_form_parts)
+    try:
+        arquivo = arquivos.get("arquivo")
+        if arquivo is None or not arquivo.filename:
+            raise ErroDataset([problema("nenhum arquivo foi enviado", "Escolha um arquivo .csv ou .zip.")], 400)
+        reg = _c()["datasets"].enviar(arquivo.stream, arquivo.filename, ativa=lambda: sessoes.ativa(sid))
+    finally:
+        for f in arquivos.values():  # apaga o temporário do envio já copiado
+            f.close()
     return _json(reg, 201)
 
 

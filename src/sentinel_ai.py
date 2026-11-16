@@ -49,8 +49,9 @@ from src.api_painel import bp as painel_bp  # noqa: E402
 _INTERFACE_DIR = _PROJECT_ROOT / "interface"
 
 app = Flask(__name__)
-# Importacao de CSV de previsoes na secao de ML: limite de 64 MB (+ folga do multipart)
-app.config["MAX_CONTENT_LENGTH"] = 800 * 1000 * 1000  # dataset (256 MB) + histórico (512 MB) em Analisar dataset
+# Limite global so para as rotas da interface antiga. O envio de datasets do painel (/api/painel/datasets)
+# desliga este limite no proprio pedido: o arquivo vai para o disco em blocos, sem passar inteiro pela memoria.
+app.config["MAX_CONTENT_LENGTH"] = 800 * 1000 * 1000  # rotas da interface antiga (/legado), que leem o corpo na memória
 app.register_blueprint(ml_bp)
 app.register_blueprint(eventos_bp)
 app.register_blueprint(painel_bp)  # painel do analista (/api/painel)
