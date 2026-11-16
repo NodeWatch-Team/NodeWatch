@@ -1,7 +1,9 @@
 /* NodeWatch — log da execução na tela de análise.
    Três peças, todas com dados reais do servidor:
-     MetricasExecucao     área fixa (sticky) com latências, RAM e CPU, cada valor com unidade, escopo e horário;
+     MetricasExecucao     área fixa (sticky): durante a análise, quatro blocos ao vivo (pontuação, log, RAM);
+                          depois do fim, uma linha de resumo e o atalho para a Operação (casa das métricas completas);
      ListaFluxo           transações já pontuadas, em lista virtualizada (o DOM só tem as linhas visíveis);
+                          as que chegam enquanto a lista segue as mais recentes entram com um realce curto (CSS);
      ResumoPrecisaoRecall precisão e recall do dataset (parciais durante a análise, finais ao terminar).
    Valor ausente aparece como "indisponível", nunca 0. Sem temporizadores próprios: o manifesto chega pelo polling
    da página (1 s), RAM e CPU por useIntervalo (2 s, só durante a análise) e a rolagem usa requestAnimationFrame. */
@@ -102,7 +104,7 @@
   /* Em tela estreita a área aberta ocuparia o contêiner inteiro: começa recolhida (o resumo continua no título). */
   const telaEstreita = () => { try { return window.matchMedia('(max-width: 720px)').matches; } catch (e) { return false; } };
 
-  function MetricasExecucao({ m, leitura }) {
+  function MetricasExecucao({ m, leitura, aoOperacao }) {
     const [aberto, setAberto] = React.useState(() => !telaEstreita());
     const pont = m.etapas.find(e => e.id === 'pontuacao');
     const ub = pont && pont.progresso ? pont.progresso.ultimo_bloco : null;
@@ -112,24 +114,38 @@
     const ram = d ? d.memoria : null;
     const mp = ram && ram.processo, mm = ram && ram.maquina;
     const motivo = semLeitura ? SO_AO_VIVO : INDISPONIVEL;
+    const dicaPontuacao = ub ? 'Último bloco de pontuação no servidor: atributos ' + ms(ub.atributos_ms) + ' · inferência ' + ms(ub.inferencia_ms) + ' · gravação ' + ms(ub.gravacao_ms) + ' · medido às ' + hora(ub.medido_em)
+      : 'Nenhum bloco de pontuação medido nesta análise.';
+    const ramProcesso = mp && !vazio(mp.bytes) ? f.gb(mp.bytes) : null;
+    /* Análise encerrada: os blocos ao vivo viram uma linha só; o detalhe (latências, CPU, pico, vazão) mora na Operação. */
+    if (!leitura.vivo) {
+      const dicaRam = ramProcesso ? 'Memória usada pelo processo NodeWatch (GB, 10⁹ bytes), na última leitura desta aba: ' + hora(d.medido_em) + ', antes do fim da análise.' : motivo;
+      const ultima = ub && !vazio(ub.total_ms) ? ms(ub.total_ms) : null;
+      return h('div', { className: 'log-metricas-fim' },
+        h('p', null,
+          h('span', { className: 'log-rot' }, 'Última pontuação '), h('strong', { title: dicaPontuacao, className: ultima ? undefined : 'indisponivel' }, ultima || '—'),
+          h('span', { className: 'sr' }, ' (' + dicaPontuacao + ')'),
+          h('span', { className: 'log-sep', 'aria-hidden': 'true' }, ' · '),
+          h('span', { className: 'log-rot' }, 'RAM do processo '), h('strong', { title: dicaRam, className: ramProcesso ? undefined : 'indisponivel' }, ramProcesso || '—'),
+          h('span', { className: 'sr' }, ' (' + dicaRam + ')')),
+        aoOperacao ? h('button', { type: 'button', className: 'botao pequeno fantasma', onClick: aoOperacao, 'aria-controls': 'painel-operacional',
+          title: 'A Operação mostra o processo agora e a análise ativa ou a última encerrada (pode não ser esta).' },
+          h(Icone, { nome: 'operacao' }), 'Abrir Operação') : null);
+    }
     let rodape;
-    if (semLeitura) rodape = 'RAM e latência: medidas só durante a análise.';
-    else if (!d) rodape = leitura.falhou ? 'Leitura falhou · nova tentativa em 2 s.' : 'Lendo…';
-    else if (!leitura.vivo) rodape = 'Última leitura ' + hora(d.medido_em) + ' (análise encerrada).';
+    if (!d) rodape = leitura.falhou ? 'Leitura falhou · nova tentativa em 2 s.' : 'Lendo…';
     else if (leitura.falhou) rodape = 'Sem atualização desde ' + hora(d.medido_em) + ' · nova tentativa em 2 s.';
     else rodape = 'Ao vivo · ' + hora(d.medido_em) + ' · atualiza a cada 2 s.';
     return h('details', { className: 'log-metricas-area', open: aberto, onToggle: e => setAberto(e.currentTarget.open) },
       h('summary', null, 'Métricas de execução', aberto ? null : h('span', { className: 'log-detalhe', style: { textTransform: 'none', letterSpacing: 0 } },
-        ' — última pontuação ' + (ub ? ms(ub.total_ms) : '—') + ' · RAM ' + (mp && !vazio(mp.bytes) ? f.gb(mp.bytes) : '—'))),
+        ' — última pontuação ' + (ub ? ms(ub.total_ms) : '—') + ' · RAM ' + (ramProcesso || '—'))),
       h('dl', { className: 'log-metricas' },
-        h(Metrica, { nome: 'Última pontuação', valor: ub ? ms(ub.total_ms) : null, sub: ub ? f.plural(ub.transacoes, 'transação', 'transações') : null,
-          dica: ub ? 'Último bloco de pontuação no servidor: atributos ' + ms(ub.atributos_ms) + ' · inferência ' + ms(ub.inferencia_ms) + ' · gravação ' + ms(ub.gravacao_ms) + ' · medido às ' + hora(ub.medido_em)
-            : 'Nenhum bloco de pontuação medido nesta análise.' }),
+        h(Metrica, { nome: 'Última pontuação', valor: ub ? ms(ub.total_ms) : null, sub: ub ? f.plural(ub.transacoes, 'transação', 'transações') : null, dica: dicaPontuacao }),
         h(Metrica, { nome: 'Log de transações', valor: lat ? ms(lat.ultima_ms) : null, sub: lat ? 'mediana ' + ms(lat.mediana_ms) : null,
           dica: lat ? 'Latência da consulta do log ("' + OPERACAO_LOG + '", servidor): última; mediana ' + ms(lat.mediana_ms) + ' ' + (lat.amostras === 1 ? 'em 1 consulta' : 'das últimas ' + f.inteiro(lat.amostras) + ' consultas') + ' · medido às ' + hora(lat.medido_em)
-            : semLeitura ? motivo : 'Aparece depois da primeira consulta do log.' }),
-        h(Metrica, { nome: 'RAM do processo', valor: mp && !vazio(mp.bytes) ? f.gb(mp.bytes) : null, sub: mp && !vazio(mp.percentual_da_maquina) ? pct100(mp.percentual_da_maquina) + ' da máquina' : null,
-          dica: mp && !vazio(mp.bytes) ? 'Memória usada pelo processo NodeWatch, em GB (10⁹ bytes).' : motivo }),
+            : 'Aparece depois da primeira consulta do log.' }),
+        h(Metrica, { nome: 'RAM do processo', valor: ramProcesso, sub: mp && !vazio(mp.percentual_da_maquina) ? pct100(mp.percentual_da_maquina) + ' da máquina' : null,
+          dica: ramProcesso ? 'Memória usada pelo processo NodeWatch, em GB (10⁹ bytes).' : motivo }),
         h(Metrica, { nome: 'RAM do sistema', valor: mm && !vazio(mm.em_uso_bytes) ? f.gb(mm.em_uso_bytes) : null, sub: mm && !vazio(mm.total_bytes) ? 'de ' + f.gb(mm.total_bytes) : null,
           dica: mm && !vazio(mm.em_uso_bytes) ? 'Memória em uso no computador: ' + (vazio(mm.percentual) ? INDISPONIVEL : pct100(mm.percentual)) + '.' : motivo })),
       h('p', { className: 'log-rodape' }, rodape));
@@ -139,10 +155,12 @@
   const textoRotulo = (l, comRotulo) => !comRotulo || l.rotulo === null || l.rotulo === undefined ? 'sem rótulo' : l.rotulo === 1 ? 'lavagem' : 'não lavagem';
   /* setsize: total final, ou -1 (desconhecido, válido em role=feed) enquanto a análise cresce; assim o React.memo
      não redesenha todas as entradas visíveis a cada atualização do manifesto. */
-  const Entrada = React.memo(function Entrada({ l, topo, setsize, validas, comRotulo, comTipologias }) {
+  /* nova: chegou no último bloco enquanto a lista seguia as mais recentes; o realce é uma animação CSS que roda
+     uma vez quando a entrada aparece (a chave é o ID de exibição) e some com movimento reduzido. */
+  const Entrada = React.memo(function Entrada({ l, topo, setsize, validas, comRotulo, comTipologias, nova }) {
     const idTitulo = 'log-tx-' + l.id_exibicao;
     const tipos = comTipologias ? (l.tipologias || []).filter(t => !/nao_identificado$/.test(t)) : [];
-    return h('article', { className: 'log-entrada' + (l.alerta ? ' com-alerta' : ''), style: { top: topo + 'px' }, tabIndex: -1,
+    return h('article', { className: 'log-entrada' + (l.alerta ? ' com-alerta' : '') + (nova ? ' nova' : ''), style: { top: topo + 'px' }, tabIndex: -1,
       'aria-posinset': l.id_exibicao, 'aria-setsize': setsize, 'aria-labelledby': idTitulo },
       h('div', { className: 'log-cab', id: idTitulo },
         h('span', { className: 'log-pos' }, h('span', { className: 'sr' }, 'Posição no fluxo: '), 'nº ' + f.inteiro(l.id_exibicao)),
@@ -178,6 +196,10 @@
     const [seguir, setSeguir] = React.useState(emAndamento);
     const [erro, setErro] = React.useState(null);
     const [irPara, setIrPara] = React.useState('');
+    /* Último lote de transações que chegou enquanto a lista seguia as mais recentes (IDs de..até); só ele recebe o
+       realce de entrada. Ao abrir a lista, o que já estava pontuado não conta como novo. */
+    const [lote, setLote] = React.useState(null);
+    const totalAnterior = React.useRef(total);
 
     const medir = () => {
       const el = ref.current;
@@ -227,7 +249,12 @@
     };
     const rolarPara = y => { const el = ref.current; if (!el) return; el.scrollTop = y; posProgramada.current = el.scrollTop; topoAnterior.current = el.scrollTop; medir(); };
     React.useLayoutEffect(() => { if (seguir && ref.current) rolarPara(ref.current.scrollHeight); }, [seguir, total, H, geo.inicio]);
-    React.useEffect(() => { if (!emAndamento) setSeguir(false); }, [emAndamento]);
+    React.useEffect(() => { if (!emAndamento) { setSeguir(false); setLote(null); } }, [emAndamento]);
+    React.useEffect(() => {
+      const antes = totalAnterior.current;
+      totalAnterior.current = total;
+      if (total > antes && seguir && emAndamento) setLote({ de: antes + 1, ate: total });
+    }, [total]);
 
     /* Posição de leitura na rolagem proporcional (mais de 8 M px, como no HI-Small): sem "seguir ao vivo", cada
        bloco gravado muda o fator, e o mesmo scrollTop passaria a apontar para outra transação. A âncora guarda a
@@ -273,7 +300,8 @@
     for (let id = primeiro; id >= 1 && id <= ultimo; id += 1) {
       const l = linha(id);
       const y = s + ((id - 1) * H - inicioVirtual);
-      linhas.push(l ? h(Entrada, { key: id, l, topo: y, setsize: emAndamento ? -1 : total, validas, comRotulo: !!m.rotulo.disponivel, comTipologias: !!m.tipologias.disponivel })
+      linhas.push(l ? h(Entrada, { key: id, l, topo: y, setsize: emAndamento ? -1 : total, validas, comRotulo: !!m.rotulo.disponivel, comTipologias: !!m.tipologias.disponivel,
+        nova: !!lote && id >= lote.de && id <= lote.ate })
         : h('div', { key: id, className: 'log-entrada carregando', style: { top: y + 'px' }, 'aria-hidden': 'true' }, 'Carregando a transação nº ' + f.inteiro(id) + '…'));
     }
     const irParaPosicao = ev => {
@@ -294,7 +322,9 @@
       'aria-label': 'Log da execução: métricas e transações pontuadas, rolável' },
       h('div', { className: 'log-fixo' }, topo,
         total ? h('div', { className: 'log-barra' },
-          seguir ? h('span', { className: 'ao-vivo' }, 'Ao vivo', h('span', { className: 'sr' }, ': seguindo as mais recentes'))
+          /* "Seguindo": a lista acompanha as mais recentes; o ponto pulsa uma vez a cada lote novo (chave = total) */
+          seguir ? h('span', { className: 'seguindo' }, h('span', { key: 'lote-' + total, className: 'ponto-seguindo', 'aria-hidden': 'true' }),
+            'Seguindo', h('span', { className: 'sr' }, ' as mais recentes'))
             : h('button', { type: 'button', className: 'botao pequeno', 'aria-label': 'Ir para as mais recentes',
               onClick: () => { ancora.current = null; if (emAndamento) setSeguir(true); else if (ref.current) rolarPara(ref.current.scrollHeight); } }, h(Icone, { nome: 'seta' }), 'Mais recentes'),
           h('form', { className: 'linha', onSubmit: irParaPosicao },
@@ -355,7 +385,8 @@
   }
 
   /* ── Log da execução: cabeçalho, área fixa de métricas, lista e resumo ── */
-  function LogAnalise({ m, estado }) {
+  /* aoOperacao (opcional): abre a gaveta Operação; sem ele, o atalho "Detalhes em Operação" não aparece. */
+  function LogAnalise({ m, estado, aoOperacao }) {
     const leitura = useDesempenho(m);
     const atual = m.etapas.find(e => e.status === 'em_andamento');
     const c = m.contagens;
@@ -384,7 +415,7 @@
           h(Legenda, null, 'nº = posição no fluxo (ordem cronológica, igual ao ID de exibição). ' + TEXTO_ID + '. ',
             '"Previsão do modelo" é o score e o alerta gravados' + (ROTULO ? '; "Rótulo do dataset" é o valor que veio no arquivo, não é previsão. ' : '. '),
             'O modelo não classifica tipologia: só aparece a tipologia registrada no arquivo de padrões. "Sem classificação" = ' + TEXTO_SEM_TIPOLOGIA + '.'))),
-      h(ListaFluxo, { key: m.id, m, topo: h(MetricasExecucao, { m, leitura }) }),
+      h(ListaFluxo, { key: m.id, m, topo: h(MetricasExecucao, { m, leitura, aoOperacao }) }),
       h(ResumoPrecisaoRecall, { m }));
   }
 
