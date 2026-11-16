@@ -69,31 +69,44 @@ def test_painel_aberto_como_arquivo_explica_como_abrir_em_vez_de_acusar_o_servid
     assert app.index("location.protocol === 'file:'") < app.index("sessao.iniciar().then")  # nem tenta abrir sessão
 
 
-def test_arquivo_acima_do_limite_e_recusado_na_tela_antes_do_envio():
-    # acima do limite o servidor recusa logo no início e fecha a conexão; o navegador, ainda enviando, só via
-    # "Servidor do NodeWatch indisponível". A tela confere o tamanho antes e explica o limite, sem enviar nada.
+def test_formulario_de_envio_tem_so_o_arquivo_de_transacoes_e_nao_limita_o_tamanho():
+    # sem campo de padrões (tipologias) e sem conferência de tamanho na tela: o envio não tem limite
     secoes = (INTERFACE / "assets" / "painel-secoes.js").read_text(encoding="utf-8")
     envio = secoes[secoes.index("const enviar = async ev"):secoes.index("const validar = async")]
-    assert "arq.size > lim.envio_bytes" in envio and "pad.size > lim.padroes_bytes" in envio
-    assert envio.index("arq.size > lim.envio_bytes") < envio.index("api('/datasets'") and "Nada foi enviado." in envio
+    assert "fd.append('arquivo', arq)" in envio and "padroes" not in envio and ".size" not in envio
+    form = secoes[secoes.index("'Enviar arquivo'"):secoes.index("'Escolher dataset'")]
+    assert "type: 'file'" in form and form.count("type: 'file'") == 1
+    for proibido in ("Padrões", "padroes", "tipologia", "HI-Small_Patterns", "envio_bytes", "padroes_bytes", "até ' + f.bytes"):
+        assert proibido not in form and proibido not in envio, proibido
 
 
-def test_recusa_por_tamanho_no_painel_usa_o_texto_do_painel(tmp_path):
-    # a recusa do Flask (413) antes de ler o corpo tinha o texto da interface antiga ("limite de importação (64 MB)", CLI)
+def test_envio_de_dataset_ignora_o_limite_global_do_app(tmp_path):
+    # o MAX_CONTENT_LENGTH do app vale para as rotas da interface antiga; o envio de datasets do painel não tem limite
     import io
+    import time
 
     from src.sentinel_ai import app
-    from testes.painel.conftest import abrir_cliente
+    from testes.painel.conftest import CENARIO, abrir_cliente, escrever
 
     (tmp_path / "artefatos_ml").mkdir()
     cli = abrir_cliente(tmp_path, None)
+    conteudo = escrever(tmp_path / "c.csv", CENARIO, com_rotulo=True).read_bytes()
     original = app.config["MAX_CONTENT_LENGTH"]
     app.config["MAX_CONTENT_LENGTH"] = 1000
     try:
-        r = cli.post("/api/painel/datasets", data={"arquivo": (io.BytesIO(b"x" * 5000), "grande.csv")},
+        assert len(conteudo) > 1000
+        r = cli.post("/api/painel/datasets", data={"arquivo": (io.BytesIO(conteudo), "grande.csv")},
                      content_type="multipart/form-data")
+        legado = cli.post("/api/ml/importar", data={"arquivo": (io.BytesIO(conteudo), "grande.csv")},
+                          content_type="multipart/form-data")
     finally:
         app.config["MAX_CONTENT_LENGTH"] = original
-    corpo = r.get_json()
-    assert r.status_code == 413 and "limite do painel (256 MB" in corpo["problemas"][0]
-    assert "CLI" not in corpo["acao"] and "64 MB" not in corpo["problemas"][0]
+    assert r.status_code == 201, r.get_json()
+    did = r.get_json()["id"]
+    for _ in range(200):
+        reg = cli.get(f"/api/painel/datasets/{did}").get_json()
+        if reg["status"] != "validando":
+            break
+        time.sleep(0.02)
+    assert reg["status"] == "valido" and reg["bytes"] == len(conteudo)
+    assert legado.status_code == 413  # a interface antiga, que lê o corpo na memória, mantém o seu limite

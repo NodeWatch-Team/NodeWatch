@@ -51,12 +51,30 @@ def test_extensao_nao_aceita(ambiente):
     assert exc.value.status == 415 and "csv" in exc.value.problemas[0]["como_corrigir"]
 
 
-def test_limite_de_tamanho_no_envio(ambiente, monkeypatch):
-    monkeypatch.setattr(ds, "LIMITE_BYTES", 1_000)
-    with pytest.raises(ds.ErroDataset) as exc:
-        ambiente.datasets.enviar(io.BytesIO(b"a" * 5_000), "grande.csv")
-    assert exc.value.status == 413
-    assert list((ambiente.raiz / ds.PASTA).glob("ds-*")) == []  # nada fica gravado
+def test_envio_sem_limite_de_tamanho_copia_em_blocos_e_preserva_o_arquivo(ambiente, cenario, monkeypatch):
+    # não há limite de tamanho no envio (nem constante de limite); a cópia para o disco é feita em blocos, sem ler
+    # o arquivo inteiro: com blocos de 1 KB, um envio de 300 KB passa por ~300 leituras e chega íntegro
+    for nome in ("LIMITE_BYTES", "LIMITE_PADROES_BYTES", "LIMITE_DESCOMPACTADO_BYTES"):
+        assert not hasattr(ds, nome)
+    monkeypatch.setattr(ds, "BLOCO_COPIA", 1_024)
+    conteudo = cenario["dados"].read_bytes()
+    linhas = conteudo.decode("utf-8").splitlines()
+    grande = ("\n".join([linhas[0]] + linhas[1:] * 2_500) + "\n").encode("utf-8")
+    assert len(grande) > 300_000
+
+    class Fonte(io.BytesIO):
+        maior_leitura = 0
+
+        def read(self, n=-1):
+            assert n is not None and n > 0, "o envio não pode ser lido inteiro de uma vez"
+            Fonte.maior_leitura = max(Fonte.maior_leitura, n)
+            return super().read(n)
+
+    reg = ambiente.datasets.enviar(Fonte(grande), "grande.csv", validar=False)
+    gravado = ambiente.raiz / ds.PASTA / reg["id"] / "dados.csv"
+    assert gravado.read_bytes() == grande and reg["bytes"] == len(grande) and Fonte.maior_leitura == 1_024
+    v = ambiente.datasets.validar(reg["id"], esperar=True)
+    assert v["status"] == "valido" and v["validacao"]["linhas"]["validas"] == 13 * 2_500
 
 
 def test_arquivo_vazio(ambiente):
@@ -199,11 +217,13 @@ def test_identificador_repetido_e_recusado(ambiente, tmp_path):
     assert v["linhas"]["recusadas"] == 1 and p["linha_exemplo"] == 3 and "repetido" in p["problema"]
 
 
-def test_arquivo_de_padroes_ilegivel_nao_inventa_tipologias(ambiente, cenario, tmp_path):
-    ruim = tmp_path / "padroes_ruins.txt"
-    ruim.write_text("isto não é um arquivo de padrões\n", encoding="utf-8")
-    v = ambiente.enviar(cenario["dados"], ruim)["validacao"]
-    assert v["tipologias"]["disponivel"] is False and "recusado" in v["tipologias"]["motivo"]
+def test_zip_grande_nao_tem_limite_de_tamanho_descompactado(ambiente, cenario, tmp_path):
+    # antes, um CSV acima de 2 GB descompactado dentro do ZIP era recusado; agora só a leitura em blocos vale
+    z = tmp_path / "grande.zip"
+    linhas = cenario["dados"].read_text(encoding="utf-8").splitlines()
+    with zipfile.ZipFile(z, "w", zipfile.ZIP_DEFLATED) as arq:
+        arq.writestr("grande.csv", "\n".join([linhas[0]] + linhas[1:] * 500) + "\n")
+    assert ambiente.enviar(z)["validacao"]["linhas"]["validas"] == 13 * 500
 
 
 # -- datasets já disponíveis no servidor --------------------------------------------
