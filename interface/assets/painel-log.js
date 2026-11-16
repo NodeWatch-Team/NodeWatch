@@ -47,6 +47,8 @@
   const NOTA_IBM = 'Dados IBM AML são simulados; alerta não é confirmação de lavagem nem de fraude.';
 
   const vazio = f.vazio;
+  /* tipologias só existem em análises gravadas por versões anteriores (arquivo de padrões) */
+  const comTipologias = m => !!(m.tipologias && m.tipologias.disponivel);
   const hora = iso => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? String(iso) : d.toLocaleTimeString('pt-BR'); };
   const dia = s => { const r = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return r ? r[3] + '/' + r[2] + '/' + r[1] : INDISPONIVEL; };
   const pct100 = v => vazio(v) ? INDISPONIVEL : f.numero(v, 1) + '%';   // /operacao/desempenho manda 0–100
@@ -173,9 +175,10 @@
       h('div', { className: 'log-previsao' + (l.alerta ? ' alerta' : '') }, h('span', { className: 'log-rot' }, 'Previsão do modelo: '), 'score ', h('strong', null, l.score),
         ' (faixa ' + NOME_FAIXA[l.faixa] + ') · ', l.alerta ? h('strong', null, '⚠ Com alerta: possível lavagem, para investigação') : 'Sem alerta'),
       ROTULO ? h('div', { className: 'log-rotulo' }, h('span', { className: 'log-rot' }, 'Rótulo do dataset: '), textoRotulo(l, comRotulo)) : null,
-      h('div', null, h('span', { className: 'log-rot' }, 'Tipologia registrada: '),
+      /* só em análises gravadas por versões anteriores, com arquivo de padrões; nas demais a linha não existe */
+      comTipologias ? h('div', null, h('span', { className: 'log-rot' }, 'Tipologia registrada: '),
         tipos.length ? tipos.join(', ') + ' (registrada no dataset)'
-          : h('span', { title: TEXTO_SEM_TIPOLOGIA }, 'Sem classificação', h('span', { className: 'sr' }, ' (' + TEXTO_SEM_TIPOLOGIA + ')'))));
+          : h('span', { title: TEXTO_SEM_TIPOLOGIA }, 'Sem classificação', h('span', { className: 'sr' }, ' (' + TEXTO_SEM_TIPOLOGIA + ')'))) : null);
   });
 
   /* ── Lista virtualizada das transações pontuadas ──────────────────────────────────────────────────────────
@@ -300,7 +303,7 @@
     for (let id = primeiro; id >= 1 && id <= ultimo; id += 1) {
       const l = linha(id);
       const y = s + ((id - 1) * H - inicioVirtual);
-      linhas.push(l ? h(Entrada, { key: id, l, topo: y, setsize: emAndamento ? -1 : total, validas, comRotulo: !!m.rotulo.disponivel, comTipologias: !!m.tipologias.disponivel,
+      linhas.push(l ? h(Entrada, { key: id, l, topo: y, setsize: emAndamento ? -1 : total, validas, comRotulo: !!m.rotulo.disponivel, comTipologias: comTipologias(m),
         nova: !!lote && id >= lote.de && id <= lote.ate })
         : h('div', { key: id, className: 'log-entrada carregando', style: { top: y + 'px' }, 'aria-hidden': 'true' }, 'Carregando a transação nº ' + f.inteiro(id) + '…'));
     }
@@ -318,7 +321,7 @@
     const vazioTexto = total ? null : emAndamento
       ? 'Nenhuma transação pontuada ainda: a lista começa quando a etapa de pontuação gravar o primeiro bloco.'
       : 'Nenhuma transação foi pontuada nesta análise.';
-    return h('div', { className: 'log-rolagem' + (ROTULO ? '' : ' sem-rotulo'), ref, tabIndex: 0, onScroll: aoRolar,
+    return h('div', { className: 'log-rolagem' + (ROTULO ? '' : ' sem-rotulo') + (comTipologias(m) ? '' : ' sem-tipologias'), ref, tabIndex: 0, onScroll: aoRolar,
       'aria-label': 'Log da execução: métricas e transações pontuadas, rolável' },
       h('div', { className: 'log-fixo' }, topo,
         total ? h('div', { className: 'log-barra' },
@@ -408,13 +411,12 @@
       h('p', { className: 'sr', role: 'status', 'aria-live': 'polite' }, anuncio),
       h('div', { className: 'log-notas' },
         h('span', { className: 'chip so-texto', title: textoLimiar(m) }, h('span', { className: 'sr' }, textoLimiar(m)), h('span', { 'aria-hidden': 'true' }, 'Limiar ', h('strong', null, (m.conversao_score && m.conversao_score.ancoras && m.conversao_score.ancoras[1] ? m.conversao_score.ancoras[1].score : '—')))),
-        m.tipologias && !m.tipologias.disponivel ? h('span', { className: 'chip so-texto', title: (m.tipologias.motivo || 'Este dataset não tem tipologias registradas.').replace(/\.?\s*$/, '.') + ' Nas entradas, "Sem classificação".' }, 'Sem tipologias') : null,
         h(Dica, { texto: ibm ? NOTA_IBM : (estado && estado.aviso_faixas) || '' }),
         /* "Como ler" começa recolhido: repete o que a legenda da tabela já explica */
         h('details', null, h('summary', null, 'Como ler as entradas do log'),
           h(Legenda, null, 'nº = posição no fluxo (ordem cronológica, igual ao ID de exibição). ' + TEXTO_ID + '. ',
-            '"Previsão do modelo" é o score e o alerta gravados' + (ROTULO ? '; "Rótulo do dataset" é o valor que veio no arquivo, não é previsão. ' : '. '),
-            'O modelo não classifica tipologia: só aparece a tipologia registrada no arquivo de padrões. "Sem classificação" = ' + TEXTO_SEM_TIPOLOGIA + '.'))),
+            '"Previsão do modelo" é o score e o alerta gravados' + (ROTULO ? '; "Rótulo do dataset" é o valor que veio no arquivo, não é previsão.' : '.'),
+            comTipologias(m) ? ' O modelo não classifica tipologia: só aparece a tipologia registrada no arquivo de padrões. "Sem classificação" = ' + TEXTO_SEM_TIPOLOGIA + '.' : ''))),
       h(ListaFluxo, { key: m.id, m, topo: h(MetricasExecucao, { m, leitura, aoOperacao }) }),
       h(ResumoPrecisaoRecall, { m }));
   }

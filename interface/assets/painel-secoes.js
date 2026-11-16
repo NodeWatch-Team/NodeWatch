@@ -22,7 +22,7 @@
   /* ── Andamento da análise (só estados reais do manifesto) ─────────────
      Rótulo curto de cada etapa do pipeline. A pontuação começa carregando o modelo (etapa aberta, ainda sem
      progresso) e depois pontua em blocos; atributos, inferência e gravação NÃO são etapas separadas. */
-  const ETAPA_CURTA = { leitura: 'Lendo e validando', ordenacao: 'Ordenando por data e hora', tipologias: 'Tipologias registradas',
+  const ETAPA_CURTA = { leitura: 'Lendo e validando', ordenacao: 'Ordenando por data e hora',
     pontuacao: 'Pontuando transações', indices: 'Gravando índices e contagens', manifesto: 'Concluindo' };
   const rotuloEtapa = e => e.id === 'pontuacao' && e.status === 'em_andamento' && !e.progresso ? 'Carregando o modelo' : (ETAPA_CURTA[e.id] || e.nome);
   /* Percentual derivado (não medido): etapas concluídas ou puladas + fração medida da etapa atual, sobre o total. */
@@ -120,10 +120,9 @@
         h(Estat, { nome: 'Linhas válidas', valor: f.inteiro(v.linhas.validas), sub: f.inteiro(v.linhas.lidas) + ' lidas · ' + f.inteiro(v.linhas.recusadas) + ' recusadas' }),
         h(Estat, { nome: 'Contas distintas', valor: f.inteiro(v.contas_distintas) }),
         h(Estat, { nome: 'Período', valor: v.periodo ? f.dataHora(v.periodo.inicio) : '—', sub: v.periodo ? 'até ' + f.dataHora(v.periodo.fim) + (exibir('fuso') ? ' — ' + v.periodo.fuso : '') : null })),
-      h(Pares, { itens: [
-        ROTULO ? ['Rótulo do dataset', v.rotulo.disponivel ? 'coluna "' + v.rotulo.coluna + '": ' + f.inteiro(v.rotulo.positivos) + ' transações rotuladas como lavagem' : 'não há (' + v.rotulo.motivo + ')'] : null,
-        ['Tipologias registradas', v.tipologias.disponivel ? f.inteiro(v.tipologias.tentativas) + ' tentativas e ' + f.inteiro(v.tipologias.transacoes_listadas) + ' transações no arquivo de padrões "' + (d.padroes || {}).nome + '"' : 'não há (' + v.tipologias.motivo + ')'],
-      ] }),
+      ROTULO ? h(Pares, { itens: [
+        ['Rótulo do dataset', v.rotulo.disponivel ? 'coluna "' + v.rotulo.coluna + '": ' + f.inteiro(v.rotulo.positivos) + ' transações rotuladas como lavagem' : 'não há (' + v.rotulo.motivo + ')'],
+      ] }) : null,
       /* detalhes técnicos começam recolhidos: colunas, moedas, formatos e hash */
       h('details', null, h('summary', null, 'Detalhes técnicos: colunas reconhecidas (' + colunas.length + ')' + (v.colunas_nao_reconhecidas.length ? ' e ' + v.colunas_nao_reconhecidas.length + ' fora do contrato' : '') + ', moedas, formatos e hash'),
         h(Pares, { itens: [
@@ -510,7 +509,7 @@
                 h('span', { className: 'score-max', title: 'Maior score entre as transações da conta no recorte' }, c.maior_score, h('small', null, 'maior score')),
                 h('span', { className: 'dados risco' }, '⚠ participa de ' + f.plural(c.alertas, 'transação com alerta', 'transações com alerta')))))) :
               h(Vazio, { compacto: true }, 'Nenhuma conta tem transação com alerta no recorte.'))),
-        h('div', { className: 'grade duas' },
+        h('div', { className: 'grade' + (v.tipologias.disponivel ? ' duas' : '') },
           h('div', { className: 'bloco' }, h('div', { className: 'cabeca-bloco' }, h('h3', null, h(Icone, { nome: 'visao' }), 'Formato de pagamento'),
             h(Dica, { texto: v.formatos.legenda + '. Vazio ou desconhecido aparece como "Não informado".', lado: 'esquerda' })),
             v.formatos.itens.length ? h('ul', { className: 'barras', 'aria-label': v.formatos.legenda }, v.formatos.itens.map(x => h('li', { key: x.formato },
@@ -518,14 +517,14 @@
               h(Barra, { fracao: x.proporcao, rotulo: f.pct(x.proporcao, 1) + ' das transações do recorte' }),
               h('span', { className: 'valor-barra' }, h('strong', null, f.inteiro(x.n)), ' · ' + f.pct(x.proporcao, 1)))))
               : h(Vazio, { compacto: true }, 'Nenhuma transação no recorte.')),
-          h('div', { className: 'bloco' }, h('div', { className: 'cabeca-bloco' }, h('h3', null, h(Icone, { nome: 'sequencia' }), 'Tipologias'),
-            h(Dica, { texto: v.tipologias.disponivel ? 'Origem: ' + v.tipologias.origem + '. ' + v.tipologias.legenda : 'Tipologias registradas no dataset (arquivo de padrões), não previstas pelo modelo.', lado: 'esquerda' })),
-            v.tipologias.disponivel ? h('div', { className: 'rolagem' }, h('table', null,
+          /* tipologias só existem em análises gravadas por versões anteriores (arquivo de padrões); nas demais, o bloco não aparece */
+          v.tipologias.disponivel ? h('div', { className: 'bloco' }, h('div', { className: 'cabeca-bloco' }, h('h3', null, h(Icone, { nome: 'sequencia' }), 'Tipologias'),
+            h(Dica, { texto: 'Origem: ' + v.tipologias.origem + '. ' + v.tipologias.legenda, lado: 'esquerda' })),
+            h('div', { className: 'rolagem' }, h('table', null,
               h('caption', { className: 'sr' }, 'Tipologias registradas no dataset: transações do recorte em cada uma e quantas têm alerta.'),
               h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Tipologia'), h('th', { scope: 'col', className: 'num' }, 'Transações'), h('th', { scope: 'col', className: 'num' }, 'Com alerta'))),
               h('tbody', null, v.tipologias.itens.map(x => h('tr', { key: x.tipologia, title: x.descricao },
-                h('td', { className: 'mono' }, x.tipologia), h('td', { className: 'num' }, f.inteiro(x.n)), h('td', { className: 'num' }, x.alertas ? h('strong', null, f.inteiro(x.alertas)) : '0'))))))
-              : h(Vazio, { compacto: true }, 'Sem arquivo de padrões neste dataset.'))),
+                h('td', { className: 'mono' }, x.tipologia), h('td', { className: 'num' }, f.inteiro(x.n)), h('td', { className: 'num' }, x.alertas ? h('strong', null, f.inteiro(x.alertas)) : '0'))))))) : null),
         ROTULO ? h('div', { className: 'bloco' }, h('h3', null, h(Icone, { nome: 'info' }), 'Rótulo do dataset — separado da previsão'),
           v.rotulo.disponivel ? h(React.Fragment, null,
             h(Pares, { itens: [['Rotuladas como lavagem no recorte', f.inteiro(v.rotulo.rotuladas_lavagem)], ['Dessas, com alerta do modelo', f.inteiro(v.rotulo.rotuladas_com_alerta)]] }),
@@ -593,7 +592,8 @@
 
   function SecaoTabela({ carga, manifesto, tabela, setTabela, aoDetalhe, selecionada }) {
     const extras = (manifesto.dataset.colunas_nao_reconhecidas || []).map(c => ({ id: 'x:' + c, nome: c + ' (coluna original)', extra: c }));
-    const todas = COLUNAS.concat(extras);
+    const temTipologias = !!(manifesto.tipologias && manifesto.tipologias.disponivel);
+    const todas = COLUNAS.filter(c => c.id !== 'tipologias' || temTipologias).concat(extras);
     const [visiveis, setVisiveis] = React.useState(() => {
       try { const g = JSON.parse(localStorage.getItem('nw.colunas') || 'null'); if (Array.isArray(g) && g.length) return g; } catch (e) { /* preferência ausente */ }
       return COLUNAS.filter(c => c.padrao).map(c => c.id);
@@ -697,10 +697,9 @@
           cartao('Motivos verificáveis', t.motivos.length ? h(React.Fragment, null, h('ul', { className: 'grade', style: { gap: 6 } }, t.motivos.map((m, i) => h('li', { key: i }, '• ' + m))),
             h(Legenda, null, 'Fatos conferíveis nos dados, calculados com regras fixas sobre o treino. Não explicam a decisão do modelo.')) :
             h(Legenda, null, t.alerta ? 'Não há motivo verificável para esta transação.' : 'Não há motivo verificável: os motivos só são calculados para transações com alerta.')),
-          cartao('Tipologias registradas', d.tipologias_disponiveis ? h(React.Fragment, null,
+          d.tipologias_disponiveis ? cartao('Tipologias registradas', h(React.Fragment, null,
             h('p', { className: 'mono' }, t.tipologias.length ? t.tipologias.join(', ') : 'padrao_nao_identificado'),
-            h(Legenda, null, t.tipologias.length ? 'Registrada no arquivo de padrões do dataset (tentativa nº ' + t.tentativas.join(', ') + '). Não é previsão do modelo.' : 'Esta transação não aparece no arquivo de padrões do dataset.')) :
-            h(Legenda, null, d.motivo_sem_tipologias || 'Este dataset não tem tipologias registradas.')),
+            h(Legenda, null, t.tipologias.length ? 'Registrada no arquivo de padrões do dataset (tentativa nº ' + t.tentativas.join(', ') + '). Não é previsão do modelo.' : 'Esta transação não aparece no arquivo de padrões do dataset.'))) : null,
           ROTULO ? cartao('Rótulo do dataset', d.rotulo_disponivel ? h(React.Fragment, null, h('p', null, h('strong', null, t.rotulo === 1 ? 'Lavagem (rótulo 1)' : 'Não lavagem (rótulo 0)')),
             h(Legenda, null, 'Valor que já veio no arquivo. Não é previsão e não entra no cálculo do score.')) : h(Legenda, null, 'Este dataset não tem rótulo de lavagem.')) : null),
         h('details', { className: 'acordeao' }, h('summary', null, 'Dados técnicos'),
@@ -1297,8 +1296,8 @@
      com base verificável; com uma transação em contexto, as perguntas são sobre ela. */
   const SUGESTOES_VISTA = {
     analise: ['Como enviar um dataset?', 'Como reabrir uma análise?', 'O que é uma análise parcial?', 'O que é o score?'],
-    visao: ['Resuma o recorte', 'Quantos alertas há no recorte?', 'Qual o score mediano do recorte?', 'O que significam as faixas?', 'Quais tipologias aparecem no recorte?', 'Quais formatos de pagamento aparecem?', 'Qual é o período do recorte?'],
-    investigacao: ['Quais contas concentram mais alertas?', 'O que é um vértice?', 'O que significa a seta?', 'Como ver grafo de uma conta?', 'O que é uma tipologia?'],
+    visao: ['Resuma o recorte', 'Quantos alertas há no recorte?', 'Qual o score mediano do recorte?', 'O que significam as faixas?', 'Quais formatos de pagamento aparecem?', 'Qual é o período do recorte?'],
+    investigacao: ['Quais contas concentram mais alertas?', 'O que é um vértice?', 'O que significa a seta?', 'Como ver grafo de uma conta?'],
     transacoes: ['O que é o ID de exibição?', 'O que é a posição na tabela?', 'Como mostrar mais colunas?', 'Como os filtros funcionam?'],
     detalhes: ['O que significam as faixas?', 'O que é o limiar?', 'O que significa histórico incompleto?', 'O que são motivos verificáveis?'],
   };

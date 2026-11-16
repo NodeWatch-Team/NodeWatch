@@ -581,8 +581,10 @@ dl.pares dd { min-width: 0; overflow-wrap: anywhere; }
 .execucao.terminada { grid-template-columns: minmax(0, 1fr); }
 .execucao.terminada > details.execucao-etapas { padding: 8px 12px; border: 1px solid var(--borda); border-radius: var(--r-l); background: var(--sup-2); }
 .execucao > div.execucao-etapas { padding: 12px; border: 1px solid var(--borda); border-radius: var(--r-l); background: var(--sup-2); }
-/* sem a linha "Rótulo do dataset" (EXIBIR.rotulo = false), cada entrada do log tem uma linha a menos */
-.log-rolagem.sem-rotulo { --log-menos: 1.15rem; }
+/* sem a linha "Rótulo do dataset" (EXIBIR.rotulo = false) ou sem a linha "Tipologia registrada" (análises sem
+   tipologias, isto é, todas as atuais), cada entrada do log tem uma linha a menos; sem as duas, duas linhas a menos */
+.log-rolagem.sem-rotulo, .log-rolagem.sem-tipologias { --log-menos: 1.15rem; }
+.log-rolagem.sem-rotulo.sem-tipologias { --log-menos: 2.3rem; }
 .log-analise { display: grid; gap: var(--e-3); align-content: start; grid-template-columns: minmax(0, 1fr); }
 .log-analise > h3 { margin: 0; font: 650 var(--t-m)/1.3 var(--titulo); display: flex; align-items: center; gap: 8px; }
 .log-analise > h3 .ico { color: var(--marca-2); }

@@ -304,7 +304,7 @@
     return pos;
   }
 
-  /* Disposição automática: a tipologia registrada manda quando pede anel (ciclo); grafos pequenos ficam em camadas
+  /* Disposição automática: a tipologia registrada (só em análises de versões anteriores) manda quando pede anel (ciclo); grafos pequenos ficam em camadas
      (a direção do dinheiro lida da esquerda para a direita); os maiores, em radial, que cabe melhor numa tela. */
   function escolherDisposicao(g, nos) {
     if (g.tipologias.disposicao.id === 'circular') return 'circular';
@@ -506,8 +506,10 @@
       h(Legenda, null, h('strong', null, 'Limites ativos: '), 'até ' + lim.profundidade + ' salto(s) a partir da conta em foco, ' + lim.max_nos + ' vértices e ' + lim.max_arestas +
         ' arestas desenhadas (prioridade: mais perto do foco, depois com alerta, depois mais transações). ' +
         (lim.fronteira_truncada ? 'Havia mais de ' + lim.fronteira_por_salto + ' contas em um salto: só as primeiras foram expandidas, e os totais do salto seguinte são parciais.' : '')),
-      h(Legenda, null, h('strong', null, 'Disposição: '), (DESCRICAO_DISPOSICAO[modo] || tip.disposicao.nome) + '. Sugerida pela tipologia: ' + tip.disposicao.nome + ' (', h('span', { className: 'mono' }, tip.predominante),
-        ', ' + tip.origem + '). A tipologia nunca é deduzida pela aparência do grafo; mudar a disposição só reposiciona as contas.'),
+      /* a sugestão pela tipologia só existe em análises gravadas por versões anteriores, com tipologias registradas */
+      tip.disponivel ? h(Legenda, null, h('strong', null, 'Disposição: '), (DESCRICAO_DISPOSICAO[modo] || tip.disposicao.nome) + '. Sugerida pela tipologia: ' + tip.disposicao.nome + ' (', h('span', { className: 'mono' }, tip.predominante),
+        ', ' + tip.origem + '). A tipologia nunca é deduzida pela aparência do grafo; mudar a disposição só reposiciona as contas.')
+        : h(Legenda, null, h('strong', null, 'Disposição: '), (DESCRICAO_DISPOSICAO[modo] || tip.disposicao.nome) + '. Mudar a disposição só reposiciona as contas.'),
       h(Legenda, null, g.nota_filtros));
   }
 
@@ -631,7 +633,7 @@
         ['Primeira e última', f.dataHora(a.primeiro) + ' — ' + f.dataHora(a.ultimo)],
         ['Ordem no tempo', h(Selo, { tom: semOrdem(a) ? 'atencao' : a.ordem === 'sequencia' ? 'ok' : '' }, a.ordem_texto)],
         a.passo && a.ordem === 'sequencia' ? ['Transação que confirma a sequência', f.idExibicao(a.passo.id_exibicao, total) + ' em ' + f.dataHora(a.passo.data_hora) + ', ' + f.valor(a.passo.valor) + ' ' + a.moeda] : null,
-        ['Tipologias registradas', a.tipologias.length ? a.tipologias.join(', ') : (tip.disponivel ? 'padrao_nao_identificado' : 'o dataset não tem tipologias')]] }),
+        tip.disponivel ? ['Tipologias registradas', a.tipologias.length ? a.tipologias.join(', ') : 'padrao_nao_identificado'] : null] }),
       h('div', { className: 'acoes-selecao' },
         h('button', { type: 'button', className: 'botao pequeno', onClick: () => aoFiltrarTabela({ conta_origem: a.origem, conta_destino: a.destino, moeda: a.moeda }) }, 'Ver estas transações na tabela')),
       h(TransacoesDaAresta, { analiseId, filtros, aresta: a, total }));
