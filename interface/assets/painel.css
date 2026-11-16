@@ -1289,12 +1289,17 @@ span.sinal-fim.alerta { color: var(--alerta-forte); background: var(--alerta-sua
   .topo .topo-progresso > i { background: Highlight; }
 }
 
-/* ═══ Vivo · Detalhes, Legenda e Transações ═══════════════════════════════════════════════════════
-   Detalhes: índice fixo com um chip por bloco. O chip leva ao bloco e o abre; o ponto do chip acende enquanto o
-   bloco está aberto (estado real da página). Nenhum movimento além da entrada curta do conteúdo ao abrir. */
+/* ═══ Vivo · Detalhes (score, metodologia e legenda) e Transações ═════════════════════════════════
+   Detalhes: índice fixo no alto da vista, com um grupo de chips por seção (Score e metodologia · Legenda). O chip
+   leva ao bloco e o abre; o ponto do chip acende enquanto o bloco está aberto (estado real da página). Nenhum
+   movimento além da entrada curta do conteúdo ao abrir. */
 .indice-det { position: sticky; top: 68px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
   padding: 8px 10px; border: 1px solid var(--borda); border-radius: var(--r-l); background: var(--vidro);
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: var(--sombra-1); }
+.indice-det .indice-grupos { flex: 1 1 0; min-width: min(100%, 22em); display: grid; gap: 6px; }
+.indice-det > .botao { margin-left: auto; align-self: flex-start; }
+.indice-det .indice-grupo { display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; min-width: 0; }
+.indice-det .indice-grupo > .eyebrow { flex: none; min-width: 9.5em; }
 .indice-det .chips { flex: 1 1 auto; min-width: 0; }
 .chip-ir { min-height: 28px; cursor: pointer; font-family: inherit; font-weight: 500;
   transition: border-color var(--dur), color var(--dur), background var(--dur); }
@@ -1310,14 +1315,12 @@ span.sinal-fim.alerta { color: var(--alerta-forte); background: var(--alerta-sua
 .tabela-faixas .ponto-num { width: 22px; height: 22px; flex: none; display: grid; place-items: center; border-radius: 6px;
   border: 1px solid rgba(240, 68, 68, 0.28); background: var(--acao-suave); color: var(--marca-2);
   font-size: var(--t-2xs); font-weight: 700; font-variant-numeric: tabular-nums; }
-/* Legenda geral: indicação de onde fica a explicação completa (Detalhes) */
-.nota-detalhes { margin-top: 10px; }
-.nota-detalhes .botao.texto { font-size: inherit; }
 /* Transações: a ajuda da tabela fica discreta, abaixo da paginação */
 .como-ler-tabela > summary { color: var(--texto-suave); font-size: var(--t-s); }
 
 @media (max-width: 980px) {
   .indice-det { position: static; }
+  .indice-det .indice-grupo > .eyebrow { min-width: 0; width: 100%; }
   .bloco-det { scroll-margin-top: 80px; }
 }
 @media (prefers-reduced-motion: reduce) {

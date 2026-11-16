@@ -1,5 +1,6 @@
 /* NodeWatch — seções do painel do analista. Cada bloco responde a uma pergunta do analista (mostrada no cabeçalho).
-   Vistas: Análise (dataset, execução e recentes) · Visão geral · Investigação · Transações · Detalhes (interpretação do score). */
+   Vistas: Análise (dataset, execução e recentes) · Visão geral · Investigação · Transações · Detalhes (interpretação do
+   score e legenda geral). */
 (function () {
   'use strict';
   const { h, f, api, consulta, useCarga, useIntervalo, Icone, Rede, Dica, Aviso, Erro, Carregando, Esqueleto, Vazio, Legenda, Selo, Secao, Pares, Dialogo, Barra, BarraProgresso,
@@ -652,11 +653,11 @@
         h('span', { className: 'fraco tab-num' }, d.pagina + ' / ' + f.inteiro(d.paginas)),
         h('button', { type: 'button', className: 'botao pequeno', disabled: d.pagina >= d.paginas, onClick: () => setTabela(Object.assign({}, tabela, { pagina: d.pagina + 1 })) }, 'Próxima'),
         h('button', { type: 'button', className: 'botao pequeno', disabled: d.pagina >= d.paginas, onClick: () => setTabela(Object.assign({}, tabela, { pagina: d.paginas })) }, 'Última')) : null,
-      /* Só o que é próprio da tabela; cores, alerta, moedas e datas ficam na Legenda geral. */
+      /* Só o que é próprio da tabela; cores, alerta, moedas e datas ficam na Legenda, em Detalhes. */
       h('details', { className: 'como-ler-tabela' }, h('summary', null, 'Como ler a tabela'),
         h(Legenda, null, h('strong', null, 'Posição'), ': lugar na lista atual; muda com filtros e ordenação. ',
           h('strong', null, 'ID de exibição'), ': ordem cronológica no dataset inteiro (empates pela ordem da linha); nunca muda. ',
-          'Cores, alerta e moedas: botão Legenda.')));
+          'Cores, alerta e moedas: Legenda, na vista Detalhes.')));
   }
 
   /* ═══ 6. Detalhes da transação (diálogo) ═════════════════════════════ */
@@ -718,21 +719,29 @@
     return h(Dialogo, { id: 'dlg-detalhes', aberto: !!id, titulo, aoFechar }, corpo);
   }
 
-  /* ═══ 7. Detalhes: score e metodologia ══════════════════════════════ */
-  /* Casa da informação técnica completa: como ler o score (13 pontos numerados), faixas, conversão, finalidade e
-     limites, definição de cada indicador (com a regra completa das contas prioritárias) e as tipologias.
-     Cada assunto aparece uma vez, num bloco recolhível; um índice fixo no alto leva a cada bloco e o abre.
-     Os números (limiar, score de alerta, faixas e conversão) vêm da API — do manifesto aberto ou, sem análise,
-     do modelo carregado. Nada é recalculado aqui. */
+  /* ═══ 7. Detalhes: score, metodologia e legenda ═════════════════════ */
+  /* Casa da informação técnica completa e da legenda geral, em duas seções:
+     · Score e metodologia: como ler o score (13 pontos numerados), faixas, conversão, finalidade e limites, definição de
+       cada indicador (com a regra completa das contas prioritárias) e, em análises gravadas por versões anteriores que
+       trazem tipologias, a descrição de cada tipologia;
+     · Legenda: cores e ícones, estados, convenções da tabela, sessão da interface e símbolos do grafo.
+     Cada assunto aparece uma vez, num bloco recolhível; um índice fixo no alto, agrupado pelas duas seções, leva a cada
+     bloco e o abre. Os números (limiar, score de alerta, faixas e conversão) vêm da API — do manifesto aberto ou, sem
+     análise, do modelo carregado. Nada é recalculado aqui. */
+  const GRUPOS_DETALHES = [{ id: 'metodologia', nome: 'Score e metodologia' }, { id: 'legenda', nome: 'Legenda' }];
   const BLOCOS_DETALHES = [
-    { id: 'det-ler', nome: 'Como ler o score', sub: 'pontos 1 a 5', score: true },
-    { id: 'det-faixas', nome: 'Faixas e recomendações', sub: 'pontos 6 a 10', score: true },
-    { id: 'det-conversao', nome: 'Conversão para 0–1000', sub: 'técnico', score: true },
-    { id: 'det-limites', nome: 'Finalidade e limites', sub: 'pontos 11 a 13', score: true },
-    { id: 'det-indicadores', nome: 'O que cada indicador mede', sub: 'indicadores e contas' },
-    { id: 'det-tipologias', nome: 'Tipologias', sub: 'registradas, não previstas' },
+    { id: 'det-ler', nome: 'Como ler o score', sub: 'pontos 1 a 5', score: true, grupo: 'metodologia' },
+    { id: 'det-faixas', nome: 'Faixas e recomendações', sub: 'pontos 6 a 10', score: true, grupo: 'metodologia' },
+    { id: 'det-conversao', nome: 'Conversão para 0–1000', sub: 'técnico', score: true, grupo: 'metodologia' },
+    { id: 'det-limites', nome: 'Finalidade e limites', sub: 'pontos 11 a 13', score: true, grupo: 'metodologia' },
+    { id: 'det-indicadores', nome: 'O que cada indicador mede', sub: 'indicadores e contas', grupo: 'metodologia' },
+    { id: 'det-tipologias', nome: 'Tipologias', sub: 'registradas, não previstas', tipologias: true, grupo: 'metodologia' },
+    { id: 'leg-cores', nome: 'Cores e ícones', sub: 'faixas, alerta e destaques', grupo: 'legenda' },
+    { id: 'leg-estados', nome: 'Estados', sub: 'da análise e do dataset', grupo: 'legenda' },
+    { id: 'leg-tabela', nome: 'Tabela e valores', sub: 'convenções da tabela', grupo: 'legenda' },
+    { id: 'leg-sessao', nome: 'Sessão da interface', sub: 'sem retomada', grupo: 'legenda' },
+    { id: 'leg-grafo', nome: 'Símbolos do grafo', sub: 'contas, setas e caminhos', grupo: 'legenda' },
   ];
-
   /* Bloco recolhível controlado: o índice abre o bloco ao pular para ele; abrir à mão também atualiza o índice. */
   const BlocoDetalhe = ({ b, abertos, aoAlternar, children }) =>
     h('details', { id: b.id, className: 'acordeao bloco-det', open: abertos.has(b.id), onToggle: e => aoAlternar(b.id, e.currentTarget.open) },
@@ -802,14 +811,66 @@
             h('li', null, 'O score é um ', h('strong', null, 'sinal para investigação, não uma prova de fraude'), ' nem de lavagem.')))));
   }
 
+  /* Legenda geral (antes um diálogo próprio): as convenções visuais, agora em blocos da vista Detalhes.
+     O que já é explicado na seção Score e metodologia (score, score original, limiar, alerta e recomendações das
+     faixas) não se repete aqui: a legenda fica só com a convenção (cor, ícone, símbolo). */
+  const COR_FAIXA = { baixa: 'Verde.', intermediaria: 'Âmbar.', alta: 'Vermelho, com "⚠": toda transação desta faixa tem alerta.' };
+  function BlocosLegenda({ estado, bloco }) {
+    return h('div', { className: 'acordeoes' },
+      bloco('leg-cores',
+        h(Legenda, null, 'Nenhuma informação depende só da cor.'),
+        h('h4', null, 'Faixas do score'),
+        h(Pares, { itens: (estado.faixas || []).map(x => [h('span', { className: 'linha', style: { gap: 8, flexWrap: 'nowrap' } },
+          h('span', { className: 'ponto-faixa ' + x.id, 'aria-hidden': 'true' }), x.nome + ' (' + x.de + '–' + x.ate + ')'), COR_FAIXA[x.id] || '']) }),
+        h('h4', null, 'Destaques da interface'),
+        h(Pares, { itens: [
+          ['⚠ e vermelho', 'Alerta (transação, conta ou caminho): sempre com "⚠", texto ou fundo tingido, nunca só a cor. Na tabela, faixa vermelha no início da linha e "⚠ Sim".'],
+          ['Vermelho NodeWatch', 'Item ativo, ação principal, seleção, progresso e etapa em andamento (▶). Sem "⚠", não indica alerta.'],
+          ['Âmbar', 'Atenção: resultado parcial, linhas recusadas ou aviso.'],
+          ['Verde e ✓', 'Etapa ou análise concluída; dataset válido.'],
+          ['Ciano', 'Aviso informativo.'],
+          ['Contorno amarelo', 'Elemento com o foco do teclado.'],
+          ['Movimento', 'Só onde há estado real: etapa em andamento, bloco gravado, caminho com alerta e conta em foco. Para quando o sistema pede menos movimento.']] })),
+      bloco('leg-estados',
+        h('h4', null, 'Estados da análise'),
+        h(Pares, { itens: Object.entries(estado.status_analise || {}).map(([k, v]) => [NOME_STATUS[k] || k, v.replace(/^[^:]+:\s*/, '')]) }),
+        h('h4', null, 'Estados do dataset'),
+        h(Pares, { itens: [['Válido', 'Todas as linhas passaram na validação.'], ['Válido, com linhas recusadas', 'Há linhas com problema; elas ficam fora da análise e são listadas.'],
+          ['Inválido', 'O arquivo não pode ser analisado; a tabela de problemas diz o que corrigir.']] })),
+      bloco('leg-tabela',
+        h(Pares, { itens: [['Posição e ID de exibição', 'Explicados em "Como ler a tabela", na vista Transações.'],
+          ROTULO ? ['Rótulo do dataset', 'Marcação de lavagem que já veio no arquivo; separada da previsão.'] : null, ['Não informado', 'Formato de pagamento vazio ou desconhecido no arquivo.'],
+          ['Valores e moedas', 'Na moeda de pagamento, sem conversão. Moedas diferentes nunca são somadas.'],
+          ['Datas', 'No horário do dataset, formato dia/mês/ano.'],
+          ['Recorte', 'Conjunto de transações que passa pelos filtros aplicados.']] })),
+      bloco('leg-sessao',
+        h(Pares, { itens: [['Sessão ativa', (estado.sessao || {}).leitura], ['Sem retomada', 'Reabrir a página mostra o que ficou gravado. Nenhuma análise recomeça sozinha.']] })),
+      bloco('leg-grafo',
+        h(Pares, { itens: [
+          ['Conta em foco', 'Anel branco com halo vermelho que pulsa.'],
+          ['Conta ligada a alerta', 'Vermelha, com "!".'],
+          ['Grupo de contas', 'Círculo tracejado com "+N": contas com uma única ligação, à mesma conta. Selecione para expandir.'],
+          ['Seta', 'Vai da conta de origem para a de destino do dinheiro.'],
+          ['Caminho com alerta', 'Linha vermelha; um pulso percorre a linha no sentido do dinheiro.'],
+          ['Traço tracejado', 'Sem ordem temporal confirmada: não é uma etapa seguinte do dinheiro.'],
+          ['Traço branco animado', 'Sequência selecionada: horários compatíveis, o que não prova que é o mesmo dinheiro.'],
+          ['Caminho até o foco', 'Linha branca, ao selecionar uma conta.'],
+          ['Aresta agrupada', 'Traço grosso: transações de mesma origem, destino e moeda.'],
+          ['"banco-…final"', 'Rótulo abreviado quando há muitas contas; o completo fica na dica e na seleção.']] }),
+        h(Legenda, null, 'A legenda própria de cada grafo (limites ativos, disposição e totais) fica junto dele, na vista Investigação.')));
+  }
+
   function SecaoDetalhes({ estado, manifesto, visao }) {
     const v = visao && visao.dados;
     const temScore = !!limiarDe(manifesto, estado);
-    const blocos = BLOCOS_DETALHES.filter(b => temScore || !b.score);
+    /* tipologias só existem em análises gravadas por versões anteriores (com arquivo de padrões) */
+    const temTipologias = !!(manifesto && manifesto.tipologias && manifesto.tipologias.disponivel);
+    const blocos = BLOCOS_DETALHES.filter(b => (temScore || !b.score) && (temTipologias || !b.tipologias));
     const [abertos, setAbertos] = React.useState(() => new Set(['det-ler']));
     const alternar = (id, aberto) => setAbertos(s => { if (s.has(id) === aberto) return s; const n = new Set(s); if (aberto) n.add(id); else n.delete(id); return n; });
     const todosAbertos = blocos.every(b => abertos.has(b.id));
-    /* Índice: abre o bloco, leva até ele (sem rolagem suave quando o sistema pede menos movimento) e põe o foco no título. */
+    /* Índice: abre o bloco, leva até ele logo abaixo do índice fixo (a altura real do índice muda com a largura da tela),
+       sem rolagem suave quando o sistema pede menos movimento, e põe o foco no título. */
     const ir = id => {
       alternar(id, true);
       const el = document.getElementById(id);
@@ -817,35 +878,44 @@
       el.open = true;
       let reduzir = false;
       try { reduzir = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { /* sem matchMedia: rolagem direta */ }
-      el.scrollIntoView({ block: 'start', behavior: reduzir ? 'auto' : 'smooth' });
+      const indice = document.querySelector('.indice-det');
+      const fixo = indice && getComputedStyle(indice).position === 'sticky';
+      const folga = fixo ? (parseFloat(getComputedStyle(indice).top) || 0) + indice.offsetHeight + 12 : 80;
+      window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - folga), behavior: reduzir ? 'auto' : 'smooth' });
       const s = el.querySelector('summary'); if (s) s.focus({ preventScroll: true });
     };
     const cr = v && v.contas_risco;
     const regra = (cr && cr.regra) || estado.regra_contas;
     const limite = (cr && cr.limite) || (estado.limites || {}).contas_risco;
     const bloco = (id, ...conteudo) => h(BlocoDetalhe, { b: BLOCOS_DETALHES.find(x => x.id === id), abertos, aoAlternar: alternar }, ...conteudo);
-    return h(Secao, { id: 'detalhes', icone: 'detalhes', titulo: 'Score e metodologia' },
-      h('nav', { className: 'indice-det', 'aria-label': 'Blocos desta página' },
-        h('ul', { className: 'chips' }, blocos.map(b => h('li', { key: b.id },
-          h('button', { type: 'button', className: 'chip chip-ir' + (abertos.has(b.id) ? ' aberto' : ''), 'aria-controls': b.id, onClick: () => ir(b.id),
-            'aria-label': b.nome + (abertos.has(b.id) ? ' (aberto)' : '') }, h('span', { className: 'marca-aberto', 'aria-hidden': 'true' }), b.nome)))),
+    const chip = b => h('li', { key: b.id },
+      h('button', { type: 'button', className: 'chip chip-ir' + (abertos.has(b.id) ? ' aberto' : ''), 'aria-controls': b.id, onClick: () => ir(b.id),
+        'aria-label': b.nome + (abertos.has(b.id) ? ' (aberto)' : '') }, h('span', { className: 'marca-aberto', 'aria-hidden': 'true' }), b.nome));
+    return h(React.Fragment, null,
+      /* índice das duas seções, fixo no alto da vista */
+      h('nav', { className: 'indice-det', 'aria-label': 'Blocos de Detalhes' },
+        h('div', { className: 'indice-grupos' }, GRUPOS_DETALHES.map(g => h('div', { key: g.id, className: 'indice-grupo' },
+          h('span', { className: 'eyebrow', id: 'indice-' + g.id }, g.nome),
+          h('ul', { className: 'chips', 'aria-labelledby': 'indice-' + g.id }, blocos.filter(b => b.grupo === g.id).map(chip))))),
         h('button', { type: 'button', className: 'botao pequeno fantasma', onClick: () => setAbertos(todosAbertos ? new Set() : new Set(blocos.map(b => b.id))) },
           todosAbertos ? 'Recolher tudo' : 'Abrir tudo')),
-      h(InterpretacaoScore, { estado, manifesto, abertos, aoAlternar: alternar }),
-      h('div', { className: 'acordeoes' },
-        bloco('det-indicadores',
-          h(Pares, { itens: [
-            v ? ['Recorte', v.registros.legenda + (v.periodo ? ' ' + v.periodo.legenda : '')] : null,
-            v ? ['Alertas', v.alertas.legenda] : null,
-            v && v.score ? ['Score', v.score.legenda] : null,
-            v ? ['Formato de pagamento', v.formatos.legenda + '. Vazio ou desconhecido aparece como "Não informado".'] : null,
-            /* única cópia da regra completa; a Visão geral e a Investigação mostram só um resumo e apontam para cá */
-            regra ? ['Contas prioritárias', regra + (limite ? ' A lista mostra até ' + limite + ' contas.' : '')] : null] }),
-          v ? null : h(Legenda, null, 'As definições dos indicadores do recorte aparecem com uma análise aberta.')),
-        bloco('det-tipologias',
-          h(Legenda, null, 'Tipologias de lavagem registradas no dataset, não previstas pelo modelo.' +
-            (v && !v.tipologias.disponivel ? ' Este dataset não tem arquivo de padrões.' : '')),
-          (estado.tipologias || []).length ? h(Pares, { itens: estado.tipologias.map(x => [h('span', { className: 'mono' }, x.tipologia), x.descricao]) }) : null)));
+      h(Secao, { id: 'detalhes', icone: 'detalhes', titulo: 'Score e metodologia' },
+        h(InterpretacaoScore, { estado, manifesto, abertos, aoAlternar: alternar }),
+        h('div', { className: 'acordeoes' },
+          bloco('det-indicadores',
+            h(Pares, { itens: [
+              v ? ['Recorte', v.registros.legenda + (v.periodo ? ' ' + v.periodo.legenda : '')] : null,
+              v ? ['Alertas', v.alertas.legenda] : null,
+              v && v.score ? ['Score', v.score.legenda] : null,
+              v ? ['Formato de pagamento', v.formatos.legenda + '. Vazio ou desconhecido aparece como "Não informado".'] : null,
+              /* única cópia da regra completa; a Visão geral e a Investigação mostram só um resumo e apontam para cá */
+              regra ? ['Contas prioritárias', regra + (limite ? ' A lista mostra até ' + limite + ' contas.' : '')] : null] }),
+            v ? null : h(Legenda, null, 'As definições dos indicadores do recorte aparecem com uma análise aberta.')),
+          temTipologias ? bloco('det-tipologias',
+            h(Legenda, null, 'Tipologias de lavagem registradas no dataset desta análise (arquivo de padrões de uma versão anterior do painel), não previstas pelo modelo.'),
+            (estado.tipologias || []).length ? h(Pares, { itens: estado.tipologias.map(x => [h('span', { className: 'mono' }, x.tipologia), x.descricao]) }) : null) : null)),
+      h(Secao, { id: 'legenda', icone: 'legenda', titulo: 'Legenda', pergunta: 'Símbolos, cores e convenções usados no painel' },
+        h(BlocosLegenda, { estado, bloco })));
   }
 
   /* ═══ Operação (gaveta à direita) ════════════════════════════════════
@@ -1059,56 +1129,6 @@
           ABAS.map(([id, nome]) => h('button', { key: id, id: 'aba-' + id, role: 'tab', type: 'button', 'aria-selected': aba === id, 'aria-controls': 'painel-aba', tabIndex: aba === id ? 0 : -1, onClick: () => setAba(id) }, nome))),
         h('div', { role: 'tabpanel', id: 'painel-aba', 'aria-labelledby': 'aba-' + aba, tabIndex: 0 },
           aba === 'desempenho' ? h(Desempenho, { leitura }) : aba === 'metricas' ? h(MetricasML, { analiseId, aberto }) : h(ListaLogs, { key: aba, tipo: aba, aberto })))));
-  }
-
-  /* ═══ Legenda geral ══════════════════════════════════════════════════ */
-  /* Casa dos símbolos, cores, classificações e convenções visuais (inclusive as do grafo). O que é explicação longa
-     fica em Detalhes (faixas com recomendações, limiar, conversão e descrições das tipologias); aqui só a convenção. */
-  const COR_FAIXA = { baixa: 'Verde.', intermediaria: 'Âmbar.', alta: 'Vermelho, com "⚠": toda transação desta faixa tem alerta.' };
-  function DialogoLegenda({ aberto, aoFechar, estado, aoDetalhes }) {
-    const grupo = (titulo, itens, nota) => h('div', { className: 'bloco' }, h('h3', null, titulo), h(Pares, { itens }), nota || null);
-    /* atalho para Detalhes quando quem abre a legenda oferece a navegação; senão, fica a indicação em texto */
-    const irDetalhes = texto => h('p', { className: 'legenda nota-detalhes' }, texto + ' ',
-      aoDetalhes ? h('button', { type: 'button', className: 'botao texto', onClick: () => { aoFechar(); aoDetalhes(); } }, 'Abrir Detalhes') : h('strong', null, 'em Detalhes.'));
-    return h(Dialogo, { id: 'dlg-legenda', aberto, titulo: 'Legenda geral', aoFechar },
-      h(Legenda, null, 'Nenhuma informação depende só da cor.'),
-      h('div', { className: 'cartoes' },
-        grupo('Score e faixas', estado.faixas.map(x => [x.nome + ' (' + x.de + '–' + x.ate + ')', COR_FAIXA[x.id] || '']).concat([
-          ['Score', 'Índice de prioridade de 0 a 1000. Não é probabilidade.'],
-          ['Score original', 'Valor de 0 a 1 devolvido pelo modelo; não calibrado.'],
-          ['Alerta', 'Score ' + estado.score_alerta + ' ou mais. Sinal para investigação, não confirmação de lavagem.']]),
-          irDetalhes('Recomendações, limiar e conversão:')),
-        grupo('Cores e ícones', [
-          ['⚠ e vermelho', 'Alerta (transação, conta ou caminho): sempre com "⚠", texto ou fundo tingido, nunca só a cor. Na tabela, faixa vermelha no início da linha e "⚠ Sim".'],
-          ['Vermelho NodeWatch', 'Item ativo, ação principal, seleção, progresso e etapa em andamento (▶). Sem "⚠", não indica alerta.'],
-          ['Âmbar', 'Atenção: resultado parcial, linhas recusadas ou aviso.'],
-          ['Verde e ✓', 'Etapa ou análise concluída; dataset válido.'],
-          ['Ciano', 'Aviso informativo.'],
-          ['Contorno amarelo', 'Elemento com o foco do teclado.'],
-          ['Movimento', 'Só onde há estado real: etapa em andamento, bloco gravado, caminho com alerta e conta em foco. Para quando o sistema pede menos movimento.']]),
-        grupo('Estados da análise', Object.entries(estado.status_analise).map(([k, v]) => [NOME_STATUS[k], v.replace(/^[^:]+:\s*/, '')])),
-        grupo('Estados do dataset', [['Válido', 'Todas as linhas passaram na validação.'], ['Válido, com linhas recusadas', 'Há linhas com problema; elas ficam fora da análise e são listadas.'],
-          ['Inválido', 'O arquivo não pode ser analisado; a tabela de problemas diz o que corrigir.']]),
-        grupo('Tabela', [['Posição e ID de exibição', 'Explicados em "Como ler a tabela", na vista Transações.'],
-          ROTULO ? ['Rótulo do dataset', 'Marcação de lavagem que já veio no arquivo; separada da previsão.'] : null, ['Não informado', 'Formato de pagamento vazio ou desconhecido no arquivo.'],
-          ['Valores e moedas', 'Na moeda de pagamento, sem conversão. Moedas diferentes nunca são somadas.'],
-          ['Datas', 'No horário do dataset, formato dia/mês/ano.'],
-          ['Recorte', 'Conjunto de transações que passa pelos filtros aplicados.']]),
-        grupo('Sessão da interface', [['Sessão ativa', estado.sessao.leitura], ['Sem retomada', 'Reabrir a página mostra o que ficou gravado. Nenhuma análise recomeça sozinha.']]),
-        grupo('Grafo', [
-          ['Conta em foco', 'Anel branco com halo vermelho que pulsa.'],
-          ['Conta ligada a alerta', 'Vermelha, com "!".'],
-          ['Grupo de contas', 'Círculo tracejado com "+N": contas com uma única ligação, à mesma conta. Selecione para expandir.'],
-          ['Seta', 'Vai da conta de origem para a de destino do dinheiro.'],
-          ['Caminho com alerta', 'Linha vermelha; um pulso percorre a linha no sentido do dinheiro.'],
-          ['Traço tracejado', 'Sem ordem temporal confirmada: não é uma etapa seguinte do dinheiro.'],
-          ['Traço branco animado', 'Sequência selecionada: horários compatíveis, o que não prova que é o mesmo dinheiro.'],
-          ['Caminho até o foco', 'Linha branca, ao selecionar uma conta.'],
-          ['Aresta agrupada', 'Traço grosso: transações de mesma origem, destino e moeda.'],
-          ['"banco-…final"', 'Rótulo abreviado quando há muitas contas; o completo fica na dica e na seleção.']]),
-        h('div', { className: 'bloco' }, h('h3', null, 'Tipologias'),
-          h(Legenda, null, 'Padrões de lavagem registrados no arquivo do dataset; o modelo não os prevê.'),
-          irDetalhes('Descrição de cada tipologia:'))));
   }
 
   /* ═══ Assistente de dúvidas ══════════════════════════════════════════ */
@@ -1373,5 +1393,5 @@
     return itens.filter(Boolean).slice(0, 3);
   }
 
-  Object.assign(window.NW, { SecaoDataset, SecaoFiltros, SecaoVisao, SecaoInvestigacao, SecaoTabela, SecaoDetalhes, DialogoDetalhes, PainelLateral, DialogoLegenda, Assistente, NOME_STATUS, TOM_STATUS, andamentoAnalise });
+  Object.assign(window.NW, { SecaoDataset, SecaoFiltros, SecaoVisao, SecaoInvestigacao, SecaoTabela, SecaoDetalhes, DialogoDetalhes, PainelLateral, Assistente, NOME_STATUS, TOM_STATUS, andamentoAnalise });
 })();

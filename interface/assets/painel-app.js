@@ -5,7 +5,7 @@
 (function () {
   'use strict';
   const { h, f, api, consulta, useCarga, useIntervalo, useSessao, sessao, FILTROS_VAZIOS, Icone, Rede, Erro, Carregando, Vazio, Selo,
-    SecaoDataset, SecaoFiltros, SecaoVisao, SecaoInvestigacao, SecaoTabela, SecaoDetalhes, DialogoDetalhes, PainelLateral, DialogoLegenda, Assistente,
+    SecaoDataset, SecaoFiltros, SecaoVisao, SecaoInvestigacao, SecaoTabela, SecaoDetalhes, DialogoDetalhes, PainelLateral, Assistente,
     NOME_STATUS, TOM_STATUS, andamentoAnalise } = window.NW;
 
   const TABELA_PADRAO = { pagina: 1, tamanho: 50, ordenar: 'id_exibicao', direcao: 'asc' };
@@ -24,7 +24,7 @@
     { id: 'visao', nome: 'Visão geral', icone: 'painel', grupo: 'Resultados', resultados: true, dica: 'Leitura do recorte, indicadores, faixas do score e contas prioritárias' },
     { id: 'investigacao', nome: 'Investigação', icone: 'grafo', grupo: 'Resultados', resultados: true, dica: 'Contas prioritárias e grafo de transações' },
     { id: 'transacoes', nome: 'Transações', icone: 'tabela', grupo: 'Resultados', resultados: true, dica: 'Registros de transação, com detalhes por linha' },
-    { id: 'detalhes', nome: 'Detalhes', icone: 'detalhes', grupo: 'Resultados', dica: 'Interpretação do score e definições dos indicadores' },
+    { id: 'detalhes', nome: 'Detalhes', icone: 'detalhes', grupo: 'Resultados', dica: 'Interpretação do score, definições dos indicadores e legenda de cores, estados e símbolos' },
   ];
   const NOME_VISTA = Object.fromEntries(VISTAS.map(v => [v.id, v.nome]));
 
@@ -40,9 +40,10 @@
       h('span', { className: 'rotulo-estado', 'aria-hidden': 'true' }, texto), h('span', { className: 'sr' }, longo));
   }
 
-  /* Navegação lateral: vistas agrupadas, contadores reais (alertas da análise aberta) e atalhos do sistema.
+  /* Navegação lateral: vistas agrupadas, contadores reais (alertas da análise aberta) e o atalho da Operação.
+     A legenda geral não tem item próprio: fica na vista Detalhes.
      Recolhível (só ícones, com o nome na dica e no nome acessível); a escolha fica guardada neste navegador. */
-  function Navegacao({ vista, aoVista, temResultados, emAndamento, manifesto, aberta, aoFechar, lateral, aoLateral, aoLegenda, estado, recolhida, aoRecolher }) {
+  function Navegacao({ vista, aoVista, temResultados, emAndamento, manifesto, aberta, aoFechar, lateral, aoLateral, estado, recolhida, aoRecolher }) {
     const grupos = [];
     VISTAS.forEach(v => { let g = grupos.find(x => x.nome === v.grupo); if (!g) { g = { nome: v.grupo, itens: [] }; grupos.push(g); } g.itens.push(v); });
     const alertas = manifesto && manifesto.resultados && manifesto.resultados.disponiveis ? manifesto.contagens.alertas : null;
@@ -69,9 +70,7 @@
           h('ul', { 'aria-label': 'Sistema' },
             h('li', null, h('button', { type: 'button', id: 'nav-operacao', className: 'nav-item', 'aria-expanded': lateral, 'aria-controls': 'painel-operacional', 'data-dica-nav': 'Operação',
               onClick: () => { aoLateral(!lateral); aoFechar(); } },
-              h(Icone, { nome: 'operacao' }), h('span', { className: 'rotulo-nav' }, 'Operação'))),
-            h('li', null, h('button', { type: 'button', className: 'nav-item', 'aria-haspopup': 'dialog', 'data-dica-nav': 'Legenda', onClick: () => { aoLegenda(); aoFechar(); } },
-              h(Icone, { nome: 'legenda' }), h('span', { className: 'rotulo-nav' }, 'Legenda'))))),
+              h(Icone, { nome: 'operacao' }), h('span', { className: 'rotulo-nav' }, 'Operação'))))),
         h('div', { className: 'rodape' },
           h('button', { type: 'button', className: 'nav-item nav-alternar', 'aria-pressed': !!recolhida, 'data-dica-nav': 'Expandir menu', onClick: aoRecolher },
             h(Icone, { nome: 'recolher' }), h('span', { className: 'rotulo-nav' }, recolhida ? 'Expandir menu' : 'Recolher menu')),
@@ -99,7 +98,6 @@
     const [txAssistente, setTxAssistente] = React.useState(null);
     const [pedidoAssistente, setPedidoAssistente] = React.useState(0);
     const [lateral, setLateral] = React.useState(false);
-    const [legenda, setLegenda] = React.useState(false);
     const [navAberta, setNavAberta] = React.useState(false);
     // menu lateral recolhido (só ícones): preferência deste navegador
     const [navRecolhida, setNavRecolhida] = React.useState(() => { try { return localStorage.getItem('nw.nav') === 'recolhida'; } catch (e) { return false; } });
@@ -200,7 +198,7 @@
       h('div', { className: 'rede-fundo', 'aria-hidden': 'true' }, h(Rede)),
       h('div', { className: 'app' + (navRecolhida ? ' recolhida' : '') },
       h(Navegacao, { vista, aoVista: mudarVista, temResultados, emAndamento, manifesto, aberta: navAberta, estado: est, recolhida: navRecolhida, aoRecolher: recolher,
-        aoFechar: () => setNavAberta(false), lateral, aoLateral: setLateral, aoLegenda: () => setLegenda(true) }),
+        aoFechar: () => setNavAberta(false), lateral, aoLateral: setLateral }),
       h('div', { className: 'coluna' },
         h('header', { className: 'topo' },
           h('button', { type: 'button', className: 'botao hamburguer', 'aria-expanded': navAberta, 'aria-controls': 'navegacao',
@@ -224,7 +222,6 @@
           temResultados ? h(DialogoDetalhes, { analiseId: manifesto.id, id: detalheId, total, aoFechar: () => setDetalheId(null), aoFiltrarTabela: filtrarTabela, aoFocar: focar,
             aoInterpretar: () => { setDetalheId(null); mudarVista('detalhes'); },
             aoPerguntar: id => { setDetalheId(null); setTxAssistente(id); setPedidoAssistente(n => n + 1); } }) : null))),
-      h(DialogoLegenda, { aberto: legenda, aoFechar: () => setLegenda(false), estado: est, aoDetalhes: () => { setLegenda(false); mudarVista('detalhes'); } }),
       /* botão fixo no canto inferior direito, fora do <main> e do topo: não depende da rolagem nem é cortado */
       h(Assistente, { analiseId: manifesto ? manifesto.id : '', filtros: aplicados, estado: est, total,
         transacaoId: manifesto ? txAssistente : null, aoLimparTransacao: () => setTxAssistente(null), pedido: pedidoAssistente,
