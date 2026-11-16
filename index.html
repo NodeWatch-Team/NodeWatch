@@ -109,7 +109,7 @@
             <p class="rotulo">A solução</p>
             <h2 class="h-bloco">Triagem inteligente, não bloqueio cego</h2>
             <ul class="lista-curta">
-              <li><strong>Teoria dos Grafos</strong>: contas viram vértices e transações viram arestas, revelando ciclos e grupos.</li>
+              <li><strong>Teoria dos Grafos</strong>: contas viram vértices e transações viram arestas; o grau de cada conta entra no modelo e o painel mostra para onde o dinheiro seguiu.</li>
               <li><strong>Machine Learning</strong>: um Random Forest pontua cada transação com atributos temporais causais.</li>
               <li><strong>Decisão humana</strong>: o score ordena a fila de investigação; o analista decide.</li>
             </ul>
@@ -123,14 +123,14 @@
             <span class="kpi-nota">base IBM AML HI-Small</span>
           </li>
           <li class="kpi">
-            <span class="kpi-numero">49 + 21</span>
+            <span class="kpi-numero">49</span>
             <span class="kpi-rotulo">atributos causais</span>
-            <span class="kpi-nota">lavagem + estado de rede</span>
+            <span class="kpi-nota">por transação, só com o passado</span>
           </li>
           <li class="kpi">
             <span class="kpi-numero">0,464</span>
             <span class="kpi-rotulo">PR-AUC (<em>Average Precision</em>)</span>
-            <span class="kpi-nota">com 0,10% de positivos</span>
+            <span class="kpi-nota">com 0,11% de positivos no teste</span>
           </li>
           <li class="kpi kpi-alerta">
             <span class="kpi-numero">0–1000</span>
@@ -162,22 +162,22 @@
           <li class="etapa-pipe">
             <span class="etapa-num">2</span>
             <div>
-              <h3>Modelagem em grafo</h3>
+              <h3>Atributos e inferência ML</h3>
               <ul class="lista-curta">
-                <li>Contas são vértices (<span class="mono">V</span>).</li>
-                <li>Transações são arestas direcionadas e ponderadas pelo valor (<span class="mono">E</span>).</li>
-                <li>Ciclos, grupos fortemente conexos e contas concentradoras ficam visíveis como forma.</li>
+                <li>Extração temporal causal: cada transação só enxerga o passado.</li>
+                <li>Entre os atributos estão medidas de grafo: o grau de entrada e de saída de cada conta e se a aresta entre as duas contas é nova.</li>
+                <li>Random Forest pontua cada transação; o resultado vira um score de 0 a 1000.</li>
               </ul>
             </div>
           </li>
           <li class="etapa-pipe">
             <span class="etapa-num">3</span>
             <div>
-              <h3>Atributos e inferência ML</h3>
+              <h3>Investigação em grafo</h3>
               <ul class="lista-curta">
-                <li>Extração temporal causal: cada transação só enxerga o passado.</li>
-                <li>Random Forest pontua cada transação; o resultado vira um score de 0 a 1000.</li>
-                <li>Pontuação em lote: cerca de 17.981 transações por segundo em CPU.</li>
+                <li>As transações já pontuadas formam um multigrafo direcionado: contas são vértices (<span class="mono">V</span>), transações são arestas (<span class="mono">E</span>).</li>
+                <li>A rede da conta investigada é explorada salto a salto, com as arestas em alerta destacadas.</li>
+                <li>Cadeias com horários compatíveis mostram para onde o dinheiro seguiu, inclusive quando volta à conta.</li>
               </ul>
             </div>
           </li>
@@ -242,7 +242,7 @@
             </article>
             <article class="cartao">
               <h3>Modelo 2 · Estado de rede (21 atributos)</h3>
-              <p>Random Forest separado: 333.954 medições de 135 caminhos (perda, RTT, jitter) classificadas em OK, RISCO ou FALHA.</p>
+              <p>Random Forest separado e independente: 333.954 medições de 135 caminhos (perda, RTT, jitter) classificadas em OK, RISCO ou FALHA. Não participa da detecção de lavagem.</p>
             </article>
             <article class="cartao">
               <h3>Rigor causal</h3>
@@ -278,7 +278,7 @@
           <article class="cartao">
             <p class="ref-sigla">Grau</p>
             <h4>Centralidade de grau</h4>
-            <p>Conta arestas de entrada e saída de cada vértice: destaca <strong>concentradoras</strong> (muitas entradas) e <strong>distribuidoras</strong> (muitas saídas).</p>
+            <p>Conta arestas de entrada e saída de cada vértice: destaca <strong>concentradoras</strong> (muitas entradas) e <strong>distribuidoras</strong> (muitas saídas). O grau distinto de cada conta é atributo do Random Forest; DFS e Kosaraju rodam na linha de comando.</p>
           </article>
         </div>
 
@@ -345,7 +345,7 @@
               </tr>
               <tr>
                 <th scope="row"><code>dataset_final.csv</code></th>
-                <td>Telemetria de rede do material da disciplina, 28/09–05/10/2026</td>
+                <td>Telemetria de rede do material da disciplina, 28/09–05/10/2026; sem vínculo com as transações</td>
                 <td class="mono">333.954 medições · 135 caminhos</td>
                 <td>Modelo 2 (estado de rede)</td>
               </tr>

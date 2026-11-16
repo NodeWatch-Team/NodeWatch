@@ -97,7 +97,7 @@
     return h("div", null,
       h("p", { className: "aba-lead" },
         "Segundo ", h("strong", null, "Random Forest"),
-        ", isolado do primeiro. Prevê o estado da próxima medição de cada caminho de rede, para distinguir instabilidade de infraestrutura de comportamento financeiro anômalo."),
+        ", independente do primeiro. Prevê o estado da próxima medição de cada caminho de rede, com telemetria do material da disciplina. Não participa da detecção de lavagem: não há vínculo verificável entre essas medições e as transações, e a fusão dos dois sinais fica como trabalho futuro."),
       h(Fatos, { itens: [
         ["Medições", "333.954"], ["Caminhos", "135"], ["Atributos", "21"], ["Macro-F1", "0,75"]
       ] }),

@@ -329,6 +329,20 @@ O ciclo C001→C002→C003 vale 29.800, mas o volume do SCC é 30.300: o ciclo s
 
 `--export-json` grava o resultado em `dados/analises/` sem sobrescrever análises anteriores.
 
+## 6.6 Grafos e ML: o que o modelo usa e o que foi testado
+
+**O que o modelo usa de grafo.** O Random Forest não chama `find_scc`, `find_cycles` nem `compute_centrality`, mas usa medidas de grafo calculadas só com o passado de cada transação (`src/ml/preparacao.py`):
+- **grau de saída distinto** (`dest_distintos_origem`): para quantas contas diferentes a origem já enviou;
+- **grau de entrada distinto** (`orig_distintas_destino`): de quantas contas diferentes o destino já recebeu;
+- **aresta nova** (`par_novo`, `n_par_previas`): se o par origem→destino já apareceu antes;
+- **grau do multigrafo em janelas** de 6, 24 e 72 h: quantas transações a conta enviou ou recebeu.
+
+**O que o painel faz com o grafo.** A rede da conta em foco é explorada salto a salto (busca em largura), e a parte "Ordem no tempo" mostra cadeias com horários compatíveis, inclusive o dinheiro voltando à conta em foco.
+
+**O que foi testado e ficou de fora** (detalhes em `docs/DECISAO_GRAFOS_ML.md`):
+- **Atributos de ciclo no modelo.** Reciprocidade, profundidade de cadeia e "fecha ciclo" foram acrescentados ao Random Forest com o mesmo split, a mesma semente e os mesmos hiperparâmetros. O AP de teste foi de 0,4657 para 0,4691, a precisão caiu de 0,642 para 0,617 e o recall por tipologia variou de 1 a 4 casos (`docs/ml/resultados/experimento_atributos_grafo.json`).
+- **Kosaraju, DFS e centralidade na tela.** Rodando sobre o grafo da conta em foco numa análise do LI-Small, só 1 dos 30 grafos das contas de maior risco tinha algum grupo, e nenhuma lavagem sem alerta estava dentro de grupos (`docs/ml/resultados/estudo_relevancia_estrutura.json`). A informação foi descartada para não carregar a tela.
+
 Em um recorte de 50 mil transações do HI-Small convertidas por `scripts/converter_ibm_aml.py`, SCC e ciclos mais fan-out/fan-in somados sinalizaram cerca de 35% das lavagens rotuladas. **Evidência existente**, em `docs/melhorias-e-limitacoes.md`. O conversor descarta a moeda.
 
 # 7 Telemetria de rede
