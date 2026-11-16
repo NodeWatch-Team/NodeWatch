@@ -190,11 +190,13 @@ def test_legendas_de_cores_setas_scores_icones_estados_e_filtros(cliente):
     secoes = (INTERFACE / "assets" / "painel-secoes.js").read_text(encoding="utf-8")
     grafo = (INTERFACE / "assets" / "painel-grafo.js").read_text(encoding="utf-8")
     app_js = (INTERFACE / "assets" / "painel-app.js").read_text(encoding="utf-8")
-    for texto in ("Legenda geral", "Score e faixas", "Cores e ícones", "Estados da análise", "Estados do dataset",
+    # a legenda geral fica na vista Detalhes (seção "Legenda"), não mais num diálogo com item próprio no menu
+    for texto in ("titulo: 'Legenda'", "Faixas do score", "Cores e ícones", "Estados da análise", "Estados do dataset",
                   "faixa vermelha no início da linha", "⚠ Sim", "Contorno amarelo", "ID de exibição", "Não informado",
                   "Sessão da interface", "Traço tracejado", "Como ler o score", "Limiar original do modelo",
-                  "registradas no dataset, não previstas"):
+                  "registradas, não previstas", "Nenhuma informação depende só da cor."):
         assert texto in secoes, texto
+    assert "DialogoLegenda" not in secoes and "Legenda geral'" not in secoes
     for texto in ("Legenda do grafo", "Conta em foco", "Conta ligada a alerta", "aponta da conta de", "Caminho com alerta",
                   "Aresta agrupada", "Valor, moeda e horário", "nunca são somadas", "Limites ativos", "Disposição", "exibindo ",
                   "Traço tracejado", "sem ordem temporal confirmada", "Ordem no tempo", "horários compatíveis"):

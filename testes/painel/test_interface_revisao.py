@@ -46,7 +46,7 @@ def test_assistente_fica_fixo_no_canto_inferior_direito():
     app = (INTERFACE / "assets" / "painel-app.js").read_text(encoding="utf-8")
     assert app.count("h(Assistente,") == 1
     topo = app[app.index("h('header', { className: 'topo' }"):app.index("h(PainelLateral")]
-    principal = app[app.rindex("h('main', { id: 'conteudo' },"):app.index("h(DialogoLegenda")]
+    principal = app[app.rindex("h('main', { id: 'conteudo' },"):app.index("h(Assistente,")]
     assert "h(Assistente," not in topo and "h(Assistente," not in principal
     regra = " ".join(_regras(".assistente"))
     assert "position: fixed" in regra and "right: 16px" in regra and "bottom: 16px" in regra
