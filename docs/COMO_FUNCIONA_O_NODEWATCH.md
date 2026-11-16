@@ -713,7 +713,8 @@ Informe o histórico no segundo campo da tela, no mesmo formato de transações.
 
 | Limite | Valor |
 |---|---|
-| Dataset | 256 MB (CSV, ou ZIP com um CSV) |
+| Dataset no painel do analista | sem limite de tamanho (CSV, ou ZIP com um CSV): gravado em disco e lido em blocos; o teto prático é o disco e, na análise, a memória |
+| Dataset em Analisar dataset (interface antiga, `/legado`) | 256 MB (CSV, ou ZIP com um CSV) |
 | Histórico | 512 MB |
 | Importar previsões para explorar | 64 MB |
 | Exportação pela tela | 300.000 registros |

@@ -337,7 +337,7 @@ Direto pelo Python (`.venv\Scripts\python scripts\ambiente_teste.py`): `--prepar
 | `sintetico_200k_rotulado.csv` | log longo: acima de 8 M px a rolagem fica proporcional |
 | `HI-Small_Trans.zip` (com `--hismall`) | volume real (5 milhões de transações, cerca de 7 min) |
 
-Em `artefatos_teste/para_enviar/` ficam `sintetico_5k_rotulado.csv` e `sintetico_5k_padroes.txt`, para testar o envio pela tela com o arquivo de padrões (tipologias). Os dados sintéticos são determinísticos (mesma semente, mesmos arquivos) e têm tentativas de lavagem FAN-OUT, FAN-IN e CYCLE, com rótulo 1 e registradas no arquivo de padrões; `testes/painel/test_ambiente_teste.py` confere que eles passam na validação e casam com o arquivo de padrões. Só o painel do analista usa a pasta isolada: `/legado` e `/api/ml` continuam lendo a pasta do projeto.
+Em `artefatos_teste/para_enviar/` fica `sintetico_5k_rotulado.csv`, para testar o envio pela tela (o envio não tem limite de tamanho nem campo de tipologia). Os dados sintéticos são determinísticos (mesma semente, mesmos arquivos) e têm tentativas de lavagem FAN-OUT, FAN-IN e CYCLE, com rótulo 1; `testes/painel/test_ambiente_teste.py` confere que eles passam na validação e que a análise conclui com o rótulo certo. Só o painel do analista usa a pasta isolada: `/legado` e `/api/ml` continuam lendo a pasta do projeto.
 
 ---
 
