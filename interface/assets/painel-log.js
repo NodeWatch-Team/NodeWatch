@@ -7,7 +7,7 @@
    da página (1 s), RAM e CPU por useIntervalo (2 s, só durante a análise) e a rolagem usa requestAnimationFrame. */
 (function () {
   'use strict';
-  const { h, f, api, useCarga, useIntervalo, Aviso, Erro, Legenda, Selo, Icone, NOME_FAIXA, exibir } = window.NW;
+  const { h, f, api, useCarga, useIntervalo, Aviso, Erro, Legenda, Selo, Icone, Dica, NOME_FAIXA, exibir } = window.NW;
   const ROTULO = exibir('rotulo'), BASE_TREINO = exibir('base_treino');   // ponto único (painel-base.js)
 
   /* Precisão e recall: com o rótulo do dataset escondido, a mesma conta (alerta × rótulo) com redação neutra.
@@ -90,8 +90,13 @@
     return { vivo, dados: est.id === m.id ? est.dados : null, falhou: est.id === m.id && est.falhou };
   }
 
-  function Metrica({ nome, valor, detalhe }) {
-    return h('div', { className: 'log-metrica' }, h('dt', null, nome), h('dd', null, h('strong', null, valor), detalhe ? h('span', { className: 'log-detalhe' }, detalhe) : null));
+  /* Um bloco de métrica: rótulo curto e valor; sem medida, "—" (o motivo fica na dica, sem repetir frases longas). */
+  function Metrica({ nome, valor, sub, dica }) {
+    const falta = vazio(valor);
+    return h('div', { className: 'log-metrica', title: dica || undefined },
+      h('dt', null, nome),
+      h('dd', null, h('strong', { className: falta ? 'indisponivel' : undefined }, falta ? '—' : valor), sub ? h('span', { className: 'log-detalhe' }, sub) : null,
+        dica ? h('span', { className: 'sr' }, ' (' + dica + ')') : null));
   }
 
   /* Em tela estreita a área aberta ocuparia o contêiner inteiro: começa recolhida (o resumo continua no título). */
@@ -104,43 +109,29 @@
     const d = leitura.dados;
     const lat = d && (d.latencias || []).find(x => x.operacao === OPERACAO_LOG);
     const semLeitura = !leitura.vivo && !d;          // reaberta do histórico: esta aba não leu nada ao vivo
-    const ram = d ? d.memoria : null, cpu = d ? d.cpu : null;
+    const ram = d ? d.memoria : null;
     const mp = ram && ram.processo, mm = ram && ram.maquina;
-    const ou = (cond, texto) => (semLeitura ? SO_AO_VIVO : cond ? texto() : INDISPONIVEL);
-    const pico = (m.desempenho || {}).pico_memoria_processo_na_pontuacao_bytes;
+    const motivo = semLeitura ? SO_AO_VIVO : INDISPONIVEL;
     let rodape;
-    if (semLeitura) rodape = 'RAM e CPU: ' + SO_AO_VIVO + '. Esta análise não estava em andamento quando foi aberta nesta aba.';
-    else if (!d) rodape = leitura.falhou ? 'RAM e CPU: indisponível; a consulta de desempenho falhou. Nova tentativa a cada 2 s.' : 'Lendo as medidas de RAM e CPU…';
-    else if (!leitura.vivo) rodape = 'Última leitura durante a análise: lida em ' + f.instante(d.medido_em) + '. A atualização parou porque a análise terminou.';
-    else if (leitura.falhou) rodape = 'Não atualizada desde ' + hora(d.medido_em) + ' (a última consulta falhou); nova tentativa a cada 2 s.';
-    else rodape = 'Lido em ' + hora(d.medido_em) + '; atualiza a cada 2 s durante a análise.';
-    if (cpu) rodape += ' CPU: ' + cpu.leitura + '; o monitor é compartilhado com o painel operacional.';
+    if (semLeitura) rodape = 'RAM e latência: medidas só durante a análise.';
+    else if (!d) rodape = leitura.falhou ? 'Leitura falhou · nova tentativa em 2 s.' : 'Lendo…';
+    else if (!leitura.vivo) rodape = 'Última leitura ' + hora(d.medido_em) + ' (análise encerrada).';
+    else if (leitura.falhou) rodape = 'Sem atualização desde ' + hora(d.medido_em) + ' · nova tentativa em 2 s.';
+    else rodape = 'Ao vivo · ' + hora(d.medido_em) + ' · atualiza a cada 2 s.';
     return h('details', { className: 'log-metricas-area', open: aberto, onToggle: e => setAberto(e.currentTarget.open) },
-      h('summary', null, 'Métricas de execução', aberto ? null : h('span', { className: 'log-detalhe' },
-        ' — último bloco ' + (ub ? ms(ub.total_ms) : INDISPONIVEL) + ' · RAM do NodeWatch ' + (mp && !vazio(mp.bytes) ? f.gb(mp.bytes) : INDISPONIVEL))),
+      h('summary', null, 'Métricas de execução', aberto ? null : h('span', { className: 'log-detalhe', style: { textTransform: 'none', letterSpacing: 0 } },
+        ' — última pontuação ' + (ub ? ms(ub.total_ms) : '—') + ' · RAM ' + (mp && !vazio(mp.bytes) ? f.gb(mp.bytes) : '—'))),
       h('dl', { className: 'log-metricas' },
-        h(Metrica, { nome: 'Último bloco de pontuação (servidor)',
-          valor: ub ? ms(ub.total_ms) + ' · ' + f.plural(ub.transacoes, 'transação', 'transações') : INDISPONIVEL,
-          detalhe: ub ? 'atributos ' + ms(ub.atributos_ms) + ' · inferência ' + ms(ub.inferencia_ms) + ' · gravação ' + ms(ub.gravacao_ms) + ' · medido às ' + hora(ub.medido_em)
-            : 'nenhum bloco de pontuação medido nesta análise' }),
-        h(Metrica, { nome: 'Consulta do log ("' + OPERACAO_LOG + '", servidor)',
-          valor: lat ? ms(lat.ultima_ms) : semLeitura ? SO_AO_VIVO : INDISPONIVEL,
-          detalhe: lat ? 'última; mediana ' + ms(lat.mediana_ms) + ' ' + (lat.amostras === 1 ? 'em 1 consulta' : 'das últimas ' + f.inteiro(lat.amostras) + ' consultas') + ' · medido às ' + hora(lat.medido_em)
-            : semLeitura ? null : 'aparece depois da primeira consulta do log' }),
-        /* RAM sempre em GB (f.gb) e em %, com o escopo no nome e o horário no rodapé */
-        h(Metrica, { nome: 'RAM do processo NodeWatch',
-          valor: ou(mp && !vazio(mp.bytes), () => f.gb(mp.bytes)),
-          detalhe: semLeitura ? null : (mp && !vazio(mp.percentual_da_maquina) ? pct100(mp.percentual_da_maquina) : INDISPONIVEL) + ' da memória da máquina' }),
-        h(Metrica, { nome: 'RAM do computador',
-          valor: ou(mm && !vazio(mm.em_uso_bytes) && !vazio(mm.total_bytes), () => f.gb(mm.em_uso_bytes) + ' de ' + f.gb(mm.total_bytes)),
-          detalhe: semLeitura ? null : (mm && !vazio(mm.percentual) ? pct100(mm.percentual) : INDISPONIVEL) + ' em uso' }),
-        h(Metrica, { nome: 'CPU: processo NodeWatch · computador',
-          valor: semLeitura ? SO_AO_VIVO : (cpu ? pct100(cpu.processo_pct) + ' · ' + pct100(cpu.maquina_pct) : INDISPONIVEL),
-          detalhe: cpu ? f.inteiro(cpu.nucleos_logicos) + ' núcleos lógicos; janela de ' + (vazio(cpu.janela_s) ? INDISPONIVEL : f.numero(cpu.janela_s, 1) + ' s') : null }),
-        h(Metrica, { nome: 'Pico de RAM do processo na pontuação', valor: vazio(pico) ? INDISPONIVEL : f.gb(pico) +
-            (mm && !vazio(mm.total_bytes) ? ' · ' + pct100(100 * pico / mm.total_bytes) + ' da memória da máquina' : ''),
-          detalhe: vazio(pico) ? 'registrado quando a pontuação termina'
-            : 'maior leitura da RAM do processo NodeWatch ao fim de cada bloco de pontuação (amostrada pelo pipeline)' })),
+        h(Metrica, { nome: 'Última pontuação', valor: ub ? ms(ub.total_ms) : null, sub: ub ? f.plural(ub.transacoes, 'transação', 'transações') : null,
+          dica: ub ? 'Último bloco de pontuação no servidor: atributos ' + ms(ub.atributos_ms) + ' · inferência ' + ms(ub.inferencia_ms) + ' · gravação ' + ms(ub.gravacao_ms) + ' · medido às ' + hora(ub.medido_em)
+            : 'Nenhum bloco de pontuação medido nesta análise.' }),
+        h(Metrica, { nome: 'Log de transações', valor: lat ? ms(lat.ultima_ms) : null, sub: lat ? 'mediana ' + ms(lat.mediana_ms) : null,
+          dica: lat ? 'Latência da consulta do log ("' + OPERACAO_LOG + '", servidor): última; mediana ' + ms(lat.mediana_ms) + ' ' + (lat.amostras === 1 ? 'em 1 consulta' : 'das últimas ' + f.inteiro(lat.amostras) + ' consultas') + ' · medido às ' + hora(lat.medido_em)
+            : semLeitura ? motivo : 'Aparece depois da primeira consulta do log.' }),
+        h(Metrica, { nome: 'RAM do processo', valor: mp && !vazio(mp.bytes) ? f.gb(mp.bytes) : null, sub: mp && !vazio(mp.percentual_da_maquina) ? pct100(mp.percentual_da_maquina) + ' da máquina' : null,
+          dica: mp && !vazio(mp.bytes) ? 'Memória usada pelo processo NodeWatch, em GB (10⁹ bytes).' : motivo }),
+        h(Metrica, { nome: 'RAM do sistema', valor: mm && !vazio(mm.em_uso_bytes) ? f.gb(mm.em_uso_bytes) : null, sub: mm && !vazio(mm.total_bytes) ? 'de ' + f.gb(mm.total_bytes) : null,
+          dica: mm && !vazio(mm.em_uso_bytes) ? 'Memória em uso no computador: ' + (vazio(mm.percentual) ? INDISPONIVEL : pct100(mm.percentual)) + '.' : motivo })),
       h('p', { className: 'log-rodape' }, rodape));
   }
 
@@ -303,11 +294,11 @@
       'aria-label': 'Log da execução: métricas e transações pontuadas, rolável' },
       h('div', { className: 'log-fixo' }, topo,
         total ? h('div', { className: 'log-barra' },
-          seguir ? h('span', { className: 'suave' }, 'Seguindo ao vivo as mais recentes.')
-            : h('button', { type: 'button', className: 'botao pequeno',
-              onClick: () => { ancora.current = null; if (emAndamento) setSeguir(true); else if (ref.current) rolarPara(ref.current.scrollHeight); } }, 'Ir para as mais recentes'),
+          seguir ? h('span', { className: 'ao-vivo' }, 'Ao vivo', h('span', { className: 'sr' }, ': seguindo as mais recentes'))
+            : h('button', { type: 'button', className: 'botao pequeno', 'aria-label': 'Ir para as mais recentes',
+              onClick: () => { ancora.current = null; if (emAndamento) setSeguir(true); else if (ref.current) rolarPara(ref.current.scrollHeight); } }, h(Icone, { nome: 'seta' }), 'Mais recentes'),
           h('form', { className: 'linha', onSubmit: irParaPosicao },
-            h('label', { htmlFor: 'log-ir-' + m.id, className: 'log-ir-rotulo' }, 'Ir para a posição'),
+            h('label', { htmlFor: 'log-ir-' + m.id, className: 'log-ir-rotulo' }, h('span', { className: 'sr' }, 'Ir para a '), 'Posição'),
             h('input', { id: 'log-ir-' + m.id, type: 'number', min: 1, max: total, step: 1, value: irPara, onChange: e => setIrPara(e.target.value), className: 'log-ir' }),
             h('button', { type: 'submit', className: 'botao pequeno' }, 'Ir'))) : null,
         erro ? h('div', { className: 'log-erro' }, h(Erro, { erro }), h('button', { type: 'button', className: 'botao pequeno', onClick: () => { setErro(null); setVersao(v => v + 1); } }, 'Tentar de novo')) : null),
@@ -385,9 +376,9 @@
       h('h3', { id: idTitulo }, h(Icone, { nome: 'operacao' }), 'Log da execução'),
       h('p', { className: 'sr', role: 'status', 'aria-live': 'polite' }, anuncio),
       h('div', { className: 'log-notas' },
-        h('p', null, textoLimiar(m)),
-        m.tipologias && !m.tipologias.disponivel ? h('p', null, h('strong', null, 'Tipologias: '), (m.tipologias.motivo || 'Este dataset não tem tipologias registradas.').replace(/\.?\s*$/, '.') + ' Nas entradas, "Sem classificação".') : null,
-        h('p', null, ibm ? NOTA_IBM : (estado && estado.aviso_faixas) || ''),
+        h('span', { className: 'chip so-texto', title: textoLimiar(m) }, h('span', { className: 'sr' }, textoLimiar(m)), h('span', { 'aria-hidden': 'true' }, 'Limiar ', h('strong', null, (m.conversao_score && m.conversao_score.ancoras && m.conversao_score.ancoras[1] ? m.conversao_score.ancoras[1].score : '—')))),
+        m.tipologias && !m.tipologias.disponivel ? h('span', { className: 'chip so-texto', title: (m.tipologias.motivo || 'Este dataset não tem tipologias registradas.').replace(/\.?\s*$/, '.') + ' Nas entradas, "Sem classificação".' }, 'Sem tipologias') : null,
+        h(Dica, { texto: ibm ? NOTA_IBM : (estado && estado.aviso_faixas) || '' }),
         /* "Como ler" começa recolhido: repete o que a legenda da tabela já explica */
         h('details', null, h('summary', null, 'Como ler as entradas do log'),
           h(Legenda, null, 'nº = posição no fluxo (ordem cronológica, igual ao ID de exibição). ' + TEXTO_ID + '. ',
