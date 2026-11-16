@@ -85,9 +85,33 @@
     seta: ['M5 12h14', 'M13 6l6 6-6 6'],
     painel: ['M4 4h7v7H4z', 'M13 4h7v4h-7z', 'M13 10h7v10h-7z', 'M4 13h7v7H4z'],
     editar: ['M4 20h4L19 9l-4-4L4 16z', 'M13.5 6.5l4 4'],
+    recolher: ['M4 4h16v16H4z', 'M9 4v16', 'M15 10l-2 2 2 2'],
+    desfazer: ['M4 9h11a5 5 0 0 1 0 10H8', 'M8 5L4 9l4 4'],
+    recentes: ['M12 20V10', 'M18 20V4', 'M6 20v-4'],
   };
   const Icone = ({ nome }) => h('svg', { className: 'ico', viewBox: '0 0 24 24', 'aria-hidden': 'true', focusable: 'false' },
     (TRACOS[nome] || TRACOS.info).map((d, i) => h('path', { key: i, d })));
+
+  /* ── Motivo de rede (identidade visual) ───────────────────────────
+     Decoração pura: vértices e conexões em posições fixas (nada é sorteado nem vem dos dados), com alguns nós
+     "ativos" que pulsam e conexões com fluxo. Sem cliques e escondido de leitores de tela. */
+  const REDE = {
+    grande: { caixa: '0 0 1440 900',
+      nos: [[120, 90], [300, 160], [210, 320], [460, 80], [620, 220], [520, 380], [780, 120], [900, 300], [1060, 160], [1220, 260], [1340, 110], [980, 470], [700, 520], [380, 560], [140, 520], [1180, 520]],
+      arestas: [[0, 1], [1, 2], [1, 3], [3, 4], [4, 5], [2, 5], [4, 6], [6, 7], [7, 8], [8, 9], [9, 10], [7, 11], [11, 12], [12, 5], [5, 13], [13, 14], [2, 14], [9, 15], [11, 15], [6, 8]],
+      ativos: [4, 8, 12], fluxo: [[3, 4], [7, 8], [11, 12]], raio: 3 },
+    mini: { caixa: '0 0 120 90',
+      nos: [[20, 22], [58, 44], [100, 18], [96, 70], [24, 72], [62, 8]],
+      arestas: [[0, 1], [1, 2], [1, 3], [0, 4], [4, 1], [2, 3], [5, 1]],
+      ativos: [1], fluxo: [[0, 1], [1, 3]], raio: 4.5 },
+  };
+  const Rede = ({ mini, className }) => {
+    const r = REDE[mini ? 'mini' : 'grande'];
+    const ehFluxo = (a, b) => r.fluxo.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+    return h('svg', { className: (mini ? 'rede-mini' : 'rede') + (className ? ' ' + className : ''), viewBox: r.caixa, 'aria-hidden': 'true', focusable: 'false', preserveAspectRatio: mini ? undefined : 'xMidYMid slice' },
+      r.arestas.map(([a, b], i) => h('line', { key: 'a' + i, className: ehFluxo(a, b) ? 'fluxo' : undefined, x1: r.nos[a][0], y1: r.nos[a][1], x2: r.nos[b][0], y2: r.nos[b][1] })),
+      r.nos.map(([x, y], i) => h('circle', { key: 'n' + i, className: r.ativos.includes(i) ? 'ativo' : undefined, cx: x, cy: y, r: r.ativos.includes(i) ? r.raio * 1.4 : r.raio })));
+  };
 
   /* ── Sessão da interface ──────────────────────────────────────────
      A página abre uma sessão e a renova com pulsos. Enviar, validar e analisar só funcionam com sessão ativa;
@@ -203,7 +227,10 @@
   /* Esqueleto: forma do conteúdo enquanto ele carrega (o texto para leitor de tela vem junto). */
   const Esqueleto = ({ linhas, altura, texto }) => h('div', { className: 'grade', role: 'status', 'aria-label': texto || 'Carregando…', style: { gap: 10 } },
     Array.from({ length: linhas || 3 }, (_, i) => h('span', { key: i, className: 'esqueleto', 'aria-hidden': 'true', style: { height: altura || 14, width: (100 - (i % 3) * 14) + '%' } })));
-  const Vazio = ({ children, compacto }) => h('div', { className: 'vazio' + (compacto ? ' compacto' : '') }, children);
+  const Vazio = ({ children, compacto }) => h('div', { className: 'vazio' + (compacto ? ' compacto' : '') }, compacto ? null : h(Rede, { mini: true }), children);
+  /* Ícone de informação com dica: o texto aparece ao passar o ponteiro ou focar, e é o nome acessível do ícone. */
+  const Dica = ({ texto, lado }) => texto ? h('span', { className: 'dica-ico' + (lado ? ' dica-' + lado : ''), tabIndex: 0, role: 'img', 'aria-label': texto, 'data-dica': texto },
+    h(Icone, { nome: 'info' })) : null;
   const Legenda = ({ children }) => h('p', { className: 'legenda' }, children);
   const Selo = ({ tom, children, vivo, forma, dica }) => h('span', { className: 'selo ' + (tom || '') + (vivo ? ' vivo' : '') + (forma ? ' forma' : ''), title: dica }, children);
 
@@ -261,5 +288,5 @@
 
   window.NW = { h, api, consulta, useCarga, useIntervalo, useSessao, sessao, FILTROS_VAZIOS, NOME_FAIXA, SITUACAO_ALERTA, TOM_FAIXA, EXIBIR, exibir,
     f: { inteiro, numero, pct, valor, dataHora, diaHora, instante, bytes, gb, duracao, idExibicao, vazio, plural },
-    Icone, Aviso, Erro, Carregando, Esqueleto, Vazio, Legenda, Selo, Secao, Pares, Dialogo, Barra, BarraProgresso, MedidorScore };
+    Icone, Rede, Dica, Aviso, Erro, Carregando, Esqueleto, Vazio, Legenda, Selo, Secao, Pares, Dialogo, Barra, BarraProgresso, MedidorScore };
 })();
