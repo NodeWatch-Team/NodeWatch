@@ -269,32 +269,19 @@
   function SecaoDataset({ estado, datasets, dataset, datasetId, aoEscolher, aoRecarregar, manifesto, aoAnalisar, aoCancelar, aoAssumir, analises, aoAbrir, analiseId, erroAnalise, aoVerResultados, aoOperacao }) {
     const [enviando, setEnviando] = React.useState(false);
     const [erro, setErro] = React.useState(null);
-    const refArq = React.useRef(null), refPad = React.useRef(null);
+    const refArq = React.useRef(null);
     const lim = estado.limites;
+    /* Sem limite de tamanho: o servidor grava o envio em disco, em blocos, e valida em blocos de linhas. */
     const enviar = async ev => {
       ev.preventDefault();
       const arq = refArq.current.files[0];
-      if (!arq) { setErro({ erro: 'Escolha um arquivo.', acao: 'Selecione um .csv ou .zip no campo Arquivo de transações.' }); refArq.current.focus(); return; }
-      /* Confere o tamanho antes de enviar: acima do limite o servidor recusa logo no início e fecha a conexão, e o
-         navegador, ainda enviando, só enxerga a conexão cortada ("servidor indisponível"). Aqui nada é enviado. */
-      const pad = refPad.current.files[0];
-      if (arq.size > lim.envio_bytes) {
-        setErro({ erro: 'Arquivo grande demais para enviar pela tela.', mensagem: arq.name + ' tem ' + f.bytes(arq.size) + '; o limite do envio é ' + f.bytes(lim.envio_bytes) + '. Nada foi enviado.',
-          acao: 'Compacte o CSV em um ZIP (o limite vale para o arquivo enviado) ou divida o arquivo por período e envie uma parte por vez.' });
-        refArq.current.focus(); return;
-      }
-      if (pad && pad.size > lim.padroes_bytes) {
-        setErro({ erro: 'Arquivo de padrões grande demais.', mensagem: pad.name + ' tem ' + f.bytes(pad.size) + '; o limite é ' + f.bytes(lim.padroes_bytes) + '. Nada foi enviado.',
-          acao: 'Envie o arquivo de transações sem o de padrões, ou um arquivo de padrões só do período enviado.' });
-        refPad.current.focus(); return;
-      }
+      if (!arq) { setErro({ erro: 'Escolha um arquivo.', acao: 'Selecione um .csv ou .zip no campo Transações.' }); refArq.current.focus(); return; }
       const fd = new FormData();
       fd.append('arquivo', arq);
-      if (pad) fd.append('padroes', pad);
       setEnviando(true); setErro(null);
       try {
         const reg = await api('/datasets', { method: 'POST', body: fd });
-        refArq.current.value = ''; refPad.current.value = '';
+        refArq.current.value = '';
         await aoRecarregar();
         aoEscolher(reg.id);
       } catch (e) { setErro(e); }
@@ -310,11 +297,7 @@
           h('h3', { id: 'enviar-t' }, h(Icone, { nome: 'enviar' }), 'Enviar arquivo'),
           h('div', null, h('label', { htmlFor: 'arq' }, 'Transações'),
             h('input', { id: 'arq', type: 'file', accept: '.csv,.zip', ref: refArq, 'aria-describedby': 'arq-a' }),
-            h('p', { className: 'ajuda', id: 'arq-a' }, 'CSV UTF-8 ou ZIP · até ' + f.bytes(lim.envio_bytes) + ' · fica só neste servidor')),
-          h('div', null, h('div', { className: 'rotulo-com-dica' }, h('label', { htmlFor: 'pad' }, 'Padrões (opcional)'),
-            h(Dica, { texto: 'Arquivo .txt com as tipologias registradas do dataset (por exemplo, HI-Small_Patterns.txt). Sem ele, o dataset não tem tipologias.' })),
-            h('input', { id: 'pad', type: 'file', accept: '.txt', ref: refPad, 'aria-describedby': 'pad-a' }),
-            h('p', { className: 'ajuda', id: 'pad-a' }, '.txt com as tipologias do dataset')),
+            h('p', { className: 'ajuda', id: 'arq-a' }, 'CSV UTF-8 ou ZIP · fica só neste servidor')),
           h('div', { className: 'linha' }, h('button', { type: 'submit', className: 'botao', disabled: enviando }, h(Icone, { nome: 'enviar' }), enviando ? 'Enviando o arquivo…' : 'Enviar e validar'),
             enviando ? h('span', { role: 'status', className: 'suave' }, 'Enviando…') : null)),
         h('div', { className: 'bloco grade' },
