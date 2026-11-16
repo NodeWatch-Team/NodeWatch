@@ -2,7 +2,7 @@
    Vistas: Análise (dataset, execução e recentes) · Visão geral · Investigação · Transações · Detalhes (interpretação do score). */
 (function () {
   'use strict';
-  const { h, f, api, consulta, useCarga, useIntervalo, Icone, Aviso, Erro, Carregando, Esqueleto, Vazio, Legenda, Selo, Secao, Pares, Dialogo, Barra, BarraProgresso,
+  const { h, f, api, consulta, useCarga, useIntervalo, Icone, Rede, Dica, Aviso, Erro, Carregando, Esqueleto, Vazio, Legenda, Selo, Secao, Pares, Dialogo, Barra, BarraProgresso,
     MedidorScore, NOME_FAIXA, TOM_FAIXA, SITUACAO_ALERTA, BlocoGrafo, LogAnalise, AvisoBaseTreino, TEXTO_METRICAS, exibir } = window.NW;
   const ROTULO = exibir('rotulo');                   // ponto único (painel-base.js): rótulo do dataset na tela
 
@@ -97,17 +97,17 @@
               h('span', { className: 'situacao' }, NOME_ETAPA[e.status] + (e.duracao_s !== null && e.duracao_s !== undefined ? ' · ' + f.duracao(e.duracao_s) : ''))),
             e.status === 'em_andamento' && p && p.total ? h(BarraProgresso, { feito: p.feito, total: p.total, rotulo: e.nome, texto: volume + ' (' + f.pct(p.fracao, 0) + ')' }) : null,
             volume ? h('div', { className: 'situacao' }, volume + (e.status === 'em_andamento' && p.fracao !== null ? ' · ' + f.pct(p.fracao, 0) : '')) : null,
-            e.status === 'em_andamento' && p && p.estimativa_restante_s !== undefined ? h('div', { className: 'situacao' },
-              'Tempo restante (estimativa): cerca de ' + f.duracao(p.estimativa_restante_s) + ' — calculada pela vazão observada nesta etapa: ' +
-              (e.unidade === 'bytes' ? f.bytes(p.vazao_por_s) : f.inteiro(p.vazao_por_s) + ' ' + e.unidade) + ' por segundo em ' + f.duracao(p.decorrido_s) + '.') : null,
+            e.status === 'em_andamento' && p && p.estimativa_restante_s !== undefined ? h('div', { className: 'situacao',
+              title: 'Tempo restante (estimativa), calculado pela vazão observada nesta etapa: ' + (e.unidade === 'bytes' ? f.bytes(p.vazao_por_s) : f.inteiro(p.vazao_por_s) + ' ' + e.unidade) + ' por segundo em ' + f.duracao(p.decorrido_s) + '.' },
+              '≈ ' + f.duracao(p.estimativa_restante_s) + ' restantes · ' + (e.unidade === 'bytes' ? f.bytes(p.vazao_por_s) : f.inteiro(p.vazao_por_s) + ' ' + e.unidade) + '/s') : null,
             e.detalhe ? h('div', { className: 'situacao' }, e.detalhe) : null));
       })),
       /* Cancelar logo abaixo das etapas, antes do aviso de sessão: fica visível sem rolar */
       m.status === 'em_andamento' ? h('div', { className: 'linha' },
         h('button', { type: 'button', className: 'botao perigo', onClick: aoCancelar, disabled: m.cancelamento_solicitado }, h(Icone, { nome: 'fechar' }), m.cancelamento_solicitado ? 'Cancelamento pedido…' : 'Cancelar análise'),
-        h(Legenda, null, m.cancelamento_solicitado ? 'A análise para no fim do bloco atual; o que já foi pontuado fica gravado.' : 'O cancelamento é seguro: para no fim do bloco atual e mantém o que já foi pontuado.')) : null,
-      m.status === 'em_andamento' && ss.exigida ? h(Aviso, { tom: ss.desta_sessao ? '' : 'atencao', titulo: ss.desta_sessao ? 'Esta aba mantém a análise em andamento' : 'Outra aba é a responsável por esta análise', vivo: true },
-        h('p', null, ss.desta_sessao ? 'Mantenha esta página aberta (pode minimizar ou trocar de aba). Sem sinal dela por ' + f.inteiro(ss.janela_s) + ' s, a análise para num ponto seguro e fica parcial; não é retomada sozinha.'
+        h(Dica, { texto: m.cancelamento_solicitado ? 'A análise para no fim do bloco atual; o que já foi pontuado fica gravado.' : 'O cancelamento é seguro: para no fim do bloco atual e mantém o que já foi pontuado.' })) : null,
+      m.status === 'em_andamento' && ss.exigida ? h(Aviso, { tom: ss.desta_sessao ? '' : 'atencao', titulo: ss.desta_sessao ? 'Mantenha esta aba aberta' : 'Outra aba é a responsável por esta análise', vivo: true },
+        h('p', null, ss.desta_sessao ? 'Pode minimizar ou trocar de aba. Sem sinal por ' + f.inteiro(ss.janela_s) + ' s, a análise para num ponto seguro e fica parcial.'
           : (ss.responsavel_ativa ? 'A sessão que iniciou a análise continua ativa em outra aba.' : 'A sessão que iniciou a análise não dá sinal: a análise vai parar no próximo ponto seguro.') + ' Para que esta aba passe a mantê-la, use o botão abaixo.'),
         ss.desta_sessao ? null : h('div', null, h('button', { type: 'button', className: 'botao pequeno', onClick: aoAssumir }, h(Icone, { nome: 'sessao' }), 'Manter a análise nesta aba'))) : null);
   }
@@ -136,15 +136,16 @@
     const decorrido = Number.isNaN(inicio) ? null : Math.max(0, (Date.now() - inicio) / 1000);
     const eta = atual && atual.progresso && !f.vazio(atual.progresso.estimativa_restante_s) ? atual.progresso.estimativa_restante_s : null;
     return h('div', { className: 'execucao-cabeca em_andamento' },
+      h(Rede, { mini: true }),
       h('div', { className: 'linha entre' },
         h('div', null, h('span', { className: 'eyebrow' }, atual ? 'Etapa ' + (idx + 1) + ' de ' + n : 'Preparando'), h('h3', null, atual ? atual.nome : 'Preparando a análise…')),
-        h('span', { className: 'tab-num', style: { font: '650 1.5rem/1 var(--titulo)' }, 'aria-hidden': 'true' }, f.pct(geral, 0))),
+        h('span', { className: 'percentual', 'aria-hidden': 'true' }, f.pct(geral, 0))),
       h(BarraProgresso, { feito: Math.round(geral * 1000), total: 1000, rotulo: 'Progresso da análise por etapas', texto: f.pct(geral, 0) + ' (' + feitas + ' de ' + n + ' etapas concluídas)' }),
       h('dl', { className: 'estatisticas' },
-        h(Estat, { nome: 'Tempo decorrido', valor: f.duracao(decorrido), sub: 'desde ' + f.instante(m.iniciada_em) }),
-        h(Estat, { nome: 'Estimativa', valor: eta === null ? 'sem estimativa' : 'cerca de ' + f.duracao(eta), sub: 'restante na etapa atual' }),
-        h(Estat, { nome: 'Pontuadas', valor: f.inteiro(c.pontuadas), sub: 'de ' + f.inteiro(c.validas) + ' válidas' }),
-        h(Estat, { nome: 'Alertas até agora', valor: f.inteiro(c.alertas) })));
+        h(Estat, { nome: 'Decorrido', valor: f.duracao(decorrido) }),
+        h(Estat, { nome: 'Restante', valor: eta === null ? '—' : '≈ ' + f.duracao(eta), sub: 'etapa atual' }),
+        h(Estat, { nome: 'Pontuadas', valor: f.inteiro(c.pontuadas), sub: 'de ' + f.inteiro(c.validas) }),
+        h(Estat, { nome: 'Alertas', valor: f.inteiro(c.alertas) })));
   }
 
   /* Resultado da execução (depois do fim): situação, contagens, causa de erro e o atalho para os resultados. */
@@ -159,8 +160,8 @@
       m.motivo ? h('p', { className: 'legenda' }, m.motivo) : null,
       (m.erros || []).map((e, i) => h('p', { key: i }, h('strong', null, 'Causa: '), e.causa + ' ', h('strong', null, 'O que fazer: '), e.acao)),
       m.resultados.disponiveis ? h('dl', { className: 'estatisticas' },
-        h(Estat, { nome: 'Pontuadas', valor: f.inteiro(c.pontuadas), sub: m.resultados.parciais ? 'de ' + f.inteiro(c.validas) + ' válidas (resultado parcial)' : 'transações' }),
-        h(Estat, { nome: 'Com alerta', valor: f.inteiro(c.alertas), sub: c.pontuadas ? f.pct(c.alertas / c.pontuadas, 2) + ' das pontuadas' : null }),
+        h(Estat, { nome: 'Pontuadas', valor: f.inteiro(c.pontuadas), sub: m.resultados.parciais ? 'de ' + f.inteiro(c.validas) + ' (parcial)' : null }),
+        h(Estat, { nome: 'Alertas', valor: f.inteiro(c.alertas), sub: c.pontuadas ? f.pct(c.alertas / c.pontuadas, 2) : null }),
         h(Estat, { nome: 'Duração', valor: f.duracao(m.duracao_s) }),
         h(Estat, { nome: 'Modelo', valor: h('span', { className: 'mono', style: { fontSize: 'var(--t-s)' } }, m.modelo ? m.modelo.versao : '—') }))
         : h('p', null, 'Não há resultados para consultar.'),
@@ -232,22 +233,24 @@
     const escolha = h(React.Fragment, { key: 'escolha' },
       h('div', { className: 'entrada' },
         h('form', { className: 'bloco grade', onSubmit: enviar, 'aria-labelledby': 'enviar-t' },
-          h('h3', { id: 'enviar-t' }, h(Icone, { nome: 'enviar' }), 'Enviar um arquivo'),
-          h('div', null, h('label', { htmlFor: 'arq' }, 'Arquivo de transações'),
+          h('h3', { id: 'enviar-t' }, h(Icone, { nome: 'enviar' }), 'Enviar arquivo'),
+          h('div', null, h('label', { htmlFor: 'arq' }, 'Transações'),
             h('input', { id: 'arq', type: 'file', accept: '.csv,.zip', ref: refArq, 'aria-describedby': 'arq-a' }),
-            h('p', { className: 'ajuda', id: 'arq-a' }, 'CSV em UTF-8 (ou ZIP com um CSV), até ' + f.bytes(lim.envio_bytes) + '. O arquivo fica só neste servidor.')),
-          h('div', null, h('label', { htmlFor: 'pad' }, 'Arquivo de padrões (opcional)'),
+            h('p', { className: 'ajuda', id: 'arq-a' }, 'CSV UTF-8 ou ZIP · até ' + f.bytes(lim.envio_bytes) + ' · fica só neste servidor')),
+          h('div', null, h('div', { className: 'rotulo-com-dica' }, h('label', { htmlFor: 'pad' }, 'Padrões (opcional)'),
+            h(Dica, { texto: 'Arquivo .txt com as tipologias registradas do dataset (por exemplo, HI-Small_Patterns.txt). Sem ele, o dataset não tem tipologias.' })),
             h('input', { id: 'pad', type: 'file', accept: '.txt', ref: refPad, 'aria-describedby': 'pad-a' }),
-            h('p', { className: 'ajuda', id: 'pad-a' }, 'Arquivo .txt com as tipologias registradas do dataset (por exemplo, HI-Small_Patterns.txt). Sem ele, o dataset não tem tipologias.')),
+            h('p', { className: 'ajuda', id: 'pad-a' }, '.txt com as tipologias do dataset')),
           h('div', { className: 'linha' }, h('button', { type: 'submit', className: 'botao', disabled: enviando }, h(Icone, { nome: 'enviar' }), enviando ? 'Enviando o arquivo…' : 'Enviar e validar'),
-            enviando ? h('span', { role: 'status', className: 'suave' }, 'Enviando; a validação começa quando o envio terminar.') : null)),
+            enviando ? h('span', { role: 'status', className: 'suave' }, 'Enviando…') : null)),
         h('div', { className: 'bloco grade' },
-          h('h3', null, h(Icone, { nome: 'dataset' }), 'Ou escolher um dataset disponível'),
-          h('div', null, h('label', { htmlFor: 'ds' }, 'Dataset'),
+          h('h3', null, h(Icone, { nome: 'dataset' }), 'Escolher dataset'),
+          h('div', null, h('div', { className: 'rotulo-com-dica' }, h('label', { htmlFor: 'ds' }, 'Dataset'),
+            h(Dica, { texto: 'Datasets enviados (os ' + lim.datasets_enviados_guardados + ' mais recentes ficam guardados) e arquivos já presentes no servidor. O dataset escolhido define o conjunto analisado.' })),
             h('select', { id: 'ds', value: datasetId || '', onChange: e => aoEscolher(e.target.value), 'aria-describedby': 'ds-a' },
               h('option', { value: '' }, datasets.length ? 'Selecione…' : 'Nenhum dataset disponível'),
               datasets.map(d => h('option', { key: d.id, value: d.id }, d.nome + ' — ' + (d.origem === 'enviado' ? 'enviado' : 'do servidor') + ' — ' + (NOME_DATASET[d.status] || d.status)))),
-            h('p', { className: 'ajuda', id: 'ds-a' }, 'Datasets enviados (os ' + lim.datasets_enviados_guardados + ' mais recentes ficam guardados) e arquivos já presentes no servidor. O dataset escolhido define o conjunto analisado.')),
+            h('p', { className: 'sr', id: 'ds-a' }, 'Datasets enviados e arquivos já presentes no servidor.')),
           dataset ? null : h(VazioDatasets, { datasets }),
           dataset && (dataset.status === 'nao_validado' || dataset.status === 'erro' || (dataset.origem === 'servidor' && dataset.status === 'invalido')) ?
             h('div', null, h('button', { type: 'button', className: 'botao', onClick: validar }, h(Icone, { nome: 'ok' }), 'Validar este dataset')) : null)),
@@ -257,17 +260,17 @@
       h('div', { className: 'faixa-analisar' + (liberado ? '' : ' inativa') },
         h('button', { type: 'button', className: 'botao primario', disabled: !podeAnalisar || !estado.modelo.disponivel, onClick: () => aoAnalisar(datasetId), 'aria-describedby': 'analisar-a' }, h(Icone, { nome: 'analisar' }), 'Analisar'),
         h('p', { className: 'ajuda', id: 'analisar-a', style: { margin: 0 } },
-          ocupado || estado.analise_em_andamento ? 'Há uma análise em andamento: espere terminar ou cancele-a.'
-            : !dataset ? 'Envie ou escolha um dataset. Nada é analisado antes de você clicar em Analisar.'
-              : podeAnalisar ? 'Pontua as ' + f.inteiro(dataset.validacao.linhas.validas) + ' linhas válidas com o modelo salvo. Nada é treinado. A análise roda enquanto esta página estiver aberta.'
-                : 'O botão é liberado quando o dataset escolhido estiver válido.')),
+          ocupado || estado.analise_em_andamento ? 'Há uma análise em andamento.'
+            : !dataset ? 'Escolha um dataset para começar.'
+              : podeAnalisar ? f.inteiro(dataset.validacao.linhas.validas) + ' linhas válidas · modelo salvo, sem treino · mantenha esta página aberta'
+                : 'Disponível com um dataset válido.')),
       h(Erro, { erro: erroAnalise }));
     const terminada = !!manifesto && manifesto.status !== 'em_andamento';
     /* O nome do dataset e o status já estão no topo (fixo) e no título da situação: aqui só "Execução". */
     // chave estável: quando a análise termina e o bloco muda de lugar, o React o move em vez de recriá-lo
     // (o log mantém a rolagem e a última leitura de RAM e CPU)
-    const processamento = manifesto ? h(Secao, { key: 'processamento', id: 'execucao', icone: 'operacao', titulo: 'Execução da análise',
-      pergunta: manifesto.dataset.nome + ' · iniciada em ' + f.instante(manifesto.iniciada_em),
+    const processamento = manifesto ? h(Secao, { key: 'processamento', id: 'execucao', icone: 'operacao', titulo: 'Execução',
+      pergunta: manifesto.dataset.nome + ' · ' + f.instante(manifesto.iniciada_em),
       extra: h(Selo, { tom: TOM_STATUS[manifesto.status], forma: true }, NOME_STATUS[manifesto.status]) },
       terminada ? h(SituacaoAnalise, { m: manifesto, aoVerResultados }) : h(CabecaExecucao, { m: manifesto }),
       /* Durante a análise: etapas (esquerda) e log da execução (direita), lado a lado; empilham até 980 px.
@@ -277,15 +280,15 @@
           h(Progresso, { m: manifesto, aoCancelar, aoAssumir }))
           : h('div', { className: 'execucao-etapas' }, h(Progresso, { m: manifesto, aoCancelar, aoAssumir })),
         h(LogAnalise, { m: manifesto, estado }))) : null;
-    const novaAnalise = h(Secao, { key: 'nova', id: 'dataset', icone: 'dataset', titulo: manifesto ? 'Nova análise' : 'Dataset e análise',
-      pergunta: 'O que estou analisando? Envie ou escolha um dataset e inicie a pontuação com o modelo salvo.' },
+    const novaAnalise = h(Secao, { key: 'nova', id: 'dataset', icone: 'dataset', titulo: 'Nova análise' },
       estado.modelo.disponivel ? null : h(Aviso, { tom: 'erro', titulo: 'Modelo não encontrado no servidor' }, (estado.modelo.motivo || '') + ' Sem o modelo, a análise não pode ser iniciada.'),
       /* Com a análise em andamento, o envio e a escolha de dataset ficam recolhidos. */
-      ocupado ? h('details', { key: 'escolha-recolhida', className: 'bloco recolhido' }, h('summary', null, 'Enviar ou escolher outro dataset (a análise em andamento continua)'), escolha) : escolha);
-    const recentes = h(Secao, { key: 'recentes', id: 'recentes', icone: 'historico', titulo: 'Análises recentes',
-      pergunta: 'Abrir uma análise carrega os resultados gravados, sem reprocessar.', extra: h(Selo, { tom: 'neutro' }, f.inteiro(analises.analises.length)) },
+      ocupado ? h('details', { key: 'escolha-recolhida', className: 'bloco recolhido' }, h('summary', null, 'Outro dataset (a análise continua)'), escolha) : escolha);
+    const recentes = h(Secao, { key: 'recentes', id: 'recentes', icone: 'historico', titulo: 'Recentes',
+      extra: h(React.Fragment, null, h(Selo, { tom: 'neutro' }, f.inteiro(analises.analises.length)),
+        h(Dica, { texto: 'Abrir uma análise carrega os resultados gravados, sem reprocessar. ' + (analises.retencao.leitura || ''), lado: 'esquerda' })) },
       analises.analises.length ? h('div', { className: 'rolagem' }, h('table', { className: 'recentes' },
-        h('caption', null, analises.retencao.leitura),
+        h('caption', { className: 'sr' }, analises.retencao.leitura),
         h('thead', null, h('tr', null, ['Dataset', 'Data', 'Status', 'Registros', 'Alertas', ''].map((c, i) => h('th', { key: i, scope: 'col', className: i === 3 || i === 4 ? 'num' : '' }, c)))),
         h('tbody', null, analises.analises.map(a => h('tr', { key: a.id, className: a.id === analiseId ? 'selecionada' : '' },
           h('td', null, a.dataset.nome), h('td', null, f.instante(a.criada_em)),
@@ -328,8 +331,8 @@
       if (c.tipo === 'moeda') controle = h('select', comum, h('option', { value: '' }, 'Todas'), moedas.map(m => h('option', { key: m, value: m }, m)));
       else if (c.tipo === 'alerta') controle = h('select', comum, h('option', { value: 'todos' }, 'Todos'), h('option', { value: 'sim' }, 'Com alerta'), h('option', { value: 'nao' }, 'Sem alerta'));
       else controle = h('input', Object.assign({ type: c.tipo, min: c.min, max: c.max, step: c.step, inputMode: c.modo, autoComplete: 'off' }, comum));
-      return h('div', { key: c.id }, h('label', { htmlFor: 'f-' + c.id }, c.rotulo), controle,
-        h('p', { className: 'ajuda', id: 'f-' + c.id + '-a' }, c.ajuda),
+      return h('div', { key: c.id }, h('div', { className: 'rotulo-com-dica' }, h('label', { htmlFor: 'f-' + c.id }, c.rotulo), h(Dica, { texto: c.ajuda })), controle,
+        h('p', { className: 'sr', id: 'f-' + c.id + '-a' }, c.ajuda),
         invalido ? h('p', { className: 'erro-campo', id: 'f-' + c.id + '-e', role: 'alert' }, erro.mensagem) : null);
     };
     const valorChip = (k, v) => k === 'alerta' ? (v === 'sim' ? 'Com alerta' : 'Sem alerta') : (k === 'de' || k === 'ate') ? f.dataHora(v) : v;
@@ -338,19 +341,19 @@
         h(Icone, { nome: 'filtro' }),
         h('h2', { id: 'filtros-t' }, 'Recorte'),
         h('ul', { className: 'chips', role: 'status', 'aria-label': 'Filtros aplicados' }, ativos.length
-          ? ativos.map(([k, v]) => h('li', { key: k, className: 'chip so-texto' }, ROTULO_FILTRO[k] + ': ', h('strong', null, valorChip(k, v))))
-          : h('li', { className: 'chip so-texto' }, 'nenhum filtro (dataset inteiro)')),
-        pendente ? h('span', { role: 'status', className: 'selo atencao' }, 'Há alterações não aplicadas') : null,
+          ? ativos.map(([k, v]) => h('li', { key: k, className: 'chip so-texto' }, ROTULO_FILTRO[k] + ' ', h('strong', null, valorChip(k, v))))
+          : h('li', { className: 'chip so-texto vazio-chip' }, 'Dataset inteiro')),
+        pendente ? h('span', { role: 'status', className: 'selo atencao' }, 'Não aplicado') : null,
         h('div', { className: 'linha' },
           h('button', { type: 'button', className: 'botao pequeno', 'aria-expanded': visivel, 'aria-controls': 'filtros-form', onClick: () => setAberto(!aberto) },
-            h(Icone, { nome: 'editar' }), visivel ? 'Fechar filtros' : 'Editar filtros'),
-          h('button', { type: 'button', className: 'botao pequeno fantasma', onClick: aoLimpar }, h(Icone, { nome: 'limpar' }), 'Voltar aos filtros iniciais'))),
+            h(Icone, { nome: 'filtro' }), visivel ? 'Fechar' : 'Filtros'),
+          h('button', { type: 'button', className: 'botao pequeno icone fantasma dica-esquerda', onClick: aoLimpar, 'aria-label': 'Voltar aos filtros iniciais', 'data-dica': 'Voltar aos filtros iniciais' }, h(Icone, { nome: 'desfazer' })))),
       visivel ? h('form', { id: 'filtros-form', className: 'grade', noValidate: true, onSubmit: e => { e.preventDefault(); aoAplicar(); } },  // a mensagem de erro vem do servidor, junto do campo
-        h('p', { className: 'legenda' }, 'Os filtros valem ao mesmo tempo para os indicadores, as contas, o grafo e a tabela.'),
+        h('p', { className: 'ajuda', style: { margin: 0 } }, 'Valem para indicadores, contas, grafo e tabela.'),
         h('div', { className: 'grade campos' }, CAMPOS_FILTRO.map(campo)),
         h('div', { className: 'linha' },
           h('button', { type: 'submit', className: 'botao primario' }, h(Icone, { nome: 'filtro' }), 'Aplicar filtros'),
-          h('button', { type: 'button', className: 'botao', onClick: () => setRascunho(aplicados), disabled: !pendente }, 'Descartar alterações'))) : null);
+          h('button', { type: 'button', className: 'botao fantasma', onClick: () => setRascunho(aplicados), disabled: !pendente }, 'Descartar'))) : null);
   }
 
   /* ═══ 3. Visão geral do recorte ══════════════════════════════════════ */
@@ -360,11 +363,11 @@
     const total = v.faixas.reduce((s, x) => s + (x.n || 0), 0);
     return h('div', { className: 'bloco' },
       h('div', { className: 'cabeca-bloco' },
-        h('h3', null, h(Icone, { nome: 'score' }), 'Score e faixas de risco'),
+        h('h3', null, h(Icone, { nome: 'score' }), 'Score e faixas'),
         h('button', { type: 'button', className: 'botao pequeno fantasma dica-esquerda', onClick: () => aoVista('detalhes'),
           'aria-label': 'Como ler o score: abrir a interpretação completa em Detalhes',
           'data-dica': 'Índice de prioridade de 0 a 1000, não é probabilidade. Score 701 ou mais = alerta. Veja a interpretação completa em Detalhes.' },
-          h(Icone, { nome: 'info' }), 'Como ler o score')),
+          h(Icone, { nome: 'info' }), 'Como ler')),
       v.score ? h('div', { className: 'score-resumo', style: { marginBottom: 14 } },
         h('div', { className: 'item' }, h('span', null, 'Mínimo'), h('strong', null, v.score.min)),
         h('div', { className: 'item maior' }, h('span', null, 'Mediano'), h('strong', null, f.numero(v.score.mediana, Number.isInteger(v.score.mediana) ? 0 : 1))),
@@ -392,29 +395,30 @@
         manifesto.resultados.parciais ? h(Aviso, { tom: 'atencao', titulo: 'Resultado parcial' },
           'Os números abaixo cobrem só as ' + f.inteiro(manifesto.contagens.pontuadas) + ' transações pontuadas antes da interrupção, de ' + f.inteiro(manifesto.contagens.validas) + ' válidas.') : null,
         h('div', { className: 'kpis', 'aria-busy': carga.carregando },
-          h('div', { className: 'kpi', title: v.registros.legenda }, h('div', { className: 'nome' }, h(Icone, { nome: 'tabela' }), 'Registros de transação'),
-            h('div', { className: 'valor' }, f.inteiro(n)), h('div', { className: 'detalhe' }, 'no recorte, de ' + f.inteiro(v.registros.dataset) + ' no dataset')),
-          h('div', { className: 'kpi alerta', title: v.alertas.legenda }, h('div', { className: 'nome' }, h(Icone, { nome: 'alerta' }), 'Alertas de lavagem'),
-            h('div', { className: 'valor' }, '⚠ ' + f.inteiro(v.alertas.n)), h('div', { className: 'detalhe' }, n ? f.pct(v.alertas.proporcao, 2) + ' das ' + f.inteiro(n) + ' transações do recorte' : '—'),
+          h('div', { className: 'kpi', title: v.registros.legenda }, h('div', { className: 'nome' }, h(Icone, { nome: 'tabela' }), 'Registros no recorte'),
+            h('div', { className: 'valor' }, f.inteiro(n)), h('div', { className: 'detalhe' }, 'de ' + f.inteiro(v.registros.dataset) + ' no dataset')),
+          h('div', { className: 'kpi alerta', title: v.alertas.legenda }, h('div', { className: 'nome' }, h(Icone, { nome: 'alerta' }), 'Alertas'),
+            h('div', { className: 'valor' }, f.inteiro(v.alertas.n), h('small', null, '⚠ lavagem')), h('div', { className: 'detalhe' }, n ? f.pct(v.alertas.proporcao, 2) + ' do recorte' : '—'),
             n ? h(Barra, { fracao: Math.max(v.alertas.proporcao, v.alertas.n ? 0.01 : 0), alerta: true, rotulo: f.pct(v.alertas.proporcao, 2) + ' do recorte com alerta' }) : null),
-          h('div', { className: 'kpi', title: v.periodo ? v.periodo.legenda : '' }, h('div', { className: 'nome' }, h(Icone, { nome: 'relogio' }), 'Período coberto'),
+          h('div', { className: 'kpi', title: v.periodo ? v.periodo.legenda : '' }, h('div', { className: 'nome' }, h(Icone, { nome: 'relogio' }), 'Período'),
             v.periodo ? h(React.Fragment, null, h('div', { className: 'valor menor' }, f.dataHora(v.periodo.inicio)), h('div', { className: 'detalhe' }, 'até ' + f.dataHora(v.periodo.fim)))
-              : h('div', { className: 'valor menor' }, 'Sem transações no recorte. Ajuste os filtros.')),
-          h('div', { className: 'kpi', title: v.score ? v.score.legenda : '' }, h('div', { className: 'nome' }, h(Icone, { nome: 'score' }), 'Score (0 a 1000)'),
-            h('div', { className: 'valor' }, v.score ? f.numero(v.score.mediana, Number.isInteger(v.score.mediana) ? 0 : 1) : '—', v.score ? h('small', null, 'mediano') : null),
+              : h('div', { className: 'valor menor' }, 'Sem transações')),
+          h('div', { className: 'kpi', title: v.score ? v.score.legenda : '' }, h('div', { className: 'nome' }, h(Icone, { nome: 'score' }), 'Score mediano'),
+            h('div', { className: 'valor' }, v.score ? f.numero(v.score.mediana, Number.isInteger(v.score.mediana) ? 0 : 1) : '—', v.score ? h('small', null, '/ 1000') : null),
             h('div', { className: 'detalhe' }, v.score ? 'mín. ' + v.score.min + ' · máx. ' + v.score.max : '—'))),
-        v.valor_minimo && v.valor_minimo.fora ? h(Aviso, { tom: 'atencao', titulo: 'O valor mínimo de ' + f.numero(v.valor_minimo.aplicado, 0) + ' deixa ' + f.plural(v.valor_minimo.fora, 'transação', 'transações') + ' fora do recorte' },
-          h('details', null, h('summary', null, (v.valor_minimo.alertas_fora ? f.plural(v.valor_minimo.alertas_fora, 'delas tem alerta', 'delas têm alerta') : 'Nenhuma delas tem alerta') + ' · por moeda e como incluí-las'),
+        v.valor_minimo && v.valor_minimo.fora ? h(Aviso, { tom: 'atencao', titulo: 'Valor mínimo ' + f.numero(v.valor_minimo.aplicado, 0) + ' deixa ' + f.plural(v.valor_minimo.fora, 'transação', 'transações') + ' fora do recorte' },
+          h('details', null, h('summary', null, (v.valor_minimo.alertas_fora ? f.plural(v.valor_minimo.alertas_fora, 'com alerta', 'com alerta') : 'Nenhuma com alerta') + ' · detalhes'),
             h('p', { className: 'legenda' }, 'Por moeda: ' + v.valor_minimo.por_moeda.map(m => m.moeda + ' ' + f.inteiro(m.n)).join(', ') + '. ' + v.valor_minimo.legenda))) : null,
         h('div', { className: 'grade principal-lateral' },
           h(ResumoScore, { v, aoVista }),
-          h('div', { className: 'bloco' }, h('h3', null, h(Icone, { nome: 'visao' }), 'Formato de pagamento'),
+          h('div', { className: 'bloco' }, h('div', { className: 'cabeca-bloco' }, h('h3', null, h(Icone, { nome: 'visao' }), 'Formato de pagamento'),
+            h(Dica, { texto: v.formatos.legenda + '. Formato vazio ou desconhecido aparece como "Não informado".', lado: 'esquerda' })),
             v.formatos.itens.length ? h(React.Fragment, null,
               h('ul', { className: 'barras', 'aria-label': v.formatos.legenda }, v.formatos.itens.map(x => h('li', { key: x.formato },
                 h('span', { className: 'nome-barra', title: x.formato }, x.nao_informado ? h('em', null, x.formato) : x.formato),
                 h(Barra, { fracao: x.proporcao, rotulo: f.pct(x.proporcao, 1) + ' das transações do recorte' }),
                 h('span', { className: 'valor-barra' }, h('strong', null, f.inteiro(x.n)), ' · ' + f.pct(x.proporcao, 1))))),
-              h(Legenda, null, v.formatos.legenda + '. Formato vazio ou desconhecido aparece como "Não informado".')) : h(Vazio, { compacto: true }, 'Nenhuma transação no recorte.'))),
+              ) : h(Vazio, { compacto: true }, 'Nenhuma transação no recorte.'))),
         h('div', { className: 'grade duas' },
           h('div', { className: 'bloco' },
             h('div', { className: 'cabeca-bloco' }, h('h3', null, h(Icone, { nome: 'contas' }), 'Contas prioritárias'),
@@ -423,41 +427,42 @@
               h('li', { key: c.conta }, h('button', { type: 'button', className: 'botao conta', onClick: () => aoFocar(c.conta), 'aria-label': 'Abrir o grafo da conta ' + c.conta + ': ' + f.plural(c.alertas, 'transação com alerta', 'transações com alerta') + ', maior score ' + c.maior_score },
                 h('span', { className: 'pos' }, i + 1), h('span', { className: 'id' }, c.conta),
                 h('span', { className: 'score-max' }, c.maior_score, h('small', null, 'maior score')),
-                h('span', { className: 'dados risco' }, '⚠ ' + f.plural(c.alertas, 'transação com alerta', 'transações com alerta')))))) :
+                h('span', { className: 'dados risco' }, '⚠ ' + f.plural(c.alertas, 'alerta', 'alertas')))))) :
               h(Vazio, { compacto: true }, 'Nenhuma conta tem transação com alerta no recorte.')),
-          h('div', { className: 'bloco' }, h('h3', null, h(Icone, { nome: 'sequencia' }), 'Tipologias de lavagem — registradas no dataset'),
+          h('div', { className: 'bloco' }, h('div', { className: 'cabeca-bloco' }, h('h3', null, h(Icone, { nome: 'sequencia' }), 'Tipologias'),
+            h(Dica, { texto: 'Tipologias de lavagem registradas no dataset (arquivo de padrões), não previstas pelo modelo.', lado: 'esquerda' })),
             v.tipologias.disponivel ? h(React.Fragment, null, h('div', { className: 'rolagem' }, h('table', null,
               h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Tipologia'), h('th', { scope: 'col', className: 'num' }, 'Transações'), h('th', { scope: 'col', className: 'num' }, 'Com alerta'))),
               h('tbody', null, v.tipologias.itens.map(x => h('tr', { key: x.tipologia, title: x.descricao },
                 h('td', { className: 'mono' }, x.tipologia), h('td', { className: 'num' }, f.inteiro(x.n)), h('td', { className: 'num' }, x.alertas ? h('strong', null, f.inteiro(x.alertas)) : '0')))))),
-              h(Legenda, null, h('strong', null, 'Origem: '), v.tipologias.origem + '. ' + v.tipologias.legenda)) : h(Vazio, { compacto: true }, v.tipologias.motivo))),
+              h('p', { className: 'ajuda' }, v.tipologias.origem + '. ' + v.tipologias.legenda)) : h(Vazio, { compacto: true }, 'Sem arquivo de padrões neste dataset.'))),
         ROTULO ? h('div', { className: 'bloco' }, h('h3', null, h(Icone, { nome: 'info' }), 'Rótulo do dataset — separado da previsão'),
           v.rotulo.disponivel ? h(React.Fragment, null,
             h(Pares, { itens: [['Rotuladas como lavagem no recorte', f.inteiro(v.rotulo.rotuladas_lavagem)], ['Dessas, com alerta do modelo', f.inteiro(v.rotulo.rotuladas_com_alerta)]] }),
             h(Legenda, null, v.rotulo.legenda)) : h(Vazio, null, v.rotulo.motivo)) : null);
     }
-    return h(Secao, { id: 'visao', icone: 'painel', titulo: 'Visão geral do recorte', pergunta: 'Quantas transações e alertas existem no recorte, em que período e com que scores?' }, corpo);
+    return h(Secao, { id: 'visao', icone: 'painel', titulo: 'Indicadores do recorte' }, corpo);
   }
 
   /* ═══ 4. Contas de maior risco e grafo ═══════════════════════════════ */
   function SecaoInvestigacao({ visao, focoPedido, aoFocar, cargaGrafo, analiseId, filtros, total, profundidade, aoProfundidade, aoFiltrarTabela }) {
     const cr = visao.dados ? visao.dados.contas_risco : null;
     const focoAtual = cargaGrafo.dados && cargaGrafo.dados.foco;
-    return h(Secao, { id: 'investigacao', icone: 'grafo', titulo: 'Contas de maior risco e grafo de transações', pergunta: 'Quais contas devo investigar primeiro, e para onde o dinheiro foi?' },
+    return h(Secao, { id: 'investigacao', icone: 'grafo', titulo: 'Contas e conexões' },
       h('div', { className: 'grade', style: { gridTemplateColumns: 'minmax(260px, 320px) minmax(0, 1fr)', alignItems: 'start' }, id: 'grade-investigacao' },
-        h('div', { className: 'bloco' }, h('h3', null, h(Icone, { nome: 'contas' }), 'Contas de maior risco' + (cr ? ' (até ' + cr.limite + ')' : '')),
+        h('div', { className: 'bloco' }, h('div', { className: 'cabeca-bloco' }, h('h3', null, h(Icone, { nome: 'contas' }), 'Maior risco'),
+          cr ? h(Dica, { texto: 'Até ' + cr.limite + ' contas. Regra: ' + cr.regra + ' Selecionar uma conta abre o grafo dela. Banco e conta aparecem juntos (banco-conta), como na tabela.', lado: 'esquerda' }) : null),
           !cr ? h(Esqueleto, { linhas: 6, altura: 30 }) : cr.contas.length ? h('ol', { className: 'contas' }, cr.contas.map((c, i) =>
             h('li', { key: c.conta }, h('button', { type: 'button', className: 'botao conta', 'aria-pressed': focoAtual === c.conta, onClick: () => aoFocar(c.conta) },
               h('span', { className: 'pos' }, i + 1),
               h('span', { className: 'id' }, c.conta),
               h('span', { className: 'score-max' }, c.maior_score, h('small', null, 'maior score')),
-              h('span', { className: 'dados risco' }, '⚠ ' + f.plural(c.alertas, 'transação com alerta', 'transações com alerta') + ' (' + f.inteiro(c.alertas_como_origem) + ' como origem, ' + f.inteiro(c.alertas_como_destino) + ' como destino)'),
+              h('span', { className: 'dados risco', title: f.inteiro(c.alertas_como_origem) + ' como origem, ' + f.inteiro(c.alertas_como_destino) + ' como destino' },
+                '⚠ ' + f.plural(c.alertas, 'alerta', 'alertas') + ' · ' + f.inteiro(c.alertas_como_origem) + ' orig. / ' + f.inteiro(c.alertas_como_destino) + ' dest.'),
               h('span', { className: 'dados' }, f.plural(c.transacoes_no_recorte, 'transação no recorte', 'transações no recorte')))))) :
             h(Vazio, { compacto: true }, 'Nenhuma conta tem transação com alerta no recorte.'),
-          cr ? h('details', { style: { marginTop: 10 } }, h('summary', null, 'Como a lista é ordenada'),
-            h(Legenda, null, h('strong', null, 'Regra: '), cr.regra),
-            h(Legenda, null, 'Selecionar uma conta abre o grafo dela, uma de cada vez. Banco e conta aparecem juntos (banco-conta), como na tabela.')) : null),
-        h('div', { className: 'bloco', style: { minWidth: 0 } }, h('h3', null, h(Icone, { nome: 'grafo' }), 'Grafo de transações financeiras'),
+          null),
+        h('div', { className: 'bloco', style: { minWidth: 0 } }, h('h3', null, h(Icone, { nome: 'grafo' }), 'Grafo de transações'),
           h(BlocoGrafo, { carga: cargaGrafo, analiseId, filtros, total, profundidade, aoProfundidade, aoFocar, aoFiltrarTabela }))));
   }
 
@@ -483,8 +488,8 @@
       case 'data_hora': return f.dataHora(l.data_hora);
       case 'valor_pago': case 'valor_recebido': return f.valor(l[c.id]);
       case 'score': return h('span', { className: 'score-celula ' + l.faixa }, h('span', { className: 'mini', 'aria-hidden': 'true' }, h('i', { style: { width: Math.max(2, l.score / 10) + '%' } })), l.score);
-      case 'alerta': return l.alerta ? h(Selo, { tom: 'alerta' }, '⚠ Sim', h('span', { className: 'sr' }, ' (faixa ' + NOME_FAIXA[l.faixa] + ')'))
-        : h('span', { className: 'suave' }, 'Não', h('span', { className: 'fraco' }, ' · ' + NOME_FAIXA[l.faixa]));
+      case 'alerta': return l.alerta ? h('span', { className: 'alerta-celula', title: 'Com alerta (faixa ' + NOME_FAIXA[l.faixa] + ')' }, '⚠ Sim', h('span', { className: 'sr' }, ' (faixa ' + NOME_FAIXA[l.faixa] + ')'))
+        : h('span', { className: 'sem-alerta-celula', title: 'Sem alerta (faixa ' + NOME_FAIXA[l.faixa] + ')' }, 'Não', h('span', { className: 'sr' }, ' (faixa ' + NOME_FAIXA[l.faixa] + ')'));
       case 'rotulo': return l.rotulo === null ? 'sem rótulo' : l.rotulo === 1 ? 'lavagem' : 'não lavagem';
       case 'tipologias': return l.tipologias.length ? l.tipologias.join(', ') : '—';
       case 'linha_arquivo': return f.inteiro(l.linha_arquivo);
@@ -512,26 +517,26 @@
     const ocultas = todas.filter(c => !visiveis.includes(c.id));
     const total = manifesto.contagens.pontuadas;
     const d = carga.dados;
-    return h(Secao, { id: 'tabela', icone: 'tabela', titulo: 'Registros de transação', pergunta: 'Quais transações devo investigar primeiro, e por quê?' },
+    return h(Secao, { id: 'tabela', icone: 'tabela', titulo: 'Registros de transação' },
       h('div', { className: 'barra-tabela' },
-        h('p', { role: 'status' }, d ? h(React.Fragment, null, h('strong', null, f.inteiro(d.total)), ' registros no recorte · página ' + d.pagina + ' de ' + f.inteiro(d.paginas)) : 'Carregando…'),
+        h('p', { role: 'status', className: 'contagem' }, d ? h(React.Fragment, null, h('strong', null, f.inteiro(d.total)), ' registros · pág. ' + d.pagina + '/' + f.inteiro(d.paginas)) : 'Carregando…'),
         h('div', { className: 'controles' },
-          h('label', { htmlFor: 't-ord' }, 'Ordenar por'),
+          h('label', { htmlFor: 't-ord' }, h(Icone, { nome: 'recentes' }), h('span', { className: 'sr' }, 'Ordenar por')),
           h('select', { id: 't-ord', value: tabela.ordenar + ':' + tabela.direcao,
             onChange: e => { const [o, dr] = e.target.value.split(':'); setTabela(Object.assign({}, tabela, { ordenar: o, direcao: dr, pagina: 1 })); } },
-            h('option', { value: 'id_exibicao:asc' }, 'Data e hora (mais antigas primeiro)'), h('option', { value: 'id_exibicao:desc' }, 'Data e hora (mais recentes primeiro)'),
-            h('option', { value: 'score:desc' }, 'Score (maior primeiro)'), h('option', { value: 'score:asc' }, 'Score (menor primeiro)'),
-            h('option', { value: 'valor_pago:desc' }, 'Valor pago (maior primeiro, sem converter moeda)')),
+            h('option', { value: 'id_exibicao:asc' }, 'Mais antigas'), h('option', { value: 'id_exibicao:desc' }, 'Mais recentes'),
+            h('option', { value: 'score:desc' }, 'Maior score'), h('option', { value: 'score:asc' }, 'Menor score'),
+            h('option', { value: 'valor_pago:desc' }, 'Maior valor pago (sem converter moeda)')),
           h('label', { htmlFor: 't-tam' }, 'Linhas'),
           h('select', { id: 't-tam', value: tabela.tamanho, onChange: e => setTabela(Object.assign({}, tabela, { tamanho: +e.target.value, pagina: 1 })) },
-            [25, 50, 100, 200].map(n => h('option', { key: n, value: n }, n))))),
-      h('details', null, h('summary', null, 'Colunas (' + cols.length + ' de ' + todas.length + ' visíveis)'),
-        h('fieldset', { style: { border: 0, padding: 0, margin: 0 } }, h('legend', { className: 'legenda' }, 'Marque as colunas a exibir. A lista inclui todas as colunas originais do dataset; as desmarcadas aparecem ao expandir a linha.'),
-          h('div', { className: 'grade campos', style: { marginTop: 8, gap: 6 } }, todas.map(c => h('label', { key: c.id, style: { fontWeight: 400, margin: 0 } },
-            h('input', { type: 'checkbox', checked: visiveis.includes(c.id), onChange: () => alternar(c.id) }), ' ' + c.nome + (c.dica ? ' — ' + c.dica : '')))))),
+            [25, 50, 100, 200].map(n => h('option', { key: n, value: n }, n))),
+          h('details', { className: 'seletor-colunas' }, h('summary', null, h(Icone, { nome: 'colunas' }), 'Colunas (' + cols.length + ' de ' + todas.length + ' visíveis)'),
+            h('fieldset', null, h('legend', { className: 'ajuda', style: { marginBottom: 8 } }, 'As desmarcadas aparecem ao expandir a linha.'),
+              h('div', { className: 'grade campos', style: { gap: 8 } }, todas.map(c => h('label', { key: c.id, title: c.dica },
+                h('input', { type: 'checkbox', checked: visiveis.includes(c.id), onChange: () => alternar(c.id) }), c.nome))))))),
       carga.erro ? h(Erro, { erro: carga.erro }) : !d ? h(Esqueleto, { linhas: 8, altura: 22, texto: 'Carregando os registros…' }) : !d.linhas.length ? h(Vazio, null, 'Nenhuma transação passa pelos filtros atuais.') :
         h('div', { className: 'rolagem', 'aria-busy': carga.carregando }, h('table', { className: 'tabela-registros' },
-          h('caption', null, 'Selecione o ID de exibição para ver os detalhes da transação, ou expanda a linha para ver as demais colunas.'),
+          h('caption', { className: 'sr' }, 'Selecione o ID de exibição para ver os detalhes da transação, ou expanda a linha para ver as demais colunas.'),
           h('thead', null, h('tr', null, h('th', { scope: 'col', className: 'expandir' }, h('span', { className: 'sr' }, 'Expandir')), cols.map(c => h('th', { key: c.id, scope: 'col', className: c.num ? 'num' : '' }, c.nome)))),
           h('tbody', null, d.linhas.map(l => {
             const aberta = expandidas.has(l.id_exibicao), idTx = f.idExibicao(l.id_exibicao, total);
@@ -551,7 +556,7 @@
       d && d.paginas > 1 ? h('nav', { className: 'paginacao', 'aria-label': 'Páginas da tabela' },
         h('button', { type: 'button', className: 'botao pequeno', disabled: d.pagina <= 1, onClick: () => setTabela(Object.assign({}, tabela, { pagina: 1 })) }, 'Primeira'),
         h('button', { type: 'button', className: 'botao pequeno', disabled: d.pagina <= 1, onClick: () => setTabela(Object.assign({}, tabela, { pagina: d.pagina - 1 })) }, 'Anterior'),
-        h('span', { className: 'suave tab-num' }, 'Página ' + d.pagina + ' de ' + f.inteiro(d.paginas)),
+        h('span', { className: 'fraco tab-num' }, d.pagina + ' / ' + f.inteiro(d.paginas)),
         h('button', { type: 'button', className: 'botao pequeno', disabled: d.pagina >= d.paginas, onClick: () => setTabela(Object.assign({}, tabela, { pagina: d.pagina + 1 })) }, 'Próxima'),
         h('button', { type: 'button', className: 'botao pequeno', disabled: d.pagina >= d.paginas, onClick: () => setTabela(Object.assign({}, tabela, { pagina: d.paginas })) }, 'Última')) : null,
       h('details', null, h('summary', null, 'Como ler a tabela'),
@@ -573,19 +578,19 @@
       const cartao = (titulo, conteudo, extra) => h('div', { className: 'bloco' + (extra ? ' ' + extra : '') }, h('h3', null, titulo), conteudo);
       const conta = (papel, no, banco, numero) => cartao(papel, h(React.Fragment, null,
         h('p', { className: 'mono', style: { fontSize: 'var(--t-l)', fontWeight: 600, marginBottom: 8 } }, no),
-        h(Pares, { itens: [['Banco', banco], ['Conta', h('span', { className: 'mono' }, numero)], ['Identificador (banco-conta)', h('span', { className: 'mono' }, no)]] }),
+        h(Pares, { itens: [['Banco', banco], ['Conta', h('span', { className: 'mono' }, numero)]] }),
         h('div', { className: 'linha', style: { marginTop: 10 } },
           h('button', { type: 'button', className: 'botao pequeno', onClick: () => { aoFocar(no); aoFechar(); } }, h(Icone, { nome: 'grafo' }), 'Ver no grafo'),
-          h('button', { type: 'button', className: 'botao pequeno', onClick: () => { aoFiltrarTabela(papel === 'Origem' ? { conta_origem: no, conta_destino: '' } : { conta_origem: '', conta_destino: no }); aoFechar(); } }, h(Icone, { nome: 'filtro' }), 'Filtrar tabela por esta conta'))));
+          h('button', { type: 'button', className: 'botao pequeno', onClick: () => { aoFiltrarTabela(papel === 'Origem' ? { conta_origem: no, conta_destino: '' } : { conta_origem: '', conta_destino: no }); aoFechar(); } }, h(Icone, { nome: 'filtro' }), 'Filtrar tabela'))));
       corpo = h(React.Fragment, null,
         /* Score em destaque: valor, faixa, classificação e o nível de risco na régua 0–1000 */
         h('div', { className: 'score-destaque' },
           h('div', { className: 'bloco' + (t.alerta ? ' alerta' : '') },
-            h('div', { className: 'cabeca-bloco' }, h('h3', null, h(Icone, { nome: 'score' }), 'Previsão de lavagem (modelo)'),
+            h('div', { className: 'cabeca-bloco' }, h('h3', null, h(Icone, { nome: 'score' }), 'Previsão do modelo'),
               aoInterpretar ? h('button', { type: 'button', className: 'botao pequeno fantasma', onClick: aoInterpretar, 'aria-label': 'Interpretação do score: abrir em Detalhes' }, h(Icone, { nome: 'info' }), 'Interpretação do score') : null),
             h(MedidorScore, { score: t.score, faixa: t.faixa, nomeFaixa: fx.nome + ' (' + fx.de + '–' + fx.ate + ')', alerta: t.alerta }),
             h('p', { className: 'legenda', style: { marginTop: 10 } }, h('strong', null, 'Recomendação da faixa: '), fx.recomendacao + '.')),
-          cartao('Transação observada', h(Pares, { itens: [['Data e hora', f.dataHora(t.data_hora) + ' (horário do dataset)'], ['Valor pago', h('strong', null, f.valor(t.valor_pago) + ' ' + t.moeda_pagamento)],
+          cartao('Transação', h(Pares, { itens: [['Data e hora', f.dataHora(t.data_hora)], ['Valor pago', h('strong', null, f.valor(t.valor_pago) + ' ' + t.moeda_pagamento)],
             ['Valor recebido', f.valor(t.valor_recebido) + ' ' + t.moeda_recebimento], ['Formato de pagamento', t.formato]] }))),
         h('div', { className: 'fluxo-contas' },
           conta('Origem', t.no_origem, t.banco_origem, t.conta_origem),
@@ -601,7 +606,7 @@
             h(Legenda, null, d.motivo_sem_tipologias || 'Este dataset não tem tipologias registradas.')),
           ROTULO ? cartao('Rótulo do dataset', d.rotulo_disponivel ? h(React.Fragment, null, h('p', null, h('strong', null, t.rotulo === 1 ? 'Lavagem (rótulo 1)' : 'Não lavagem (rótulo 0)')),
             h(Legenda, null, 'Valor que já veio no arquivo. Não é previsão e não entra no cálculo do score.')) : h(Legenda, null, 'Este dataset não tem rótulo de lavagem.')) : null),
-        h('details', { className: 'acordeao' }, h('summary', null, 'Dados técnicos do score e da transação'),
+        h('details', { className: 'acordeao' }, h('summary', null, 'Dados técnicos'),
           h('div', { className: 'conteudo' },
             h(Pares, { itens: [['Score', t.score + ' de 1000'], ['Faixa', fx.nome + ' (' + fx.de + '–' + fx.ate + ')'], ['Alerta', t.alerta ? '⚠ Sim' : 'Não'],
               ['Limiar de alerta', 'score 701 = score original ' + f.numero(mod.limiar_alerta, 4) + ' (limiar do modelo, escala de 0 a 1)'],
@@ -612,7 +617,7 @@
               Object.entries(t.extras || {}).map(([k, v]) => [k + ' (coluna original)', v])) }),
             h(Legenda, null, conv.leitura + ' ' + d.aviso_faixas))),
         aoPerguntar ? h('div', { className: 'linha' },
-          h('button', { type: 'button', className: 'botao', onClick: () => aoPerguntar(t.id_exibicao) }, h(Icone, { nome: 'assistente' }), 'Perguntar ao Assistente de dúvidas sobre esta transação')) : null);
+          h('button', { type: 'button', className: 'botao', onClick: () => aoPerguntar(t.id_exibicao) }, h(Icone, { nome: 'assistente' }), 'Perguntar ao assistente')) : null);
       titulo = h(React.Fragment, null, 'Transação ' + f.idExibicao(t.id_exibicao, total), t.alerta ? h(Selo, { tom: 'alerta' }, '⚠ Com alerta') : h(Selo, { tom: TOM_FAIXA[t.faixa] }, 'Faixa ' + NOME_FAIXA[t.faixa]));
     }
     return h(Dialogo, { id: 'dlg-detalhes', aberto: !!id, titulo, aoFechar }, corpo);
@@ -693,7 +698,7 @@
 
   function SecaoDetalhes({ estado, manifesto, visao }) {
     const v = visao && visao.dados;
-    return h(Secao, { id: 'detalhes', icone: 'detalhes', titulo: 'Detalhes', pergunta: 'Como interpretar o score e o que cada indicador mede?' },
+    return h(Secao, { id: 'detalhes', icone: 'detalhes', titulo: 'Interpretação e definições' },
       h(InterpretacaoScore, { estado, manifesto }),
       v ? h('details', { className: 'acordeao' }, h('summary', null, 'O que cada indicador mede', h('span', { className: 'sub' }, 'visão geral do recorte')),
         h('div', { className: 'conteudo' }, h(Pares, { itens: [['Registros de transação', v.registros.legenda], ['Alertas de lavagem', v.alertas.legenda],
@@ -713,22 +718,22 @@
     if (erro) return h(Erro, { erro });
     if (!d) return h(Carregando, null);
     const mp = d.memoria.processo, mm = d.memoria.maquina, a = d.analise;
-    const ind = v => f.vazio(v) ? 'indisponível neste sistema' : v;
+    const ind = v => f.vazio(v) ? '—' : v;
     return h('div', { className: 'grade' },
-      h('h3', null, h(Icone, { nome: 'operacao' }), ' Desempenho'),
+      h('div', { className: 'cabeca-bloco', style: { marginBottom: 0 } }, h('h3', null, h(Icone, { nome: 'operacao' }), ' Desempenho'), h('span', { className: 'estado ok', title: 'Lido em ' + f.instante(d.medido_em) + '; atualiza a cada 3 s.' }, 'Ao vivo')),
       h(Pares, { itens: [
-        ['RAM — processo do NodeWatch', f.vazio(mp.bytes) ? ind(null) : f.gb(mp.bytes) + ' (' + f.numero(mp.percentual_da_maquina, 1) + '% da memória da máquina) · pico desde o início do servidor ' + f.gb(mp.pico_bytes)],
-        ['RAM — máquina', f.vazio(mm.em_uso_bytes) ? ind(null) : f.gb(mm.em_uso_bytes) + ' em uso de ' + f.gb(mm.total_bytes) + ' (' + f.numero(mm.percentual, 1) + '%)'],
-        ['CPU — processo do NodeWatch', f.vazio(d.cpu.processo_pct) ? ind(null) : f.numero(d.cpu.processo_pct, 1) + '%'],
-        ['CPU — máquina', f.vazio(d.cpu.maquina_pct) ? ind(null) : f.numero(d.cpu.maquina_pct, 1) + '%'],
+        ['RAM do processo', f.vazio(mp.bytes) ? ind(null) : f.gb(mp.bytes) + ' (' + f.numero(mp.percentual_da_maquina, 1) + '%) · pico ' + f.gb(mp.pico_bytes)],
+        ['RAM do sistema', f.vazio(mm.em_uso_bytes) ? ind(null) : f.gb(mm.em_uso_bytes) + ' de ' + f.gb(mm.total_bytes) + ' (' + f.numero(mm.percentual, 1) + '%)'],
+        ['CPU do processo', f.vazio(d.cpu.processo_pct) ? ind(null) : f.numero(d.cpu.processo_pct, 1) + '%'],
+        ['CPU do sistema', f.vazio(d.cpu.maquina_pct) ? ind(null) : f.numero(d.cpu.maquina_pct, 1) + '%'],
       ] }),
-      h(Legenda, null, 'CPU: ' + d.cpu.leitura + ' (' + d.cpu.nucleos_logicos + ' núcleos; janela de ' + f.numero(d.cpu.janela_s, 1) + ' s). Lido em ' + f.instante(d.medido_em) + '; atualiza a cada 3 s.'),
-      h('h4', null, 'Latência das consultas'),
+      h('p', { className: 'ajuda' }, 'CPU: ' + d.cpu.nucleos_logicos + ' núcleos · janela ' + f.numero(d.cpu.janela_s, 1) + ' s ', h(Dica, { texto: 'CPU: ' + d.cpu.leitura + '. Lido em ' + f.instante(d.medido_em) + '; atualiza a cada 3 s.' })),
+      h('h4', null, 'Latência (ms) ', h(Dica, { texto: 'Latência = tempo de processamento de cada consulta no servidor, em milissegundos (não inclui a rede nem o navegador).' })),
       d.latencias.length ? h('div', { className: 'rolagem' }, h('table', null,
         h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Operação medida'), h('th', { scope: 'col', className: 'num' }, 'Última (ms)'), h('th', { scope: 'col', className: 'num' }, 'Mediana (ms)'), h('th', { scope: 'col', className: 'num' }, 'Amostras'))),
         h('tbody', null, d.latencias.map(l => h('tr', { key: l.operacao }, h('td', null, l.operacao), h('td', { className: 'num' }, f.numero(l.ultima_ms, 0)), h('td', { className: 'num' }, f.numero(l.mediana_ms, 0)), h('td', { className: 'num' }, l.amostras)))))) :
         h(Legenda, null, 'Nenhuma consulta medida ainda.'),
-      h(Legenda, null, 'Latência = tempo de processamento de cada consulta no servidor, em milissegundos (não inclui a rede nem o navegador).'),
+      null,
       h('h4', null, 'Análise'),
       a ? h(React.Fragment, null, h(Pares, { itens: [
         ['Qual', a.qual + ' — ' + a.dataset + ' (' + NOME_STATUS[a.status] + ')'],
@@ -801,7 +806,7 @@
       h('aside', { id: 'painel-operacional', className: 'lateral', hidden: !aberto, 'aria-labelledby': 'lateral-t', onKeyDown: e => { if (e.key === 'Escape') aoFechar(); } },
       h('header', null, h('h2', { id: 'lateral-t', tabIndex: -1, ref }, h(Icone, { nome: 'operacao' }), 'Painel operacional'), h('button', { type: 'button', className: 'botao fantasma', onClick: aoFechar }, h(Icone, { nome: 'fechar' }), 'Fechar')),
       h('div', { className: 'conteudo' },
-        h('p', { className: 'legenda' }, 'O sistema e o modelo estão saudáveis?'),
+        null,
         h(Desempenho, { aberto }),
         h('div', { role: 'tablist', className: 'abas', 'aria-label': 'Logs e métricas', onKeyDown: tecla },
           ABAS.map(([id, nome]) => h('button', { key: id, id: 'aba-' + id, role: 'tab', type: 'button', 'aria-selected': aba === id, 'aria-controls': 'painel-aba', tabIndex: aba === id ? 0 : -1, onClick: () => setAba(id) }, nome))),
@@ -824,9 +829,11 @@
           ['⚠ e vermelho', 'Transação, conta ou caminho com alerta. Na tabela, faixa vermelha no início da linha e o texto "⚠ Sim".'],
           ['Amarelo', 'Atenção: resultado parcial, linhas recusadas ou aviso.'],
           ['Verde e ✓', 'Etapa ou análise concluída; dataset válido.'],
-          ['Azul (ciano)', 'Ação disponível, item selecionado, conta em foco, progresso ou etapa em andamento (▶).'],
+          ['Vermelho NodeWatch', 'Item ativo, ação principal, seleção, progresso e etapa em andamento (▶). Sem "⚠", não indica alerta.'],
+          ['Branco no grafo', 'Conta em foco (contorno duplo) e sequência selecionada.'],
+          ['Ciano', 'Aviso informativo.'],
           ['Contorno amarelo', 'Elemento com o foco do teclado.'],
-          ['Vermelho da logo', 'É a cor da marca NodeWatch, usada só na logo (no "Watch"). Alerta é sempre o vermelho-coral acompanhado de ⚠ e texto.']]),
+          ['Vermelho com ⚠', 'Alerta: sempre acompanhado de "⚠", texto ou fundo tingido, nunca só a cor.']]),
         grupo('Estados da análise', Object.entries(estado.status_analise).map(([k, v]) => [NOME_STATUS[k], v.replace(/^[^:]+:\s*/, '')])),
         grupo('Estados do dataset', [['Válido', 'Todas as linhas passaram na validação.'], ['Válido, com linhas recusadas', 'Há linhas com problema; elas ficam fora da análise e são listadas.'],
           ['Inválido', 'O arquivo não pode ser analisado; a tabela de problemas diz o que corrigir.']]),
