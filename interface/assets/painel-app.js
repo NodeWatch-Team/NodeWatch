@@ -4,7 +4,7 @@
    Os dados de todas as vistas de resultado são carregados juntos (mesmo recorte), então trocar de vista é imediato. */
 (function () {
   'use strict';
-  const { h, f, api, consulta, useCarga, useIntervalo, useSessao, sessao, FILTROS_VAZIOS, Icone, Erro, Carregando, Vazio, Selo,
+  const { h, f, api, consulta, useCarga, useIntervalo, useSessao, sessao, FILTROS_VAZIOS, Icone, Rede, Erro, Carregando, Vazio, Selo,
     SecaoDataset, SecaoFiltros, SecaoVisao, SecaoInvestigacao, SecaoTabela, SecaoDetalhes, DialogoDetalhes, PainelLateral, DialogoLegenda, Assistente,
     NOME_STATUS, TOM_STATUS } = window.NW;
 
@@ -28,18 +28,21 @@
   ];
   const NOME_VISTA = Object.fromEntries(VISTAS.map(v => [v.id, v.nome]));
 
-  /* Situação da sessão da interface, sempre com texto (nunca só a cor). */
+  /* Situação da sessão da interface: ponto + rótulo curto (nunca só a cor); a explicação fica na dica. */
   function SeloSessao() {
     const s = useSessao();
     const janela = s.politica ? Math.round(s.politica.ttl_s) : null;
     const dica = janela ? 'Enviar, validar e analisar exigem a sessão desta página. Sem sinal da aba por ' + janela + ' s, ela expira e a análise para num ponto seguro.' : '';
-    if (s.estado === 'ativa') return h('span', { role: 'status', title: dica }, h(Selo, { tom: 'ok', vivo: true }, 'Sessão ativa'));
-    if (s.estado === 'sem_servidor') return h('span', { role: 'status', title: dica }, h(Selo, { tom: 'alerta' }, '⚠ Sem conexão com o servidor'));
-    return h('span', { role: 'status', title: dica }, h(Selo, { tom: 'atencao' }, s.estado === 'expirada' ? 'Sessão expirada: abrindo outra…' : 'Abrindo a sessão…'));
+    const [tom, texto, longo] = s.estado === 'ativa' ? ['ok', 'Sessão', 'Sessão ativa']
+      : s.estado === 'sem_servidor' ? ['alerta', 'Offline', '⚠ Sem conexão com o servidor']
+        : ['atencao', 'Sessão', s.estado === 'expirada' ? 'Sessão expirada: abrindo outra…' : 'Abrindo a sessão…'];
+    return h('span', { role: 'status', className: 'estado ' + tom + ' dica-abaixo dica-esquerda', 'data-dica': longo + (dica ? '. ' + dica : ''), tabIndex: 0 },
+      h('span', { className: 'rotulo-estado', 'aria-hidden': 'true' }, texto), h('span', { className: 'sr' }, longo));
   }
 
-  /* Navegação lateral: vistas agrupadas, contadores reais (alertas da análise aberta) e atalhos do sistema. */
-  function Navegacao({ vista, aoVista, temResultados, emAndamento, manifesto, aberta, aoFechar, lateral, aoLateral, aoLegenda, estado }) {
+  /* Navegação lateral: vistas agrupadas, contadores reais (alertas da análise aberta) e atalhos do sistema.
+     Recolhível (só ícones, com o nome na dica e no nome acessível); a escolha fica guardada neste navegador. */
+  function Navegacao({ vista, aoVista, temResultados, emAndamento, manifesto, aberta, aoFechar, lateral, aoLateral, aoLegenda, estado, recolhida, aoRecolher }) {
     const grupos = [];
     VISTAS.forEach(v => { let g = grupos.find(x => x.nome === v.grupo); if (!g) { g = { nome: v.grupo, itens: [] }; grupos.push(g); } g.itens.push(v); });
     const alertas = manifesto && manifesto.resultados && manifesto.resultados.disponiveis ? manifesto.contagens.alertas : null;
@@ -47,29 +50,33 @@
       const indisponivel = v.resultados && !temResultados;
       const atual = vista === v.id;
       return h('li', { key: v.id }, h('button', { type: 'button', className: 'nav-item', 'aria-current': atual ? 'page' : undefined,
-        'aria-disabled': indisponivel ? 'true' : undefined,
+        'aria-disabled': indisponivel ? 'true' : undefined, 'data-dica-nav': v.nome,
         title: indisponivel ? (emAndamento ? 'Disponível quando a análise terminar' : 'Abra ou conclua uma análise para ver os resultados') : undefined,
         'aria-describedby': 'nav-dica-' + v.id,
         onClick: () => { if (!indisponivel) { aoVista(v.id); aoFechar(); } } },
-        h(Icone, { nome: v.icone }), h('span', null, v.nome), h('span', { className: 'sr', id: 'nav-dica-' + v.id }, indisponivel ? (emAndamento ? 'Disponível quando a análise terminar.' : 'Disponível com uma análise concluída.') : v.dica + '.'),
+        h(Icone, { nome: v.icone }), h('span', { className: 'rotulo-nav' }, v.nome), h('span', { className: 'sr', id: 'nav-dica-' + v.id }, indisponivel ? (emAndamento ? 'Disponível quando a análise terminar.' : 'Disponível com uma análise concluída.') : v.dica + '.'),
         v.id === 'analise' && emAndamento ? h('span', { className: 'pulso', 'aria-label': 'análise em andamento', role: 'img' }) : null,
         v.id === 'transacoes' && !f.vazio(alertas) ? h('span', { className: 'contador' + (alertas ? ' alerta' : ''), 'aria-label': f.plural(alertas, 'alerta', 'alertas') }, f.inteiro(alertas)) : null));
     };
     return h(React.Fragment, null,
       h('div', { className: 'nav-fundo' + (aberta ? ' aberta' : ''), onClick: aoFechar, 'aria-hidden': 'true' }),
       h('nav', { id: 'navegacao', className: 'navegacao' + (aberta ? ' aberta' : ''), 'aria-label': 'Navegação do painel', onKeyDown: e => { if (e.key === 'Escape') aoFechar(); } },
-        h('div', { className: 'marca' }, h('img', { className: 'logo', src: 'assets/nodewatch-logo.png', alt: 'NodeWatch', width: 146, height: 40 })),
+        h('div', { className: 'marca' },
+          h('img', { className: 'logo', src: 'assets/nodewatch-logo.png', alt: 'NodeWatch', width: 146, height: 40 }),
+          h('img', { className: 'logo-simbolo', src: 'assets/nodewatch-simbolo.png', alt: recolhida ? 'NodeWatch' : '', width: 34, height: 34 })),
         grupos.map(g => h('div', { key: g.nome, className: 'nav-grupo' }, h('span', { className: 'eyebrow', 'aria-hidden': 'true' }, g.nome), h('ul', { 'aria-label': g.nome }, g.itens.map(item)))),
         h('div', { className: 'nav-grupo' }, h('span', { className: 'eyebrow', 'aria-hidden': 'true' }, 'Sistema'),
           h('ul', { 'aria-label': 'Sistema' },
-            h('li', null, h('button', { type: 'button', id: 'nav-operacao', className: 'nav-item', 'aria-expanded': lateral, 'aria-controls': 'painel-operacional',
+            h('li', null, h('button', { type: 'button', id: 'nav-operacao', className: 'nav-item', 'aria-expanded': lateral, 'aria-controls': 'painel-operacional', 'data-dica-nav': 'Operação',
               onClick: () => { aoLateral(!lateral); aoFechar(); } },
-              h(Icone, { nome: 'operacao' }), h('span', null, 'Painel operacional'))),
-            h('li', null, h('button', { type: 'button', className: 'nav-item', 'aria-haspopup': 'dialog', onClick: () => { aoLegenda(); aoFechar(); } },
-              h(Icone, { nome: 'legenda' }), h('span', null, 'Legenda geral'))))),
+              h(Icone, { nome: 'operacao' }), h('span', { className: 'rotulo-nav' }, 'Operação'))),
+            h('li', null, h('button', { type: 'button', className: 'nav-item', 'aria-haspopup': 'dialog', 'data-dica-nav': 'Legenda', onClick: () => { aoLegenda(); aoFechar(); } },
+              h(Icone, { nome: 'legenda' }), h('span', { className: 'rotulo-nav' }, 'Legenda'))))),
         h('div', { className: 'rodape' },
-          h('span', null, 'Prevenção à lavagem de dinheiro'),
-          estado && estado.modelo && estado.modelo.disponivel ? h('span', { className: 'mono', title: 'Modelo salvo usado na pontuação' }, 'Modelo ' + estado.modelo.versao) : null)));
+          h('button', { type: 'button', className: 'nav-item nav-alternar', 'aria-pressed': !!recolhida, 'data-dica-nav': 'Expandir menu', onClick: aoRecolher },
+            h(Icone, { nome: 'recolher' }), h('span', { className: 'rotulo-nav' }, recolhida ? 'Expandir menu' : 'Recolher menu')),
+          estado && estado.modelo && estado.modelo.disponivel ? h('div', { className: 'modelo mono', title: 'Modelo salvo usado na pontuação: ' + estado.modelo.versao },
+            h('span', null, estado.modelo.versao)) : null)));
   }
 
   function App() {
@@ -94,6 +101,9 @@
     const [lateral, setLateral] = React.useState(false);
     const [legenda, setLegenda] = React.useState(false);
     const [navAberta, setNavAberta] = React.useState(false);
+    // menu lateral recolhido (só ícones): preferência deste navegador
+    const [navRecolhida, setNavRecolhida] = React.useState(() => { try { return localStorage.getItem('nw.nav') === 'recolhida'; } catch (e) { return false; } });
+    const recolher = () => setNavRecolhida(r => { try { localStorage.setItem('nw.nav', r ? 'aberta' : 'recolhida'); } catch (e) { /* sem armazenamento local */ } return !r; });
     // vista pedida pelo analista (ou pelo endereço); vazia = a padrão (visão geral com resultados, análise sem)
     const [vistaPedida, setVistaPedida] = React.useState(vistaDoEndereco);
     const iniciais = filtrosIniciais(estado.dados);
@@ -184,20 +194,24 @@
       conteudo = h(React.Fragment, null, recorte, h(SecaoTabela, { carga: pagina, manifesto, tabela, setTabela, aoDetalhe: setDetalheId, selecionada: detalheId }));
     }
 
-    return h(React.Fragment, null, h('div', { className: 'app' },
-      h(Navegacao, { vista, aoVista: mudarVista, temResultados, emAndamento, manifesto, aberta: navAberta, estado: est,
+    return h(React.Fragment, null,
+      /* motivo de rede atrás de tudo: identidade visual, sem dados e sem cliques */
+      h('div', { className: 'rede-fundo', 'aria-hidden': 'true' }, h(Rede)),
+      h('div', { className: 'app' + (navRecolhida ? ' recolhida' : '') },
+      h(Navegacao, { vista, aoVista: mudarVista, temResultados, emAndamento, manifesto, aberta: navAberta, estado: est, recolhida: navRecolhida, aoRecolher: recolher,
         aoFechar: () => setNavAberta(false), lateral, aoLateral: setLateral, aoLegenda: () => setLegenda(true) }),
       h('div', { className: 'coluna' },
         h('header', { className: 'topo' },
           h('button', { type: 'button', className: 'botao hamburguer', 'aria-expanded': navAberta, 'aria-controls': 'navegacao',
             'aria-label': navAberta ? 'Fechar o menu de navegação' : 'Abrir o menu de navegação', onClick: () => setNavAberta(!navAberta) }, h(Icone, { nome: 'menu' })),
-          h('div', { className: 'marca' }, h('img', { className: 'logo-simbolo', src: 'assets/nodewatch-simbolo.png', alt: '', width: 30, height: 30 })),
-          h('h1', null, h('span', { className: 'eyebrow' }, 'Painel do analista'), h('span', { className: 'nome-vista' }, NOME_VISTA[vista])),
+          h('div', { className: 'marca' }, h('img', { className: 'logo-simbolo', src: 'assets/nodewatch-simbolo.png', alt: '', width: 28, height: 28 })),
+          h('h1', null, h('span', { className: 'nome-vista' }, NOME_VISTA[vista]), h('span', { className: 'eyebrow' }, 'Painel do analista')),
           h('div', { className: 'estado-analise', role: 'status' }, manifesto ? h(React.Fragment, null,
-            h('span', { className: 'sr' }, 'Análise aberta: '), h('span', { className: 'nome-ds', title: manifesto.dataset.nome }, manifesto.dataset.nome),
-            h(Selo, { tom: TOM_STATUS[manifesto.status] || 'acao', forma: true }, NOME_STATUS[manifesto.status])) : h('span', { className: 'suave', style: { paddingRight: 8 } }, 'Nenhuma análise aberta')),
+            h(Icone, { nome: 'dataset' }), h('span', { className: 'sr' }, 'Análise aberta: '), h('span', { className: 'nome-ds', title: manifesto.dataset.nome }, manifesto.dataset.nome),
+            h('span', { className: 'estado ' + (TOM_STATUS[manifesto.status] || 'acao') }, NOME_STATUS[manifesto.status])) : h('span', { className: 'fraco' }, 'Nenhuma análise aberta')),
           h('div', { className: 'acoes' }, h(SeloSessao),
-            h('button', { type: 'button', className: 'botao', onClick: () => setLegenda(true), 'aria-haspopup': 'dialog' }, h(Icone, { nome: 'legenda' }), h('span', { className: 'rotulo-botao' }, 'Legenda')))),
+            h('button', { type: 'button', className: 'botao icone fantasma dica-abaixo dica-esquerda', onClick: () => setLegenda(true), 'aria-haspopup': 'dialog', 'data-dica': 'Legenda geral' },
+              h(Icone, { nome: 'legenda' }), h('span', { className: 'rotulo-botao sr' }, 'Legenda')))),
         h(PainelLateral, { aberto: lateral, aoFechar: () => { setLateral(false); const b = document.getElementById('nav-operacao'); if (b && b.offsetParent) b.focus(); }, analiseId: manifesto ? manifesto.id : '' }),
         h('main', { id: 'conteudo' },
           h('div', { key: vista, className: 'vista', 'data-vista': vista }, conteudo),

@@ -6,7 +6,7 @@
   <title>NodeWatch — Painel do analista</title>
   <link rel="icon" type="image/png" href="assets/nodewatch-simbolo.png" />
   <meta name="color-scheme" content="dark" />
-  <meta name="theme-color" content="#080c13" />
+  <meta name="theme-color" content="#090909" />
   <!-- Endereços antigos (/#ml, /#ml/eventos, /#grafos…) continuam valendo: levam à interface anterior, em /legado. -->
   <script>if (/^#\/?(ml|grafos)(\/|$)/.test(location.hash)) location.replace('/legado' + location.hash);</script>
   <link rel="stylesheet" href="assets/painel.css" />
@@ -18,7 +18,7 @@
   <a class="pular" href="#conteudo">Ir para o conteúdo</a>
   <div id="raiz">
     <!-- Visível só até a página abrir a sessão e montar o painel (o React substitui este conteúdo). -->
-    <main id="conteudo"><p class="carregando-inicial" role="status">Abrindo o painel e a sessão desta página…</p></main>
+    <main id="conteudo"><p class="carregando-inicial" role="status"><img src="assets/nodewatch-simbolo.png" alt="" width="56" height="56" />Abrindo o painel e a sessão desta página…</p></main>
     <noscript>O painel do NodeWatch precisa de JavaScript habilitado.</noscript>
   </div>
   <script src="assets/painel-base.js"></script>
