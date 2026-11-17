@@ -4,42 +4,39 @@ titulo: NodeWatch: como explicar o projeto com segurança
 sub: Resumo de estudo, perguntas prováveis da professora, roteiro de cinco minutos e lembretes para o ensaio.
 Projeto: NodeWatch, Grupo 4
 Integrantes: Caio Winkler Marangoni, Guilherme Lombardi, Ryan dos Santos Veloso, Julia Emily Leonardo Barbosa e Guilherme Liborio Camargo
-Versão descrita: branch local ml/sessoes-analise-datasets, a partir do commit 9095451, com alterações ainda sem commit (seção 5.3)
-Modelos: estado_rede-20261102T083053Z e lavagem-20261102T083253Z (nenhum foi retreinado para este material)
-Data: 06/11/2026
+Versão descrita: main de 17/11/2026 (depois da reorganização do repositório)
+Modelo: lavagem-20261102T083253Z (não foi retreinado para este material)
+Data: 17/11/2026
 -->
-
-> **Atenção (17/11/2026): parte deste documento descreve código removido.** A interface antiga (`/legado`), a área *Analisar dataset*, a exploração de previsões, o processamento de eventos (API `/api/ml/eventos`, replay, laboratório de simulação), o chat `/api/chat` e a CLI de grafos (`src/main.py`, com DFS, SCC, centralidade e exportação JSON, e `docs/melhorias-e-limitacoes.md`) e o módulo didático de telemetria de rede (`estado_rede`, com a fusão rede ↔ transação e `docs/ml/CONTRATO_INTEGRACAO.md`) saíram do sistema; o modelo distribuído passou de 38,8 MB para 3,0 MB, com a cabeça de lavagem inalterada. O que este texto diz sobre eles vale só como histórico; o fluxo atual é o do painel do analista, em [`docs/ui/PAINEL_ANALISTA.md`](ui/PAINEL_ANALISTA.md). O PDF correspondente é anterior à remoção. Este documento será revisto na reorganização da documentação.
 
 # NodeWatch: como explicar o projeto com segurança
 
-**Como usar.** Leia o resumo, estude primeiro as cinco perguntas marcadas com ★ e ensaie o roteiro com cronômetro. Os arquivos que sustentam cada número estão na seção 5, separados das falas. Lá também está a lista do que ainda precisa de confirmação.
+**Como usar.** Leia o resumo, estude primeiro as cinco perguntas marcadas com ★ e ensaie o roteiro com cronômetro. Os arquivos que sustentam cada número estão na seção 5, separados das falas, junto com o que ainda precisa de confirmação.
 
-**Duas gerações de números.** Os resultados oficiais vêm do modelo atual, reavaliado em 02/11/2026 (*Average Precision* de lavagem 0,464). A comparação com XGBoost e com regras explícitas foi feita antes de uma correção, com a floresta da época (0,461). Compare números apenas dentro da mesma geração.
+**Duas gerações de números.** Os resultados oficiais vêm do modelo atual, reavaliado em 02/11/2026 (*Average Precision* 0,464). A comparação com XGBoost e com regras explícitas foi feita antes de uma correção, com a floresta da época (0,461). Compare números apenas dentro da mesma geração.
+
+**O que mudou em 17/11/2026.** O repositório foi reorganizado: saíram a interface antiga (`/legado`), a CLI de grafos (DFS, SCC e centralidade), o processamento de eventos e o módulo didático de telemetria de rede (`estado_rede`). O NodeWatch hoje é **um modelo de lavagem e o painel do analista**. Se a professora perguntar pelo que saiu, a resposta está na pergunta 11.
 
 # 1 Resumo de estudo
 
 ## O problema e o que é um alerta
 
-O NodeWatch é um MVP (*Minimum Viable Product*, produto mínimo viável) acadêmico que ajuda uma pessoa analista a decidir **o que investigar primeiro** em transações financeiras. Ele nasceu com grafos e depois ganhou ML (*Machine Learning*, em que o programa aprende com exemplos em vez de seguir regras escritas à mão).
+O NodeWatch é um protótipo acadêmico que ajuda uma pessoa analista a decidir **o que investigar primeiro** em transações financeiras. Ele nasceu com grafos e depois ganhou ML (*Machine Learning*, em que o programa aprende com exemplos em vez de seguir regras escritas à mão).
 
-**Um alerta aparece quando o score, a nota dada pelo modelo, alcança um limiar. Ele é um pedido de atenção, não uma prova.** Sozinho, não comprova fraude porque o modelo aprendeu lavagem sintética, não fraude confirmada; o score serve para ordenar e não é uma probabilidade calibrada; e 37% dos alertas de lavagem do teste estavam errados. A conclusão é de uma pessoa, com outras evidências. Sem alerta também não quer dizer seguro: 59% da lavagem do teste não gerou alerta.
+**Um alerta aparece quando o score, a nota dada pelo modelo, alcança um limiar. Ele é um pedido de atenção, não uma prova.** Sozinho, não comprova nada: o modelo aprendeu lavagem sintética, não fraude confirmada; o score serve para ordenar e não é uma probabilidade calibrada; e 37% dos alertas do teste estavam errados. A conclusão é de uma pessoa, com outras evidências. Sem alerta também não quer dizer seguro: 59% da lavagem do teste não gerou alerta.
 
 ## Os dados
 
 | Base | O que representa | Cuidado |
 |---|---|---|
 | **IBM AML HI-Small** | 5.078.345 transações **sintéticas**, de 01 a 18/09/2022, das quais 5.177 foram marcadas como lavagem pelo simulador | Não são operações de um banco. Os arquivos de contas e de padrões nunca viram atributo |
-| **`dataset_final.csv`** | 333.954 medições de 135 caminhos de rede (sonda→âncora), de 28/09 a 05/10/2026, com estado OK, RISCO ou FALHA. Vem do projeto didático "Preditor de Qualidade de Redes" | O estado é gerado por uma regra de limiares. A origem das referências p95/p99 não está documentada |
-| **`dados/exemplo_transacoes.csv`** | 16 transações para demonstrar os grafos | Só exemplo |
+| **`dados/exemplos/transacoes_inventadas.csv`** | 15 transações inventadas à mão, para demonstrar o fluxo | Só exemplo: não mede a qualidade do modelo |
 
-As duas bases principais não têm chave em comum e são de anos diferentes.
+## O que o sistema faz
 
-## As três análises
-
-- **Grafos (regras fixas, sem aprendizado).** Cada conta é um vértice, e cada transação, uma aresta direcionada com peso. A DFS (*Depth-First Search*, busca em profundidade) acha ciclos. O algoritmo de Kosaraju acha SCC (*Strongly Connected Component*, grupo em que todos alcançam todos), em O(V + E). A centralidade aponta contas concentradoras. Enumerar todos os ciclos tem pior caso exponencial.
-- **Rede (ML).** Prevê o estado da **próxima** medição de um caminho a partir de 21 atributos prontos, como perda, RTT (*Round-Trip Time*, tempo de ida e volta) e jitter (variação do atraso). Anomalia de rede não é indício de fraude.
-- **Transações (ML).** Dá uma nota a cada transação a partir de 49 atributos, que são números calculados só com o passado: contagens, somas, par de contas novo, valor atípico, tempo desde o último recebimento.
+- **Transações (ML).** Dá uma nota a cada transação a partir de 49 atributos, que são números calculados só com o passado de cada conta: contagens e somas em janelas de 6, 24 e 72 h, par de contas novo, valor atípico, tempo desde o último recebimento, contrapartes distintas, formato de pagamento e moeda.
+- **Grafo (investigação).** Contas são vértices e transações são arestas. O modelo usa medidas de 1 salto (contrapartes distintas, par novo); o painel desenha a rede da conta em foco, salto a salto, e mostra quais repasses têm horários compatíveis.
+- **Painel do analista.** Envio e validação do arquivo, acompanhamento da análise em cinco etapas medidas, visão geral, contas prioritárias, grafo, tabela com filtros, desempenho e logs. O Assistente de dúvidas (tecnologia Sentinel AI) explica a análise aberta.
 
 ## O caminho dos dados, com um exemplo inventado
 
@@ -47,60 +44,56 @@ Em `tx-011`, a conta `MERCADO1` recebe 48.000 e, seis minutos depois, paga 23.40
 
 | Etapa | O que o sistema faz | No exemplo `tx-011` |
 |---|---|---|
-| **Importação** | A interface envia o CSV ou ZIP ao servidor local; a sessão autoriza o pedido | Arquivo com 15 linhas |
+| **Envio** | A página envia o CSV ou ZIP ao servidor local; a sessão da aba autoriza o pedido | Arquivo com 15 linhas |
 | **Validação** | Reconhece o formato pelas colunas e recusa linhas ruins, com o motivo. Nada é preenchido | 12 válidas e 3 recusadas: data "ontem", valor negativo e identificador repetido |
-| **Preparação** | Ordena por minuto e calcula os atributos com o estado anterior àquele minuto | Par novo; moedas diferentes; 6 min desde o recebimento; 3 envios em 24 h |
-| **Análise** | A Random Forest salva dá o score. Nada é treinado | `score_lavagem` = 0,0231 |
-| **Alerta** | Compara o score com o limiar 0,0910 | Abaixo do limiar: **sem alerta** |
-| **Atualização** | Incorpora a transação ao histórico das contas | O modelo não muda |
-| **Apresentação** | Grava um CSV e mostra tabela, filtros e gráficos. Filtrar não roda o modelo | Linha na tabela. Sem rótulos, não há precisão nem recall |
+| **Ordenação** | Ordena por data e hora; o ID de exibição segue essa ordem | `tx-011` vira **TX-11** |
+| **Atributos** | Calcula os 49 atributos com o estado das contas **antes** daquele minuto | Par novo; moedas diferentes; 6 min desde o recebimento; 3 envios em 24 h |
+| **Pontuação** | A Random Forest salva dá o valor bruto; nada é treinado | 0,0231 |
+| **Score e alerta** | Converte para 0–1000, ancorado no limiar 0,0910 (= 701) | **177**, faixa baixa: **sem alerta** |
+| **Gravação** | Grava a linha no SQLite da análise; o estado das contas é atualizado, o modelo não muda | Linha na tabela. Sem rótulo, não há precisão nem recall |
 
 O repasse parece suspeito para nós, mas o modelo reage ao que aprendeu com o simulador. Isso mostra, de uma vez, que sem alerta não significa seguro e que um arquivo inventado não mede a qualidade do modelo.
 
-## Os modelos realmente implementados
+## Os modelos avaliados
 
-Os critérios de escolha foram o **macro-F1** na rede (média do F1 de cada classe; o F1 equilibra precisão e recall) e a **AP** na lavagem (*Average Precision*, qualidade da ordenação de uma classe rara). **Precisão** é a fração de alertas certos; **recall**, a fração de casos reais encontrados.
+O critério de escolha foi a **AP** (*Average Precision*, qualidade da ordenação de uma classe rara) na validação. **Precisão** é a fração de alertas certos; **recall**, a fração de casos reais encontrados.
 
-| Modelo | Papel | Rede: macro-F1 de validação | Lavagem: AP de validação |
-|---|---|---|---|
-| **Random Forest** | **Escolhida**: árvores independentes, média das respostas | 0,763 | 0,499 |
-| HistGradientBoosting | Candidata: árvores em sequência | 0,762 | 0,445 |
-| Regressão logística | Candidata e referência linear | 0,590 | 0,190 |
-| Persistência / taxa do formato | Baselines, a régua mínima sem aprendizado: repetir o estado atual; taxa de lavagem por formato de pagamento | 0,711 | 0,0068 |
+| Modelo | Papel | AP de validação |
+|---|---|---|
+| **Random Forest** | **Escolhida**: árvores independentes, média das respostas | 0,499 |
+| HistGradientBoosting | Candidata: árvores em sequência | 0,445 |
+| Regressão logística | Candidata e referência linear | 0,190 |
+| Taxa do formato | Baseline sem aprendizado: taxa de lavagem por formato de pagamento | 0,0068 |
 
-A floresta foi escolhida pela métrica na validação: ela capta combinações entre atributos e dispensa normalização. Na rede, o empate com HistGradientBoosting é prático. Todos os modelos vêm do **scikit-learn**. **NumPy é uma biblioteca, não um modelo**: com ela foram escritos os atributos e métricas próprias. **XGBoost não está no código**: só foi medido em scripts isolados da auditoria.
+A floresta foi escolhida pela métrica na validação: ela capta combinações entre atributos e dispensa normalização. Todos os modelos vêm do **scikit-learn**. **NumPy é uma biblioteca, não um modelo**: com ela foram escritos os atributos e métricas próprias. **XGBoost não está no código**: só foi medido em scripts isolados da auditoria.
 
 ## Treino, inferência e histórico
 
-**Treino** muda o modelo e só roda pela linha de comando (CLI, *Command Line Interface*). **Inferência** aplica o modelo pronto a dados novos. **Atualizar o histórico** muda só as contagens e somas das contas daquela análise. Nenhuma tela, rota ou evento treina o modelo.
+**Treino** muda o modelo e só roda pela linha de comando (`python -m src.treino.cli`). **Inferência** aplica o modelo pronto a dados novos: é o que o painel faz. **Atualizar o histórico** muda só as contagens e somas das contas daquela análise. Nenhuma tela ou rota treina o modelo.
 
-## Novos datasets, interface e sessão
+## Sessão e execução
 
-**Novos datasets.** A área *Analisar dataset* aceita arquivos que cumprem um contrato de colunas: transações no formato IBM ou o equivalente em português, e medições com os 21 atributos prontos. Nome, período e contas podem ser outros. Telemetria bruta e o CSV de grafos são recusados com explicação. Compatibilidade de formato não garante desempenho em outra população.
-
-**Sessão.** Abrir a página só cria uma sessão, uma autorização temporária daquela aba, renovada a cada 15 s. Validar não gera previsões. A análise só começa com o clique e roda no servidor local. Sem pulso por 150 s, a sessão expira e o trabalho para no próximo ponto seguro, com retomada explícita. A sessão controla o uso; não é autenticação.
+Abrir a página só cria uma sessão, uma autorização temporária daquela aba, renovada a cada 15 s. Validar não gera previsões. A análise só começa com o clique em **Analisar** e roda no servidor local. Sem pulso por 150 s, a sessão expira e a análise para no próximo ponto seguro, fica **parcial** e não é retomada sozinha. A sessão controla o uso; não é autenticação.
 
 ## Resultados, limitações e próximos passos
 
-Teste da rede: 05/10/2026, 46.105 medições. Teste da lavagem: 09 e 10/09/2022, 862.792 transações, 956 positivas.
+Teste: 09 e 10/09/2022, 862.792 transações, 956 positivas.
 
 | Medida no teste | Referência simples | Modelo | O que significa |
 |---|---|---|---|
-| Rede: macro-F1 | 0,711 (repetir o estado atual) | **0,750** | Média do F1 de cada classe |
-| Rede: falsos alertas por fluxo-hora | 0,73 | **0,31** | Por hora de observação de cada caminho. O ganho vem de menos alarmes falsos |
-| Rede: inícios de problema antecipados | 0% | **4,5%** | Quase não antecipa |
-| Lavagem: AP | 0,0064 (taxa do formato) | **0,464** | Qualidade da ordenação; o acaso daria 0,0011 |
-| Lavagem: precisão e recall | 0,007 e 0,872 | **0,627 e 0,407** | 389 certos em 620 alertas; 389 achados em 956 |
+| AP | 0,0064 (taxa do formato) | **0,464** | Qualidade da ordenação; o acaso daria 0,0011 |
+| Precisão e recall no limiar | 0,007 e 0,872 | **0,627 e 0,407** | 389 certos em 620 alertas; 389 achados em 956 |
+| Falsos alertas | — | **2,7 por 10 mil** | 231 no período |
 
 | Situação | Componentes |
 |---|---|
-| **Disponível** | CLI de grafos; treino e avaliação pela CLI; Analisar dataset; exploração de previsões; sessões; eventos e replay (reenvio de um arquivo como eventos) em demonstração local |
-| **Incompleto** | Fusão rede + transação, bloqueada no código; integração só em simulação; painel Grafos estático; fan-out e fan-in (conta que envia para muitas ou recebe de muitas) fora da CLI e do painel; Sentinel AI (chat com modelo externo) não verificado com chave real |
-| **Planejado ou ausente** | Extrator `rede_v2`, que calcularia os atributos a partir de telemetria bruta; XGBoost no código; fonte de dados ao vivo; autenticação |
+| **Disponível** | Painel do analista (análise de arquivo, investigação, desempenho e logs); treino e avaliação pela CLI; modelo distribuído com SHA-256 conferido; Assistente de dúvidas no modo local |
+| **Não verificado** | Sentinel AI com chave real (as respostas não foram testadas depois da revisão do prompt de 17/11) |
+| **Ausente** | XGBoost no código; fonte de dados ao vivo; autenticação; explicação por transação do modelo |
 
-**Limitações.** Lavagem medida só em dados sintéticos. Período de teste já consultado três vezes, logo os números não são inéditos. Nenhum vínculo entre rede e transações. Em positivos sem padrão conhecido (39% do teste), o recall é de 2%. Em fluxos fora do treino, o ganho sobre repetir o estado atual quase some.
+**Limitações.** Medido só em dados sintéticos. Período de teste já consultado três vezes, logo os números não são inéditos. Em positivos sem padrão conhecido (39% do teste), o recall é de 2%. O painel só conhece o passado que está no próprio arquivo: no começo do período os alertas ficam subestimados.
 
-**Próximos passos, em ordem.** Congelar candidatos pela validação e medir uma vez em período novo; obter dados com vínculo verificável e rótulos com data; corrigir os defeitos conhecidos dos grafos (A1 a A7); definir requisitos de latência, memória e alertas por dia.
+**Próximos passos, em ordem.** Congelar candidatos pela validação e medir uma vez em período novo (por exemplo o HI-Medium); definir custos de erro e capacidade de investigação para escolher o limiar; definir requisitos de latência e memória.
 
 # 2 Perguntas e respostas
 
@@ -116,209 +109,175 @@ As perguntas estão em ordem de importância. Cada resposta foi escrita para dur
 
 ## ★ 1. NumPy: o que foi implementado
 
-**Pergunta:** “O que vocês implementaram com NumPy? Existe um modelo de vocês feito com essa biblioteca?”
+**Pergunta:** "O que vocês implementaram com NumPy? Existe um modelo de vocês feito com essa biblioteca?"
 
-**Resposta sugerida:** NumPy é uma biblioteca de vetores e cálculo numérico, não um algoritmo de aprendizado. Não escrevemos nenhum modelo à mão: todos vêm do scikit-learn. Com NumPy, implementamos o cálculo dos atributos das transações: ordenamos os eventos por conta e minuto, achamos os limites de cada janela por busca binária e somamos por prefixos acumulados. Também escrevemos métricas próprias, como falsos alertas por fluxo-hora. Conferimos esse código contra referências independentes.
+**Resposta sugerida:** NumPy é uma biblioteca de vetores e cálculo numérico, não um algoritmo de aprendizado. Não escrevemos nenhum modelo à mão: todos vêm do scikit-learn. Com NumPy, implementamos o cálculo dos atributos das transações: em lote, ordenamos os eventos por conta e minuto e achamos os limites de cada janela por busca binária; no painel, mantemos um estado por conta que calcula os mesmos 49 atributos transação a transação. Conferimos esse código contra uma referência por força bruta.
 
 **Conceito essencial:** biblioteca não é algoritmo, e importar NumPy não treina nada. O que é nosso é o cálculo *point-in-time*: cada atributo usa só o que aconteceu antes daquele minuto, na janela `[t − w, t)`. Se ela perguntar pelo modelo em NumPy, a resposta honesta é que ele não existe; seria uma peça didática nova, e vale confirmar se ela espera isso (seção 5.3).
 
 ## ★ 2. As duas comparações: correção e utilidade
 
-**Pergunta:** “Vocês compararam a implementação de vocês com uma solução que já existe? Isso prova que o ML vale a pena?”
+**Pergunta:** "Vocês compararam a implementação de vocês com uma solução que já existe? Isso prova que o ML vale a pena?"
 
-**Resposta sugerida:** São duas perguntas diferentes. A primeira é se o nosso código calcula certo: comparamos atributos e métricas próprias com referências independentes, como força bruta e fórmulas, e isso revelou um erro numérico, que corrigimos. A segunda é se aprender compensa: comparamos os modelos com regras e baselines. Não há modelo próprio para comparar com o scikit-learn, porque não escrevemos nenhum. Ainda falta comparar grafos e ML no mesmo período e confirmar tudo em dados novos.
+**Resposta sugerida:** São duas perguntas diferentes. A primeira é se o nosso código calcula certo: comparamos os atributos com força bruta e o cálculo incremental com o lote, e isso revelou um erro numérico nas somas, que corrigimos. A segunda é se aprender compensa: comparamos o modelo com regras e baselines. Não há modelo próprio para comparar com o scikit-learn, porque não escrevemos nenhum. Ainda falta confirmar tudo em dados novos.
 
 **Conceito essencial:** comparar com uma referência do **mesmo cálculo** testa a correção. Comparar **métodos diferentes** testa a utilidade. Um resultado não substitui o outro.
 
 | Comparação | O que responde | Situação |
 |---|---|---|
-| Atributos em NumPy × força bruta; incremental × lote × força bruta | Calcula certo? | **Existe**, em testes do NodeWatch |
+| Atributos em NumPy × força bruta; incremental × lote × força bruta | Calcula certo? | **Existe**, nos testes do NodeWatch |
 | Métricas próprias × fórmulas independentes | Calcula certo? | **Existe**, na auditoria |
 | Modelo próprio em NumPy × scikit-learn | Calcula certo? | **Não se aplica**: não há modelo próprio |
-| Random Forest × classe majoritária, persistência, prevalência e taxa do formato | Compensa? | **Existe**, com o modelo atual |
+| Random Forest × prevalência e taxa do formato | Compensa? | **Existe**, com o modelo atual |
 | Random Forest × regras explícitas, como "formato ACH e primeira transação do par" | Compensa? | **Existe**, só na auditoria, com a floresta anterior à correção |
-| Random Forest × configuração do notebook da professora | Referência | **Existe**: macro-F1 de teste 0,755 × 0,750 |
-| Grafos × ML no mesmo período | Compensa? | **Falta**: o número dos grafos vem de um recorte enviesado |
-| Nossos resultados × resultados publicados sobre o HI-Small | Referência externa | **Falta** |
+| Random Forest × Random Forest com 3 atributos de grafo a mais | Compensa? | **Existe**: não compensou (pergunta 11) |
 | Candidato congelado em período novo | Vale fora do teste já usado? | **Falta** |
 
 ## ★ 3. Random Forest e custo de processamento
 
-**Pergunta:** “Por que Random Forest? Ela não custa caro demais para processar?”
+**Pergunta:** "Por que Random Forest? Ela não custa caro demais para processar?"
 
-**Resposta sugerida:** A Random Forest combina muitas árvores de decisão, cada uma treinada com uma amostra diferente, e usa a média das respostas. Ela capta combinações entre atributos, dispensa normalização e teve o melhor resultado na validação nas duas tarefas, por muito pouco na rede. O custo existe, mas não era o gargalo: o treino levou 12 segundos na rede e de 28 a 52 na lavagem, em CPU. O gargalo era recalcular atributos, cerca de cinco segundos por transação, e o estado incremental resolveu isso.
+**Resposta sugerida:** A Random Forest combina muitas árvores de decisão, cada uma treinada com uma amostra diferente, e usa a média das respostas. Ela capta combinações entre atributos, dispensa normalização e teve o melhor resultado na validação. O custo existe, mas não era o gargalo: o treino levou de 28 a 52 segundos em CPU. O gargalo era recalcular atributos a cada transação, e o estado incremental resolveu isso: no painel, uma análise de 200 mil transações leva cerca de 45 segundos, dos quais cerca de 1 segundo é o modelo.
 
-**Conceito essencial:** separe custo de treino, inferência, tamanho e atributos. Tempos variam entre execuções: recalcular atributos levou 12 s em 02/11 e de 5,4 a 5,6 s em 06/11, na mesma máquina.
+**Conceito essencial:** separe custo de treino, inferência, tamanho e atributos.
 
-- **Tamanho:** a floresta da rede ocupa 17,6 MB comprimida e 57 MB sem compressão.
-- **Uma linha com 4 threads** custava 27,7 ms, contra 8,8 ms com uma. Agora, lotes com menos de 1.000 linhas usam uma thread.
-- **GPU:** não foi usada nem medida. As anotações do grupo citam a indicação de usar GPU; respondam que os tempos em CPU foram estes, sem comparar com GPU.
-- **Empate:** na rede, Random Forest, HistGradientBoosting (HGB) e uma floresta com 50 árvores (5,9 MB) empatam. O notebook da professora recomenda, em empate, o modelo mais barato. Portanto, a floresta atual não é necessariamente a melhor escolha; falta definir requisitos para decidir.
-- **Configuração do notebook** (100 árvores, folha 5): macro-F1 de teste maior em 0,0055 (intervalo de confiança de 95%, ou IC 95%, de 0,0007 a 0,0110), com 39 MB e 24 s de treino. Esse teste já foi reutilizado.
+- **Tamanho:** o arquivo distribuído tem 3,0 MB, e o servidor com o modelo carregado usa cerca de 210 MB de memória.
+- **Lotes pequenos:** com menos de 1.000 linhas a previsão usa uma thread, porque criar threads custava mais que prever.
+- **GPU:** não foi usada nem medida. Respondam com os tempos em CPU, sem comparar com GPU.
 
 ## ★ 4. XGBoost: recomendação, implementação e comparação
 
-**Pergunta:** “Vocês testaram XGBoost? Ele é melhor que a Random Forest?”
+**Pergunta:** "Vocês testaram XGBoost? Ele é melhor que a Random Forest?"
 
-**Resposta sugerida:** Testamos, mas não adotamos. O XGBoost não está no código do NodeWatch: ele foi medido em scripts isolados, com os mesmos dados e atributos. Na rede, houve empate, com treino mais rápido e modelo menor. Na lavagem, ele foi melhor: AP de teste de 0,509, contra 0,461 da floresta daquela versão, e treino mais curto. Mas esse teste já tinha sido consultado, e o resultado variou muito entre configurações. Antes de trocar, precisamos confirmar num período novo.
+**Resposta sugerida:** Testamos, mas não adotamos. O XGBoost não está no código do NodeWatch: ele foi medido em scripts isolados, com os mesmos dados e atributos. Ele foi melhor: AP de teste de 0,509, contra 0,461 da floresta daquela versão, e treino mais curto. Mas esse teste já tinha sido consultado, e o resultado variou muito entre configurações. Numa avaliação posterior, com o HI-Large, a vantagem não se confirmou em todos os períodos. Antes de trocar, precisamos confirmar num período novo.
 
-**Conceito essencial:** diferencie três coisas. **Recomendação:** a professora sugeriu experimentar. **Implementação:** não existe; `xgboost` não aparece no código nem nas dependências. **Comparação experimental:** existe, na auditoria de 02/11/2026. Random Forest treina árvores independentes e tira a média; XGBoost é *boosting*, com árvores em sequência, cada uma corrigindo as anteriores. Não digam que XGBoost é sempre mais rápido ou melhor: na lavagem, o HistGradientBoosting, que também é boosting, perdeu para a floresta na validação (0,445 × 0,499).
+**Conceito essencial:** diferencie três coisas. **Recomendação:** a professora sugeriu experimentar. **Implementação:** não existe; `xgboost` não aparece no código nem nas dependências. **Comparação experimental:** existe, na auditoria de 02/11/2026 e na avaliação do HI-Large (`pesquisa/hi_large/`). Random Forest treina árvores independentes e tira a média; XGBoost é *boosting*, com árvores em sequência, cada uma corrigindo as anteriores. Não digam que XGBoost é sempre melhor: o HistGradientBoosting, que também é boosting, perdeu para a floresta na validação (0,445 × 0,499).
 
 | Na comparação da auditoria | XGBoost | Random Forest | Leitura |
 |---|---|---|---|
-| Rede: macro-F1 de teste | 0,7515 | 0,7499 | Empate: diferença de +0,0016, IC 95% de −0,0030 a +0,0057 |
-| Rede: treino e tamanho | 4,1 s; 0,86 MB | 12,2 s; 17,6 MB | Mais leve, assim como HGB e a floresta com 50 árvores |
-| Lavagem: AP de validação | 0,555* | 0,495; 0,525 com a mesma busca | *Otimista: a validação também definiu o número de árvores. Variou de 0,27 a 0,55 entre as 4 tentativas |
-| Lavagem: AP de teste | 0,509 | 0,461; 0,478 com a mesma busca | Vantagem de cerca de 0,03 com a mesma busca |
-| Lavagem: treino | 6,6 s | 42,7 s; 85,4 s com a mesma busca | Mais rápido nesta medição, com 4 threads |
+| AP de validação | 0,555* | 0,495; 0,525 com a mesma busca | *Otimista: a validação também definiu o número de árvores. Variou de 0,27 a 0,55 entre as 4 tentativas |
+| AP de teste | 0,509 | 0,461; 0,478 com a mesma busca | Vantagem de cerca de 0,03 com a mesma busca |
+| Treino | 6,6 s | 42,7 s; 85,4 s com a mesma busca | Mais rápido nesta medição, com 4 threads |
 
-**Como avaliar de forma justa:** mesmos registros e atributos; mesmo orçamento de busca; escolha e parada antecipada só na validação; candidatos congelados e medidos uma vez em período novo. Na rede, seria telemetria posterior a 05/10/2026; na lavagem, uma replicação declarada, como o HI-Medium. A medição não foi refeita depois da correção do atributo `z_valor_origem`.
+**Como avaliar de forma justa:** mesmos registros e atributos; mesmo orçamento de busca; escolha e parada antecipada só na validação; candidatos congelados e medidos uma vez em período novo, por exemplo uma replicação declarada como o HI-Medium.
 
 ## ★ 5. Regressão logística
 
-**Pergunta:** “Por que um algoritmo chamado regressão está resolvendo um problema de classificação?”
+**Pergunta:** "Por que um algoritmo chamado regressão está resolvendo um problema de classificação?"
 
-**Resposta sugerida:** Apesar do nome, a regressão logística é um classificador supervisionado. Ela combina os atributos com pesos para modelar o logaritmo da chance e transforma o resultado em probabilidade entre zero e um. Com um limiar, isso vira classe. Nossos rótulos são categorias, então o objetivo é classificar, e nenhum regressor numérico existe no projeto. Ela foi candidata e referência linear. Perdeu nas duas tarefas: na lavagem, AP de validação de 0,19 contra 0,50, o que indica que combinações entre atributos pesam.
+**Resposta sugerida:** Apesar do nome, a regressão logística é um classificador supervisionado. Ela combina os atributos com pesos para modelar o logaritmo da chance e transforma o resultado em probabilidade entre zero e um. Com um limiar, isso vira classe. Nosso rótulo é uma categoria (lavagem ou não), então o objetivo é classificar, e nenhum regressor numérico existe no projeto. Ela foi candidata e referência linear, e perdeu: AP de validação de 0,19 contra 0,50, o que indica que combinações entre atributos pesam.
 
-**Conceito essencial:** `log(p / (1 − p)) = b0 + b1·x1 + …`. O "regressão" vem dessa combinação linear; a saída usada é uma classe. Na lavagem ela é binária; na rede, tem 3 classes. Os rótulos entram como categorias, não como 0, 1 e 2 contínuos. Ela exige imputação, logaritmo e padronização, ajustados só no treino.
-
-**O que ela prova:** na lavagem, AP de 0,19 fica muito acima da taxa do formato (0,0068) e muito abaixo da floresta (0,50). Na rede, seu macro-F1 de validação (0,590) fica abaixo de simplesmente repetir o estado atual (0,711). Por isso, ela fica como referência didática e diagnóstica, não para operação.
-
-**Cuidado:** com `tol=1e-4`, ela parava antes do ótimo na lavagem, em 17 iterações. Com `tol=1e-6`, a AP de validação subiu para 0,19. O teste da versão corrigida não foi medido: o 0,169 de teste é anterior à correção.
+**Conceito essencial:** `log(p / (1 − p)) = b0 + b1·x1 + …`. O "regressão" vem dessa combinação linear; a saída usada é uma classe. Ela exige imputação, logaritmo e padronização, ajustados só no treino. Com `tol=1e-4`, ela parava antes do ótimo, em 17 iterações; com `tol=1e-6`, a AP de validação subiu para 0,19.
 
 ## 6. ML ou regras matemáticas
 
-**Pergunta:** “Por que usar ML em vez de apenas regras ou fórmulas matemáticas?”
+**Pergunta:** "Por que usar ML em vez de apenas regras ou fórmulas matemáticas?"
 
-**Resposta sugerida:** Porque, nos nossos dados, as regras testadas não ordenam bem nem preveem o próximo estado. Na lavagem, a melhor regra explícita, formato ACH com primeira transação do par, encontra 78% dos casos, mas gera mais de 20 mil alertas em dois dias, com precisão de 3,6%. O modelo emite centenas de alertas, com precisão bem maior. Na rede, repetir o estado atual dá macro-F1 de 0,711, e o modelo chega a 0,750, com menos falsos alertas.
+**Resposta sugerida:** Porque, nos nossos dados, as regras testadas não ordenam bem. A melhor regra explícita, formato ACH com primeira transação do par, encontra 78% dos casos, mas gera mais de 20 mil alertas em dois dias, com precisão de 3,6%. O modelo emite centenas de alertas, com precisão bem maior. Com os mesmos 20.575 alertas, a floresta da auditoria achou 82,5%: a vantagem decisiva está nos orçamentos pequenos, que é o caso real de uma equipe.
 
-**Conceito essencial:** ML também é matemática; a diferença é que os parâmetros são aprendidos. ACH é uma transferência eletrônica em lote, e concentra 87% da lavagem do conjunto, o que pode ser efeito do simulador. Regras continuam úteis porque são conferíveis. Na rede, o rótulo vem de uma regra, então medimos se o modelo antecipa essa regra uma medição à frente; isso não é degradação real independente dela. Com os mesmos 20.575 alertas, a floresta da auditoria achou 82,5%, contra 78% da regra: a vantagem decisiva está nos orçamentos pequenos.
+**Conceito essencial:** ML também é matemática; a diferença é que os parâmetros são aprendidos. ACH é uma transferência eletrônica em lote, e concentra 87% da lavagem do conjunto, o que pode ser efeito do simulador. Regras continuam úteis porque são conferíveis: por isso os motivos mostrados nos alertas são regras fixas, verificáveis.
 
 ## 7. Limitações e prioridade
 
-**Pergunta:** “Quais são as limitações atuais, e qual melhoria tem maior prioridade?”
+**Pergunta:** "Quais são as limitações atuais, e qual melhoria tem maior prioridade?"
 
-**Resposta sugerida:** As principais são: lavagem medida só em dados sintéticos, teste já reutilizado, nenhum vínculo entre rede e transações e nenhuma fonte ao vivo. Na lavagem, 39% dos positivos do teste não pertencem a nenhum padrão conhecido, e neles o recall é de 2%. Na rede, quase não antecipamos o início de um problema. A prioridade é validade: congelar candidatos pela validação e medir uma vez em período novo. Sem isso, trocar de modelo seria escolher pelo teste.
+**Resposta sugerida:** As principais são: medido só em dados sintéticos, teste já reutilizado e nenhuma fonte ao vivo. 39% dos positivos do teste não pertencem a nenhum padrão conhecido, e neles o recall é de 2%. A prioridade é validade: congelar candidatos pela validação e medir uma vez em período novo. Sem isso, trocar de modelo seria escolher pelo teste.
 
-**Conceito essencial:** validade vem antes de desempenho. Recall global esconde grupos: de 0,55 a 0,72 nos oito padrões descritos pelo simulador, 0,52 nas tentativas novas, 0,73 nas já iniciadas antes do teste e 0,02 nos positivos sem padrão. Simulação e replay não são validação em ambiente real.
+**Conceito essencial:** validade vem antes de desempenho. Recall global esconde grupos: de 0,55 a 0,72 nos oito padrões descritos pelo simulador, 0,52 nas tentativas novas, 0,73 nas já iniciadas antes do teste e 0,02 nos positivos sem padrão.
 
-## 8. Fraude, lavagem e anomalia de rede
+## 8. Fraude, lavagem e o que o rótulo mede
 
-**Pergunta:** “Qual é a diferença entre fraude, lavagem de dinheiro e anomalia de rede?”
+**Pergunta:** "Qual é a diferença entre fraude e lavagem de dinheiro? O que o modelo detecta?"
 
-**Resposta sugerida:** Fraude é enganar alguém para obter vantagem, e nenhum dado do projeto tem fraude confirmada. Lavagem é dar aparência legal a dinheiro de origem ilícita; nosso rótulo é lavagem gerada por um simulador. Anomalia de rede é a previsão de que a próxima medição de um caminho estará em risco ou falha, ou seja, um problema técnico. O título do projeto fala em fraude, mas o que medimos é lavagem sintética e estado de rede, em modelos separados.
+**Resposta sugerida:** Fraude é enganar alguém para obter vantagem, e nenhum dado do projeto tem fraude confirmada. Lavagem é dar aparência legal a dinheiro de origem ilícita; nosso rótulo é lavagem gerada por um simulador. O modelo aprende a reproduzir esse rótulo sintético. Por isso falamos em "sinais para investigação de lavagem", nunca em "fraude detectada".
 
-**Conceito essencial:** cada termo tem um dado e um rótulo diferentes. Anotações antigas do grupo dizem que `Is Laundering = 1` "significa fraude": não repitam isso. Lavagem não representa todos os tipos de fraude.
+**Conceito essencial:** `Is Laundering = 1` não "significa fraude". Lavagem não representa todos os tipos de fraude.
 
 ## 9. Alerta, falso positivo e falso negativo
 
-**Pergunta:** “O que significa um alerta? Qual é o impacto de falsos positivos e falsos negativos?”
+**Pergunta:** "O que significa um alerta? Qual é o impacto de falsos positivos e falsos negativos?"
 
-**Resposta sugerida:** Alerta é um score acima do limiar: um pedido para olhar, não uma prova. Falso positivo é alertar algo normal, o que gasta tempo da equipe e incomoda quem é investigado. Falso negativo é deixar passar lavagem, que nem chega a ser investigada. No teste, foram 231 falsos positivos e 567 falsos negativos. O limiar equilibra os dois erros. Usamos o máximo F1 porque não recebemos custos de erro nem capacidade de investigação.
+**Resposta sugerida:** Alerta é um score de 701 ou mais, que equivale a passar do limiar do modelo: um pedido para olhar, não uma prova. Falso positivo é alertar algo normal, o que gasta tempo da equipe e incomoda quem é investigado. Falso negativo é deixar passar lavagem, que nem chega a ser investigada. No teste, foram 231 falsos positivos e 567 falsos negativos. O limiar equilibra os dois erros. Usamos o máximo F1 porque não recebemos custos de erro nem capacidade de investigação.
 
-**Conceito essencial:** não existe limiar certo sem custos. Com uma equipe que investiga 1.000 casos por dia, o recall teria sido de 0,54 e 0,62 nos dois dias do teste. Na rede, falso positivo é ruído operacional, e falso negativo é um problema sem aviso.
+**Conceito essencial:** não existe limiar certo sem custos. Com uma equipe que investiga 1.000 casos por dia, o recall teria sido de 0,54 e 0,62 nos dois dias do teste. A escala 0–1000 é linear por partes, ancorada no limiar; ela ordena, não é probabilidade.
 
-## 10. Aprendizado supervisionado e rótulos
+## 10. Treino, validação, teste e reuso
 
-**Pergunta:** “O aprendizado é supervisionado? De onde vêm os rótulos?”
+**Pergunta:** "Como separaram treino, validação e teste? O teste foi usado uma vez só?"
 
-**Resposta sugerida:** Sim, nas duas tarefas: o modelo aprende com exemplos de resposta conhecida. Na lavagem, o rótulo é a coluna Is Laundering, marcada pelo simulador da IBM, sem investigação real nem data de confirmação. Na rede, o rótulo é o estado da próxima medição, e esse estado segue uma regra de limiares sobre perda, RTT e jitter, que reproduzimos em 99,94% das linhas. Na inferência, os rótulos são opcionais: os scores são iguais com ou sem a coluna.
+**Resposta sugerida:** Separamos pelo tempo: o passado treina, o período seguinte escolhe modelo e limiar, e o último mede. Treino de 1 a 6 de setembro, validação nos dias 7 e 8, teste nos dias 9 e 10. O teste não foi usado uma vez só: foi consultado três vezes. O treino nunca leu seus rótulos, mas diferenças pequenas não provam melhoria.
 
-**Conceito essencial:** supervisionado quer dizer "aprende com respostas", não "usa regressão". A origem do rótulo limita a conclusão: aqui medimos reprodução de um simulador e de uma regra.
+**Conceito essencial:** sorteio aleatório misturaria transações vizinhas no tempo. O treino mantém os positivos e 20% dos negativos, com peso 5; validação e teste mantêm a proporção original. A cauda a partir de 11/09, com 59% de lavagem, fica fora das métricas principais. Vazamento é usar algo indisponível na hora da previsão: as janelas só olham o passado, o arquivo de padrões nunca vira atributo e um teste confirma que acrescentar transações futuras não muda os atributos.
 
-## 11. Ligação entre rede e transações
+## 11. Onde entram os grafos (e o que saiu do projeto)
 
-**Pergunta:** “Existe uma ligação comprovada entre os dados de rede e as transações?”
+**Pergunta:** "Onde entram os grafos? Vocês não tinham DFS e Kosaraju?"
 
-**Resposta sugerida:** Não. As bases não têm chave em comum, são de anos diferentes e vieram de fontes separadas. Por isso, os dois modelos são independentes: o arquivo é único, mas cada parte aprendeu só com os próprios dados. O modelo de fusão está bloqueado no código, e tentar treiná-lo gera um erro que lista o que falta. Existe um laboratório de integração, mas com dados simulados: ele confere regras técnicas e não prova relação nenhuma.
+**Resposta sugerida:** Tínhamos, na fase de grafos do projeto: DFS para ciclos, Kosaraju para componentes fortemente conexos e centralidade de grau, numa linha de comando. Medimos se essa estrutura ajudava o modelo: com três atributos de grafo a mais (reciprocidade, profundidade de cadeia, fecha ciclo), a AP de teste foi de 0,4657 para 0,4691 e a precisão caiu 2,5 pontos, sem ganho por tipologia. Então o modelo ficou com o grafo de 1 salto, que já tinha: contrapartes distintas de cada conta e se o par é novo, entre os atributos mais importantes. O grafo segue no painel, para a investigação: a rede da conta em foco é explorada salto a salto, com as cadeias de repasse em ordem no tempo.
 
-**Conceito essencial:** "modelo unificado" significa um arquivo e uma interface, não um modelo conjunto. Para testar a hipótese seriam necessários transações do mesmo período da telemetria, tabela de vínculo real e rótulos com data. Aí sim daria para comparar "financeiro" e "financeiro + rede".
+**Conceito essencial:** decidimos com um experimento, não por gosto, e o registro está em `docs/decisoes/0001-grafos-e-ml.md`. Na reorganização de 17/11, o código que não alimentava nem o modelo nem o painel saiu do repositório (continua no histórico do Git): a CLI de grafos, a interface antiga e o módulo de telemetria de rede, uma base didática da disciplina que nunca teve vínculo com as transações.
 
-## 12. Treino, validação, teste e reuso
+## 12. Avaliação de qualidade e de desempenho
 
-**Pergunta:** “Como separaram treino, validação e teste? O teste foi usado uma vez só?”
+**Pergunta:** "Como vocês avaliaram a qualidade das previsões e o desempenho do sistema?"
 
-**Resposta sugerida:** Separamos pelo tempo: o passado treina, o período seguinte escolhe modelo e limiar, e o último mede. Na rede, o treino vai até 3 de outubro, a validação é o dia 4 e o teste, o dia 5. Na lavagem, treino de 1 a 6 de setembro, validação nos dias 7 e 8, teste nos dias 9 e 10. O teste não foi usado uma vez só: foi consultado três vezes. O treino nunca leu seus rótulos, mas diferenças pequenas não provam melhoria.
+**Resposta sugerida:** São medidas separadas. Qualidade é acertar: medimos em períodos separados pelo tempo, contra baselines, com Average Precision. Desempenho é custo: o painel mede, em cada análise, o tempo de cada etapa, a vazão, a latência por bloco e a memória. Os 319 testes automatizados são uma terceira coisa: verificam se o código cumpre o que promete, sem medir qualidade.
 
-**Conceito essencial:** sorteio aleatório misturaria medições vizinhas no tempo. O notebook da professora ensina que o teste é usado uma vez, então assumam o desvio: avaliação de 26/10, comparação de 9 candidatos e reavaliação de 02/11. O protocolo também foi desenhado depois de ver rótulos de todos os dias. Na lavagem, o treino mantém os positivos e 20% dos negativos, com peso 5; validação e teste mantêm a proporção original. A cauda a partir de 11/09, com 59% de lavagem, fica fora.
+**Conceito essencial:** não misturem as três coisas. O tempo do modelo isolado não é o tempo do sistema.
 
-## 13. Vazamento de informação
+## 13. Acurácia em dados desbalanceados
 
-**Pergunta:** “O que é vazamento de informação e como ele pode afetar o projeto?”
+**Pergunta:** "Por que a acurácia não basta em dados desbalanceados?"
 
-**Resposta sugerida:** Vazamento é usar algo que não estaria disponível na hora da previsão. O resultado parece ótimo e não se repete na prática. Nos prevenimos com divisão pelo tempo, janelas que só olham o passado e excluem o próprio minuto, ajustes calculados só no treino e colunas proibidas, como alvo e identificadores. O arquivo de padrões nunca vira atributo, porque é a própria resposta. Um teste confirma que acrescentar transações futuras não muda os atributos.
+**Resposta sugerida:** Porque o acerto fica dominado pela classe comum. Só 0,11% das transações do teste são positivas: quem responde sempre "não é lavagem" acerta 99,89% e não encontra nada. Por isso usamos Average Precision, que dá peso à classe rara, e olhamos precisão e recall no limiar.
 
-**Conceito essencial:** há riscos residuais. Na lavagem, 206 de 370 tentativas atravessam a fronteira entre períodos, e o recall é maior nas já iniciadas (0,73) do que nas novas (0,52). Na rede, o código que gerou o CSV não foi fornecido. Sobre `classe_atual`, o notebook fala em potencial vazamento: o modelo escolhido não a usa, e a variante que usa praticamente não muda (0,752 × 0,750).
+**Conceito essencial:** a métrica precisa refletir o que importa.
 
-## 14. Onde entram os grafos
+## 14. Precisão, recall, F1 e Average Precision
 
-**Pergunta:** “Onde entram os grafos? O ML usa esses algoritmos?”
+**Pergunta:** "O que significam precisão, recall, F1 e Average Precision?"
 
-**Resposta sugerida:** Os grafos são a parte de regras fixas. Cada conta é um vértice, e cada transação, uma aresta direcionada com valor. A busca em profundidade encontra ciclos, o algoritmo de Kosaraju encontra grupos fortemente conectados em tempo O(V mais E), e a centralidade aponta contas concentradoras. Enumerar todos os ciclos pode ser exponencial no pior caso. O ML não usa os resultados desses algoritmos, mas usa medidas de grafo calculadas só com o passado: o grau de entrada e de saída distinto de cada conta e se a aresta entre as duas contas é nova (entre os atributos mais importantes do modelo). No painel, a rede da conta investigada é explorada salto a salto, e o sistema mostra cadeias com horários compatíveis, inclusive o dinheiro voltando à conta. Testamos levar ciclos e reciprocidade para dentro do modelo e a análise de Kosaraju, DFS e centralidade para a tela: não houve ganho, então ficaram de fora. Na interface antiga, os grafos são uma demonstração estática; cálculos novos são pela linha de comando.
+**Resposta sugerida:** Precisão é, dos alertas emitidos, quantos estavam certos: no teste, 389 de 620, ou 63%. Recall é, dos casos reais, quantos foram achados: 389 de 956, ou 41%. F1 é a média harmônica dos dois: 0,49. Esses três dependem do limiar. A Average Precision resume a qualidade da ordenação sem escolher um limiar: foi 0,464, enquanto o acaso ficaria em 0,0011.
 
-**Conceito essencial:** o código de `src/ml` não importa os algoritmos de grafos. Com 3 atributos de grafo no Random Forest, o AP de teste foi de 0,4657 para 0,4691 e a precisão caiu de 0,642 para 0,617, sem ganho por tipologia (`pesquisa/atributos_grafo/resultados/experimento_atributos_grafo.json`). Detalhes em `docs/decisoes/0001-grafos-e-ml.md`. Cuidado com o número de cerca de 35% das lavagens sinalizadas: ele vem de um recorte montado ao redor de contas com lavagem (3,5% de positivos, contra cerca de 0,1% no arquivo), então não é comparável ao modelo. A CLI imprime "O(V + E)" e "R$", mas a enumeração pode ser exponencial e o CSV não tem moeda. Há defeitos abertos, de A1 a A7.
+**Conceito essencial:** sempre compare com a referência. AP de 0,46 parece baixa, mas a linha de base é a prevalência, 0,0011. Um score de 800 não quer dizer 80% de chance.
 
-## 15. Avaliação de qualidade e de desempenho
+## 15. Treino, inferência e histórico incremental
 
-**Pergunta:** “Como vocês avaliaram a qualidade das previsões e o desempenho do sistema?”
+**Pergunta:** "Qual é a diferença entre treinar, inferir e atualizar o histórico? O que o histórico incremental melhora?"
 
-**Resposta sugerida:** São medidas separadas. Qualidade é acertar: medimos em períodos separados pelo tempo, contra baselines, com macro-F1 na rede e Average Precision na lavagem. Desempenho é custo: medimos latência, vazão e memória num benchmark local. Por exemplo, aceitar uma medição pela API levou 27 milissegundos na mediana. Os 193 testes automatizados são outra coisa: verificam se o código cumpre o que promete, sem medir qualidade. Os números de desempenho valem para esta máquina e execução.
+**Resposta sugerida:** Treinar muda o modelo e só acontece pela linha de comando. Inferir aplica o modelo pronto a dados novos. Atualizar o histórico muda só contagens e somas das contas daquela análise. O cálculo incremental mantém um estado por conta e fecha um minuto de cada vez: pontuar uma transação deixou de exigir reindexar todo o histórico. Ele confere com o cálculo em lote e com a força bruta: no dia 10/09, nenhum dos 328 alertas mudou de lado.
 
-**Conceito essencial:** não misturem as três coisas. O tempo do modelo isolado não é o tempo do sistema, e a vazão em lote de 10.199 eventos por segundo não é capacidade da API.
+**Conceito essencial:** não é aprendizado on-line, porque o modelo não muda. Como cada análise começa sem passado, as primeiras 72 h do arquivo ficam com atributos subestimados, e a tela avisa.
 
-## 16. Acurácia em dados desbalanceados
+## 16. Qualquer dataset ou formatos compatíveis
 
-**Pergunta:** “Por que a acurácia não basta em dados desbalanceados?”
+**Pergunta:** "O sistema funciona com qualquer dataset?"
 
-**Resposta sugerida:** Porque o acerto fica dominado pela classe comum. Na lavagem, só 0,11% das transações do teste são positivas: quem responde sempre "não é lavagem" acerta 99,89% e não encontra nada. Na rede, acontece algo parecido: prever sempre OK dá 87% de acurácia e recall zero nas classes de problema. Por isso usamos Average Precision na lavagem e macro-F1 na rede, que dão peso às classes raras. Também olhamos a matriz de confusão.
+**Resposta sugerida:** Não com qualquer um: com os que cumprem um contrato de colunas. São dois formatos de transações, o do IBM e o equivalente em português. Nome, período e contas podem ser outros, e não há limite de tamanho. Linhas ruins são recusadas com a coluna, um exemplo e como corrigir; nada é inventado. Compatibilidade de formato não garante desempenho, porque o modelo aprendeu com dados sintéticos.
 
-**Conceito essencial:** a métrica precisa refletir o que importa. A matriz de confusão mostra quais erros acontecem, não só quantos.
+**Conceito essencial:** aceitar o formato é diferente de ser válido para aquela população. Sem rótulos, não há precisão nem recall. Uma análise por vez.
 
-## 17. Precisão, recall, F1 e Average Precision
+## 17. Tempo real
 
-**Pergunta:** “O que significam precisão, recall, F1 e Average Precision?”
+**Pergunta:** "As análises acontecem em tempo real?"
 
-**Resposta sugerida:** Precisão é, dos alertas emitidos, quantos estavam certos: no teste da lavagem, 389 de 620, ou 63%. Recall é, dos casos reais, quantos foram achados: 389 de 956, ou 41%. F1 é a média harmônica dos dois: 0,49. Esses três dependem do limiar. A Average Precision resume a qualidade da ordenação sem escolher um limiar: foi 0,464, enquanto o acaso ficaria em 0,0011. Macro-F1 é a média simples do F1 de cada classe.
+**Resposta sugerida:** Não. O NodeWatch analisa arquivos: o analista envia, valida e clica em Analisar. Não há fonte ao vivo conectada. Um arquivo de 200 mil transações leva cerca de 45 segundos, e o painel mostra o progresso e as transações conforme são gravadas.
 
-**Conceito essencial:** sempre compare com a referência. AP de 0,46 parece baixa, mas a linha de base é a prevalência, 0,0011. O score de 0,18 não quer dizer 18% de chance.
+**Conceito essencial:** o horário tem resolução de minuto, e transações do mesmo minuto não se enxergam. Uma versão anterior tinha uma API de eventos em demonstração local; ela saiu na reorganização, porque nunca teve fonte ao vivo.
 
-## 18. Treino, inferência e histórico incremental
+## 18. Interface, sessão e execução
 
-**Pergunta:** “Qual é a diferença entre treinar, inferir e atualizar o histórico? O que o histórico incremental melhora?”
+**Pergunta:** "A interface dispara análises sozinha? O que é a sessão?"
 
-**Resposta sugerida:** Treinar muda o modelo e só acontece pela linha de comando. Inferir aplica o modelo pronto a dados novos. Atualizar o histórico muda só contagens e somas das contas daquela análise. O incremental melhora duas coisas. Custo: pontuar uma transação deixou de exigir cinco segundos de reindexação e passou a frações de milissegundo. Contexto: com histórico, o mesmo arquivo teve 203 alertas, contra 1 sem histórico, mas era um dia do período de treino.
+**Resposta sugerida:** Não. Abrir a página só cria uma sessão, uma autorização temporária daquela aba, renovada por um pulso a cada 15 segundos. Validar confere o arquivo, sem gerar previsão. A análise só começa no clique em Analisar e roda no servidor local. Se a aba fechar, sem pulso por 150 segundos a sessão expira e a análise para no próximo ponto seguro, fica parcial e não é retomada sozinha. Sessão não é autenticação, e a linha de comando não passa por ela.
 
-**Conceito essencial:** não é aprendizado on-line, porque o modelo não muda. O 1 × 203 mostra o efeito da falta de passado; não é avaliação do modelo. O cálculo incremental confere com o lote e a força bruta: no dia 10/09, nenhum dos 328 alertas mudou de lado.
-
-## 19. Qualquer dataset ou formatos compatíveis
-
-**Pergunta:** “O sistema funciona com qualquer dataset?”
-
-**Resposta sugerida:** Não com qualquer um: com os que cumprem um contrato de colunas. São dois formatos de transações, o do IBM e o equivalente em português, e um de medições de rede com 21 atributos prontos. Nome, período e contas podem ser outros. Linhas ruins são recusadas com o motivo, e nada é inventado. Telemetria bruta e o CSV de grafos são recusados com explicação. Compatibilidade de formato não garante desempenho, porque o modelo aprendeu com dados sintéticos.
-
-**Conceito essencial:** aceitar o formato é diferente de ser válido para aquela população. Sem rótulos, não há precisão nem recall. Limites: 256 MB por dataset, 512 MB de histórico e uma análise por vez. Testado pela interface até 482.650 linhas de dataset.
-
-## 20. Tempo real
-
-**Pergunta:** “As análises acontecem em tempo real?”
-
-**Resposta sugerida:** Não há fonte ao vivo conectada. O que existe é análise de arquivo, replay de arquivos antigos, rotulado como tal, e uma API local que recebe eventos de quem os enviar. Medimos localmente: uma medição de rede leva 46 milissegundos na mediana, do pedido até a previsão gravada. Já a transação espera o minuto fechar, da ordem de um minuto. A capacidade sob carga concorrente não foi medida. Então dizemos: processamento por eventos em demonstração local, não produção.
-
-**Conceito essencial:** o horário tem resolução de minuto, e transações do mesmo minuto não se enxergam; por isso o minuto precisa fechar. A interface consulta o status a cada 2 s, o que não entra nos 46 ms.
-
-## 21. Interface, sessão e execução
-
-**Pergunta:** “A interface dispara análises sozinha? O que é a sessão?”
-
-**Resposta sugerida:** Não. Abrir a página só cria uma sessão, uma autorização temporária daquela aba, renovada por um pulso a cada 15 segundos. Validar confere o arquivo, sem gerar previsão. A análise só começa no clique em Analisar dataset e roda no servidor local. Se a aba fechar, sem pulso por 150 segundos a sessão expira e o trabalho para no próximo ponto seguro, com retomada explícita. Sessão não é autenticação, e a linha de comando não passa por ela.
-
-**Conceito essencial:** aba em segundo plano não é sessão encerrada. Pedido à API sem sessão recebe HTTP 403. Não há aviso confiável de fechamento de janela; por isso existe o prazo de 150 s.
+**Conceito essencial:** aba em segundo plano não é sessão encerrada. Pedido de outra origem é recusado com HTTP 403.
 
 # 3 Roteiro de cinco minutos
 
-**Duração estimada, a conferir em ensaio.** As falas têm cerca de 620 palavras, o que dá cerca de 125 por minuto. Os números falados tomam mais tempo do que parecem, principalmente no bloco de resultados. Adapte as palavras, mas mantenha as ressalvas.
+**Duração estimada, a conferir em ensaio.** As falas têm cerca de 600 palavras, o que dá cerca de 125 por minuto. Adapte as palavras, mas mantenha as ressalvas.
 
-**Como dividir.** Uma pessoa pode fazer tudo. Com duas: até 2:25 e depois disso. Com três: até 1:15, de 1:15 a 2:25, e o restante. Com cinco: juntem os dois primeiros blocos e façam um bloco por pessoa. Ensaiem as trocas, porque cada uma consome alguns segundos.
+**Como dividir.** Uma pessoa pode fazer tudo. Com duas: até 2:25 e depois disso. Com três: até 1:15, de 1:15 a 2:25, e o restante. Com cinco: juntem os dois primeiros blocos e façam um bloco por pessoa.
 
 ## 0:00–0:35: problema e objetivo
 
@@ -326,45 +285,43 @@ As perguntas estão em ordem de importância. Cada resposta foi escrita para dur
 >
 > Quem investiga transações financeiras não consegue olhar tudo e precisa decidir por onde começar. O NodeWatch é um protótipo acadêmico que ajuda nessa decisão: ele aponta o que merece atenção primeiro.
 >
-> Uma ideia guia toda a nossa fala: um alerta do NodeWatch não prova fraude. Ele é um pedido de atenção. A conclusão continua sendo de uma pessoa, com outras evidências.
+> Uma ideia guia toda a nossa fala: um alerta do NodeWatch não prova lavagem. Ele é um pedido de atenção. A conclusão continua sendo de uma pessoa, com outras evidências.
 
-## 0:35–1:15: dados e tipos de análise
+## 0:35–1:15: dados e abordagem
 
-> Usamos duas bases, sem nenhuma ligação entre si. A primeira é o IBM AML HI-Small: cinco milhões de transações sintéticas, geradas por um simulador, com cerca de cinco mil marcadas como lavagem de dinheiro. A segunda é o dataset final: 334 mil medições de 135 caminhos de rede.
+> Usamos o IBM AML HI-Small: cinco milhões de transações sintéticas, geradas por um simulador, com cerca de cinco mil marcadas como lavagem de dinheiro.
 >
-> Sobre esses dados há três análises. Os grafos usam regras fixas para achar ciclos e grupos de contas. O modelo de rede prevê o estado da próxima medição. E o modelo financeiro dá uma nota a cada transação.
+> Juntamos duas ideias. Da teoria dos grafos, vem a visão das contas como vértices e das transações como arestas: quantas contas diferentes cada uma já pagou, se aquele par é novo, para onde o dinheiro seguiu. Do Machine Learning, vem um modelo que aprende, com exemplos, quais combinações desses sinais indicam lavagem.
 
 ## 1:15–2:25: funcionamento e caminho de uma análise
 
-> Vamos acompanhar uma análise. Quando a interface abre, ela cria uma sessão, uma autorização temporária daquela aba. Nada é processado ainda.
+> Vamos acompanhar uma análise. Quando o painel abre, ele cria uma sessão, uma autorização temporária daquela aba. Nada é processado ainda.
 >
-> Selecionamos um arquivo de transações inventadas e clicamos em Validar. O servidor confere o formato, linha a linha. Das quinze linhas, doze são válidas. Três foram recusadas, com o motivo, e nada foi preenchido.
+> Escolhemos um arquivo de transações inventadas e validamos. O servidor confere o formato, linha a linha. Das quinze linhas, doze são válidas. Três foram recusadas, com o motivo, e nada foi preenchido.
 >
-> Só ao clicar em Analisar dataset o trabalho começa. O sistema ordena as transações pelo tempo e, para cada minuto, calcula 49 atributos, como "esse par de contas é novo?" ou "há quanto tempo a conta recebeu dinheiro?". Ele usa apenas o passado. O modelo já treinado dá a nota e, se ela alcançar o limiar, surge um alerta. Depois, o histórico das contas é atualizado, mas o modelo não muda: aqui não há treino.
+> Só ao clicar em Analisar o trabalho começa. O sistema ordena as transações pelo tempo e calcula 49 atributos para cada uma, como "esse par de contas é novo?" ou "há quanto tempo a conta recebeu dinheiro?". Ele usa apenas o passado. O modelo já treinado dá a nota, que vira um score de 0 a 1000; a partir de 701, surge um alerta. O modelo não muda: aqui não há treino.
 >
-> Neste exemplo, um repasse com cara de suspeito não gerou alerta. E sem alerta não quer dizer seguro.
+> Neste exemplo, um repasse com cara de suspeito ficou com 177 e não gerou alerta. E sem alerta não quer dizer seguro.
 
-## 2:25–3:10: modelos e justificativa
+## 2:25–3:10: modelo e justificativa
 
-> Todos os modelos vêm da biblioteca scikit-learn. O NumPy, que é uma biblioteca de cálculo, foi usado para escrever os atributos e algumas métricas, não um modelo, e conferimos esse código contra força bruta.
+> O modelo vem da biblioteca scikit-learn. O NumPy, que é uma biblioteca de cálculo, foi usado para escrever os atributos, não um modelo, e conferimos esse código contra força bruta.
 >
-> Testamos a regressão logística, que, apesar do nome, é um classificador e serve de referência linear. Testamos também dois métodos de árvores. A Random Forest teve o melhor resultado na validação, por muito pouco na rede, e foi escolhida nas duas tarefas.
+> Testamos a regressão logística, que, apesar do nome, é um classificador e serve de referência linear, e dois métodos de árvores. A Random Forest teve o melhor resultado na validação e foi escolhida.
 >
-> O XGBoost foi medido à parte e não está no sistema. Na lavagem ele foi promissor, mas ainda falta confirmar.
+> O XGBoost foi medido à parte e não está no sistema: foi promissor, mas ainda falta confirmar. E testamos levar ciclos e outras medidas de grafo para dentro do modelo: não houve ganho, então o grafo ficou na investigação.
 
 ## 3:10–4:15: resultados e interpretação
 
-> Agora, os resultados, medidos em períodos posteriores ao treino.
+> Agora, os resultados, medidos em dias posteriores ao treino.
 >
-> Na rede, usamos o macro-F1, que mede o equilíbrio entre acertar e encontrar em cada classe, sem deixar a classe comum esconder as raras. Repetir o estado atual dá 0,711, e o modelo chega a 0,750. O principal ganho são menos falsos alertas: menos da metade. Mas ele quase não antecipa o início de um problema: só 4,5% das vezes.
+> Usamos a Average Precision, que mede a qualidade da ordenação. Uma referência pelo formato de pagamento dá 0,006, e o modelo chega a 0,464. No limiar escolhido, 63% dos alertas estavam certos, e 41% da lavagem foi encontrada, com menos de três alarmes falsos a cada dez mil transações.
 >
-> Na lavagem, usamos a Average Precision, que mede a qualidade da ordenação. Uma referência pelo formato de pagamento dá 0,006, e o modelo chega a 0,464. No limiar escolhido, 63% dos alertas estavam certos, e 41% da lavagem foi encontrada.
->
-> Há ganho sobre referências simples, mas nesses dados sintéticos, e a maior parte dos casos ainda escapa.
+> Há ganho claro sobre referências simples, mas nesses dados sintéticos, e a maior parte dos casos ainda escapa: nos casos sem padrão conhecido, quase todos.
 
 ## 4:15–5:00: limitações, próximos passos e encerramento
 
-> Temos limitações importantes. A lavagem foi medida só em dados sintéticos, então não sabemos o desempenho em um banco real. O período de teste já foi consultado mais de uma vez, portanto esses números não são inéditos. Não existe vínculo entre rede e transações: por isso, a fusão dos dois modelos está bloqueada no código. E não há fonte de dados ao vivo: o que mostramos é uma demonstração local.
+> Temos limitações importantes. O modelo foi medido só em dados sintéticos, então não sabemos o desempenho em um banco real. O período de teste já foi consultado mais de uma vez, portanto esses números não são inéditos. E não há fonte de dados ao vivo: o que mostramos é uma análise de arquivo.
 >
 > Nossa prioridade é congelar os candidatos e medi-los uma única vez em um período novo.
 >
@@ -374,95 +331,80 @@ As perguntas estão em ordem de importância. Cada resposta foi escrita para dur
 
 | Slide | Acompanha | Conteúdo | Imagem em `docs/img/` |
 |---|---|---|---|
-| 1. Problema e dados | 0:00–1:15 | "Alerta não é prova"; duas bases, sem vínculo; três análises | `alerta_investigacao.svg` |
+| 1. Problema e dados | 0:00–1:15 | "Alerta não é prova"; HI-Small sintético; grafos + ML | `alerta_investigacao.svg` |
 | 2. Caminho de uma análise | 1:15–2:25 | Demonstração ou capturas de reserva | `fluxo_analise.svg`; `apresentacao_demo_analise.jpg`; `apresentacao_demo_resultados.jpg` |
-| 3. Modelos | 2:25–3:10 | Random Forest escolhida; HGB e logística candidatas; XGBoost fora do código; NumPy nos atributos | `modelo_unificado.svg` |
-| 4. Resultados | 3:10–4:15 | Macro-F1, falsos alertas, AP, precisão e recall, sempre ao lado da referência | `divisao_temporal.svg`; tabela do resumo |
-| 5. Limites e próximos passos | 4:15–5:00 | Sintético; teste reutilizado; sem vínculo; sem fonte ao vivo; prioridade | Sem imagem: texto curto |
+| 3. Modelo | 2:25–3:10 | Random Forest escolhida; HGB e logística candidatas; XGBoost fora do código; grafo de 1 salto | `modelo_unificado.svg` |
+| 4. Resultados | 3:10–4:15 | AP, precisão, recall e falsos alertas, sempre ao lado da referência | `divisao_temporal.svg`; tabela do resumo |
+| 5. Limites e próximos passos | 4:15–5:00 | Sintético; teste reutilizado; sem fonte ao vivo; prioridade | Sem imagem: texto curto |
 
 ## Demonstração opcional, dentro do bloco 1:15–2:25
 
-A ação usa só 15 linhas inventadas. Na cópia isolada usada no teste de 06/11/2026, validar levou cerca de 0,1 s e analisar, cerca de 0,5 s, com a página já aberta. Clique enquanto fala, sem pausar o roteiro, e cronometrem no ensaio.
+A ação usa só 15 linhas inventadas: validar e analisar levam menos de um segundo, com a página já aberta. Clique enquanto fala, sem pausar o roteiro, e cronometrem no ensaio.
 
 **Antes da apresentação:**
 
-1. Na máquina que tem o modelo, abra um terminal na pasta do projeto e rode `.venv\Scripts\python.exe src\servidor.py`. Não use `start_presentation.ps1`, que exige chave do Gemini.
-2. Abra `http://127.0.0.1:5000/legado#ml/analisar` (área Analisar dataset da interface antiga, usada nesta demonstração) e confirme que a sessão aparece como **ativa**.
-3. Faça uma vez a sequência abaixo, para o seletor de arquivos abrir na pasta `docs\exemplos`.
+1. Na máquina da apresentação, clique duas vezes em `iniciar.bat` (ou rode `./iniciar.sh`). Quando o painel abrir, confirme o ponto verde de **Sessão** no topo.
+2. Faça uma vez a sequência abaixo, para conferir que tudo responde.
 
 **Durante a fala:**
 
-1. Mostre a faixa "Sessão da interface".
-2. Em *Dataset*, selecione `transacoes_inventadas.csv` e clique em **Validar arquivo**. Aparece "15 lidas · 12 válidas · 3 recusadas · 0 processadas".
-3. Clique em **Analisar dataset**. O cartão, no alto da lista, passa para "concluída".
-4. Se ainda houver tempo, clique em **Abrir resultados** e role até *Registros*, no fim da página, para mostrar `tx-011`, score 0,0231, alerta "não".
+1. Na vista **Análise**, em *Escolher dataset*, selecione `transacoes_inventadas.csv`. O resumo mostra "12 válidas · 3 recusadas".
+2. Clique em **Analisar**. O acompanhamento mostra as cinco etapas e termina em **Análise concluída**.
+3. Clique em **Ver resultados** e, na vista **Transações**, mostre **TX-11**: score 177, faixa baixa, sem alerta.
 
-**Não façam ao vivo:** treinar, carregar o HI-Small, iniciar replay, abrir as análises antigas ou usar o chat Sentinel AI.
+**Não façam ao vivo:** treinar, analisar o HI-Small (leva minutos) ou usar o Sentinel AI com chave real sem ter testado antes.
 
-**Se falhar:** se o servidor não responder ou a seleção do arquivo passar de cerca de 10 segundos, vá para o slide 2 com estas capturas e troque "selecionamos" por "nesta captura, selecionamos". O resto da fala continua igual. As capturas têm 800 × 499 pixels; se precisarem de mais nitidez no projetor, refaçam-nas no ensaio.
+**Se falhar:** se o servidor não responder em cerca de 10 segundos, vá para o slide 2 com as capturas abaixo e troque "selecionamos" por "nesta captura, selecionamos". O resto da fala continua igual.
 
-![Captura de reserva 1: análise concluída, com dados inventados (06/11/2026).](img/apresentacao_demo_analise.jpg)
+![Captura de reserva 1: análise concluída, com as cinco etapas medidas (17/11/2026).](img/apresentacao_demo_analise.jpg)
 
-![Captura de reserva 2: resultados, com tx-011 sem alerta (06/11/2026).](img/apresentacao_demo_resultados.jpg)
+![Captura de reserva 2: transações da análise, com TX-11 sem alerta (17/11/2026).](img/apresentacao_demo_resultados.jpg)
 
 # 4 Lembretes para o ensaio
 
 1. **Alerta não é fraude.** Saibam explicar score, limiar e alerta. Nunca digam "detectamos fraude" nem "63% de chance de ser lavagem": 63% é a precisão no conjunto de alertas do teste.
-2. **NumPy não é modelo.** Saibam explicar o cálculo *point-in-time* e as duas comparações: correção e utilidade. Não digam que comparamos um modelo próprio com o scikit-learn.
-3. **XGBoost foi medido, não implementado.** Saibam dizer como compará-lo de forma justa. Nunca digam que ele é sempre mais rápido ou melhor, nem que a troca está decidida.
-4. **Sintético e teste reutilizado.** Digam sempre "nos dados sintéticos" e "teste já consultado". Replay e laboratório são demonstração: não são tempo real nem validação em ambiente real.
-5. **Rede e transações não se ligam.** "Modelo unificado" é um arquivo com partes separadas. Saibam explicar por que a fusão está bloqueada, e não sugiram que uma anomalia de rede ajuda a detectar fraude.
+2. **NumPy não é modelo.** Saibam explicar o cálculo *point-in-time* e as duas comparações: correção e utilidade.
+3. **XGBoost foi medido, não implementado.** Saibam dizer como compará-lo de forma justa. Nunca digam que a troca está decidida.
+4. **Sintético e teste reutilizado.** Digam sempre "nos dados sintéticos" e "teste já consultado".
+5. **Grafos foram testados no modelo e ficaram na investigação.** Saibam citar o experimento (AP 0,4657 → 0,4691, precisão −2,5 p.p.) e por que o código antigo saiu.
 
 # 5 Apoio: evidências e pontos a confirmar
 
 Esta seção não faz parte das falas. **Repositório de pesquisa** é o clone `AnaliseComplexidade_DeteccaoFraudes`; os demais caminhos são relativos ao NodeWatch.
 
-## 5.1 O que foi conferido para este material, em 06/11/2026
+## 5.1 O que foi conferido para este material, em 17/11/2026
 
 | Conferência | Resultado |
 |---|---|
-| `python -m pytest testes` | 193 aprovados, 0 falhas |
-| Busca nos estimadores de `src/`, `scripts/` e `testes/` | `RandomForestClassifier`, `HistGradientBoostingClassifier`, `LogisticRegression` e `DummyClassifier`. Nenhum `xgboost`, `DecisionTree`, `*Regressor` ou `LinearRegression` |
-| Importações em `src/ml` | Nenhum uso de `src/algoritmos` ou `src/grafo` |
-| CLI de grafos com o exemplo | 15 vértices, 16 arestas, 3 ciclos, 3 SCC suspeitos; 29.800 no ciclo contra 30.300 no SCC reproduz o defeito A3 |
-| Números citados × JSONs de resultados | Conferidos por script: 0 divergências |
-| Demonstração pela interface, em cópia isolada, com o modelo real | 15 lidas, 12 válidas, 3 recusadas, 12 processadas; os 12 scores são iguais aos do manual |
-| Atributos de `tx-011`, com o código real | `par_novo` = 1, `moeda_diferente` = 1, `min_desde_rec_origem` = 6, `n_env_origem_24h` = 3 |
-| Notebook e guia do material da professora | Lidos no `.rar`: origem do `dataset_final.csv`, papel do NumPy, teste usado uma vez, modelo mais barato em empate |
+| `python -m pytest -q` | 319 aprovados, 0 falhas |
+| Exemplo inventado pelo painel, com o modelo real | 15 lidas, 12 válidas, 3 recusadas, 0 alertas; `tx-011` = TX-11, score 177, bruto 0,0231 |
+| Modelo distribuído | `lavagem-20261102T083253Z`, 3,0 MB; scores idênticos aos do arquivo anterior (38,8 MB) em 100 mil linhas aleatórias e em análises de 5 mil e 200 mil transações |
+| Análise de 200 mil transações sintéticas pelo painel | concluída, 5.982 alertas, cerca de 45 s |
 
-**Não refeito:** treino, avaliação no teste, benchmark, comparação com XGBoost e cenários de queda. Esses números são evidência salva, com as datas indicadas nos arquivos.
+**Não refeito:** treino, avaliação no teste e comparação com XGBoost. Esses números são evidência salva, com as datas indicadas nos arquivos.
 
 ## 5.2 Onde está cada resultado
 
 | Assunto | Arquivo |
 |---|---|
 | Manual completo do sistema | `docs/COMO_FUNCIONA_O_NODEWATCH.md` |
-| Rede: macro-F1, matriz, alertas, inícios de evento, fluxos inéditos | `docs/ml/resultados/avaliacao_estado_rede.json`; `docs/ml/RELATORIO_ML.md`, seção 1 |
-| Lavagem: AP, precisão, recall, recall por grupo | `docs/ml/resultados/avaliacao_lavagem.json`; `docs/ml/RELATORIO_ML.md`, seção 2 |
-| Candidatos na validação | `docs/ml/resultados/treino_estado_rede.json`; `treino_lavagem.json` |
-| Modelos, grades e fusão bloqueada | `src/ml/modelos.py` |
+| AP, precisão, recall, recall por grupo | `modelos/resultados/avaliacao_lavagem.json`; `docs/ml/RELATORIO_ML.md`, seção 1 |
+| Candidatos na validação | `modelos/resultados/treino_lavagem.json` |
 | Atributos em NumPy e testes contra força bruta | `src/ml/preparacao.py`; `src/ml/incremental.py`; `testes/ml/test_referencia_financeira.py`; `testes/ml/test_incremental.py` |
-| Vazamento | `testes/ml/test_financeiro.py`; `testes/ml/test_rede.py` |
-| Auditoria: inventário, NumPy, regressão logística, conclusões | Repositório de pesquisa: `auditoria/ml_feedback_professora/RELATORIO_AUDITORIA_ML.md` |
-| XGBoost, floresta com busca, notebook, bootstrap | Repositório de pesquisa: `auditoria/ml_feedback_professora/resultados/TABELAS.md`; `e_benchmark_*.json`; `g_consolidado.json` |
-| Regras explícitas | Repositório de pesquisa: `auditoria/ml_feedback_professora/resultados/d_regras.json` |
-| Métricas próprias × fórmulas | Repositório de pesquisa: `auditoria/ml_feedback_professora/testes/test_implementacao_propria.py` |
-| Latência, vazão, memória, equivalência incremental | `docs/ml/BENCHMARK_EVENTOS.md` |
-| Novos datasets; efeito do histórico (1 × 203) | `docs/ml/ANALISE_DATASETS.md`; `docs/ml/evidencias/demo_historico.txt` |
-| Sessão e expiração | `src/painel/sessoes.py`; `docs/ml/evidencias/demo_expiracao.txt`; `demo_oculta.txt` |
-| Queda e recuperação | `docs/ml/evidencias/demo_queda.txt`; `docs/ml/REVISAO_CONFIABILIDADE_EVENTOS.md` |
-| Vínculo e dados que faltam | `docs/ml/CONTRATO_INTEGRACAO.md`; `docs/ml/EVENTOS.md`, seção 9 |
-| Grafos: 35% e limites do recorte | `docs/melhorias-e-limitacoes.md` |
+| Vazamento | `testes/ml/test_financeiro.py` |
+| Score 0–1000 e faixas | `src/painel/score.py` |
+| Grafos no modelo: experimento e decisão | `docs/decisoes/0001-grafos-e-ml.md`; `pesquisa/atributos_grafo/` |
+| HI-Large (XGBoost e mais dados) | `pesquisa/hi_large/RELATORIO_HI_LARGE.md` |
+| Auditoria: XGBoost, regras, métricas próprias | Repositório de pesquisa: `auditoria/ml_feedback_professora/` |
+| Sessão e expiração | `src/painel/sessoes.py`; `docs/ui/PAINEL_ANALISTA.md` |
 | Exemplo inventado | `dados/exemplos/transacoes_inventadas.csv` |
 
 ## 5.3 O que confirmar antes da apresentação
 
-1. **Publicação do código.** *Analisar dataset*, as sessões e o manual estão só nesta máquina, sem commit, na branch `ml/sessoes-analise-datasets`. A `origin/main` (`9095451`) não tem `src/ml/analises.py` nem `src/painel/sessoes.py`. Decidam se publicam antes, porque a professora pode procurar no GitHub.
-2. **O que a professora espera.** Os comentários chegaram por relato, e a auditoria não identificou com certeza qual documento ela leu. Confirmem se ela espera um modelo escrito em NumPy, se a comparação com uma referência se referia a isso e se ela espera a comparação com GPU.
-3. **Origem do `dataset_final.csv`.** O notebook o trata como base do projeto "Preditor de Qualidade de Redes", já rotulada em etapas anteriores. Faltam a procedência da coleta e o período das referências p95/p99. Não digam que é sintético nem que é real sem confirmar.
-4. **Como chamar a auditoria.** O manual diz "auditoria externa", mas ela é externa só ao código do NodeWatch. Foi conduzida pelo grupo com apoio de IA, a partir de `prompts/PROMPT_AUDITORIA_ML_FEEDBACK_PROFESSORA.md`. Digam "auditoria do grupo, em scripts isolados". Confirmem também se a disciplina pede declaração de uso de IA.
-5. **Máquina da demonstração.** `artefatos_ml/`, com o modelo, não vai para o git. Sem este computador, é preciso retreinar, e o treino não foi refeito para este material. Testem no projetor, com a fonte legível.
-6. **Análises antigas na tela.** A lista em *Analisar dataset* mostra 10 análises de testes anteriores, algumas inválidas ou canceladas, com nomes como `banco_norte_setembro.csv`. São recortes do HI-Small e arquivos sintéticos de teste, não dados de banco. Decidam se limpam a pasta, com o servidor parado, ou expliquem caso apareçam.
-7. **Sentinel AI e outros pontos não verificados.** O chat com chave real, a queda de energia, a carga HTTP concorrente e a aba oculta em outros navegadores não foram verificados. Não afirmem que funcionam nessas condições.
-8. **Anotações antigas e README.** O guia do material diz que o teste "não tem rótulo" e o texto sobre a branch diz que `Is Laundering = 1` significa fraude: as duas frases estão erradas para o nosso projeto. O `README.md` ainda mostra 27 testes (hoje são 193) e cita um `README_LOCAL.md` que não existe.
-9. **Duração.** O tempo é uma estimativa. Cronometrem com slides, trocas e demonstração.
+1. **O que a professora espera.** Os comentários chegaram por relato. Confirmem se ela espera um modelo escrito em NumPy, se a comparação com uma referência se referia a isso e se ela espera a comparação com GPU.
+2. **Como chamar a auditoria.** Ela foi conduzida pelo grupo com apoio de IA, em scripts isolados. Digam "auditoria do grupo, em scripts isolados" e confirmem se a disciplina pede declaração de uso de IA.
+3. **Integrantes.** A capa deste material lista cinco pessoas, e o README e o site listam quatro (sem Julia Emily Leonardo Barbosa). Confirmem a composição do grupo e corrijam o que estiver errado.
+4. **Máquina da demonstração.** O modelo vem no repositório e é instalado sozinho no primeiro uso, mas o primeiro uso precisa de internet para as bibliotecas. Rodem o `iniciar.bat` antes, na máquina da apresentação, e testem no projetor.
+5. **Análises antigas na tela.** A lista **Recentes** mostra as análises gravadas nessa máquina. Decidam se limpam `artefatos_ml/painel/analises/`, com o servidor parado, ou expliquem caso apareçam.
+6. **Sentinel AI.** As respostas com chave real não foram testadas depois da revisão do prompt de 17/11. Não o usem ao vivo sem ensaiar.
+7. **Duração.** O tempo é uma estimativa. Cronometrem com slides, trocas e demonstração.
