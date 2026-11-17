@@ -290,7 +290,7 @@ def _sdk_instalado() -> bool:
 def como_ativar(sit: dict) -> str:
     """O que falta para o Sentinel AI funcionar (texto para a tela), ou '' se nada falta."""
     if not sit["chave_configurada"]:
-        return (f"Defina {sit['variavel_da_chave']} no arquivo .env (o Inicializador Rápido pergunta) "
+        return (f"Defina {sit['variavel_da_chave']} no arquivo .env (o iniciar.bat pergunta) "
                 "e reinicie o servidor.")
     if not sit["biblioteca_instalada"]:
         return (f"Instale a biblioteca {sit['biblioteca']} no ambiente do projeto "

@@ -36,25 +36,17 @@ decisão é sempre do analista.
 - Python 3.14 (versão testada; mínimo 3.12, exigido pelo `numpy==2.5.4` de `requirements-ml.txt`)
 - Chave de API do Google Gemini ([aistudio.google.com/apikey](https://aistudio.google.com/apikey)), opcional: ativa o Sentinel AI no Assistente de dúvidas do painel (com a sua autorização); o painel funciona sem ela
 
-### Windows com poucos cliques: [Inicializador Rápido](Inicializador%20R%C3%A1pido/)
+### Windows: `iniciar.bat`
 
-1. Abra a pasta **`Inicializador Rápido`** na raiz do repositório.
-2. Clique duas vezes em **`Iniciar_NodeWatch.bat`**.
-3. O navegador abre no painel do analista (`http://127.0.0.1:5000/`) quando ele estiver pronto. Para parar, use **Ctrl+C** na janela.
+1. Clique duas vezes em **`iniciar.bat`**, na raiz do repositório.
+2. O navegador abre no painel do analista (`http://127.0.0.1:5000/`) quando ele estiver pronto. Para parar, use **Ctrl+C** na janela.
 
-O primeiro uso cria o `.venv` e baixa as dependências, por isso precisa de conexão com a internet. O painel não exige a chave do Gemini. Mais detalhes estão no [README da pasta](Inicializador%20R%C3%A1pido/README.md).
+O primeiro uso cria o `.venv` e baixa as dependências, por isso precisa de conexão com a internet. O painel não exige a chave do Gemini. Detalhes em [`docs/inicializador-windows.md`](docs/inicializador-windows.md).
 
-### Windows (script de apresentação)
-
-```powershell
-.\start_presentation.ps1
-```
-
-### Linux/macOS
+### Linux/macOS: `iniciar.sh`
 
 ```bash
-chmod +x start_presentation.sh
-./start_presentation.sh
+./iniciar.sh
 ```
 
 Depois acessar o **painel do analista**:
@@ -63,15 +55,9 @@ Depois acessar o **painel do analista**:
 http://127.0.0.1:5000/
 ```
 
-O script:
-
-- Verifica se o Python esta instalado;
-- Cria `.venv` se nao existir;
-- Instala dependencias;
-- Cria `.env` a partir de `.env.example` se nao existir;
-- Valida se a `GEMINI_API_KEY` esta configurada (rejeita placeholders);
-- Inicia o backend com `python src/servidor.py`;
-- Nao exibe a chave no terminal.
+Os dois inicializadores conferem o Python (3.12 ou mais novo), criam o `.venv` se não existir, instalam
+`requirements.txt` e `requirements-ml.txt`, criam o `.env` a partir de `.env.example` se não existir (a chave é
+opcional) e iniciam o servidor com `python src/servidor.py`, que instala e confere o modelo antes de servir.
 
 ---
 
@@ -100,7 +86,7 @@ Testado em 12/11/2026 numa cópia limpa (sem `.venv`, sem `.env`, sem `artefatos
 
 ### Instalação e inicialização (comandos testados)
 
-**Windows, com poucos cliques:** duplo clique em `Inicializador Rápido\Iniciar_NodeWatch.bat`. Ele cria o `.venv`, instala as bibliotecas, prepara o modelo e abre o painel.
+**Windows, com poucos cliques:** duplo clique em `iniciar.bat`. Ele cria o `.venv`, instala as bibliotecas, prepara o modelo e abre o painel.
 
 **Windows, pelo terminal (PowerShell):**
 
@@ -310,7 +296,7 @@ NodeWatch/
 ├── scripts/                 ambiente de teste, imagens do site e pesquisa HI-Large
 ├── docs/                    documentação, relatórios de ML e entregas
 ├── index.html, site-assets/ site de apresentação (GitHub Pages)
-└── Inicializador Rápido/    início com poucos cliques no Windows
+├── iniciar.bat, iniciar.sh  início com um comando (Windows / Linux e macOS)
 ```
 
 ---

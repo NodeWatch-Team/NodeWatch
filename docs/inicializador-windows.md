@@ -1,12 +1,12 @@
-# Inicializador Rápido (Windows)
+# Inicializador do NodeWatch (Windows)
 
-**`Iniciar_NodeWatch.bat`** inicia o **aplicativo NodeWatch**: prepara o `.venv`, sobe o servidor e abre o painel do analista.
+**`iniciar.bat`**, na raiz do projeto, inicia o **aplicativo NodeWatch**: prepara o `.venv`, sobe o servidor e abre o painel do analista.
 
-O site de apresentação (artigo técnico) não depende desta pasta: ele é publicado pelo GitHub Pages a partir do `index.html` da raiz do repositório.
+O site de apresentação (artigo técnico) não depende do inicializador: ele é publicado pelo GitHub Pages a partir do `index.html` da raiz do repositório.
 
 ## Iniciar o aplicativo
 
-1. Clique duas vezes em **`Iniciar_NodeWatch.bat`**.
+1. Clique duas vezes em **`iniciar.bat`**, na raiz do projeto.
 2. Aguarde: o navegador abre sozinho no painel do analista, `http://127.0.0.1:5000/`, quando ele estiver pronto.
 
 ### Sequência de inicialização na janela
@@ -65,4 +65,4 @@ Na janela do inicializador, pressione **Ctrl+C**, ou feche a janela. Só o servi
 - Uma pasta de projeto com caminho curto, como `C:\NodeWatch` ou `Downloads\NodeWatch`. Algumas dependências têm nomes de arquivo muito longos, e num caminho profundo a instalação esbarra no limite de 260 caracteres do Windows. Espaços e acentos no caminho não atrapalham.
 - A chave do Gemini **não** é necessária para o painel. Ela ativa o Sentinel AI no Assistente de dúvidas, que só envia o contexto da análise depois da sua autorização na tela (veja acima).
 
-Alternativa sem o `.bat`: clique com o botão direito em `Iniciar_NodeWatch.ps1` e escolha **Executar com o PowerShell**.
+Alternativa sem o `.bat`: clique com o botão direito em `scripts/iniciar_nodewatch.ps1` e escolha **Executar com o PowerShell**.

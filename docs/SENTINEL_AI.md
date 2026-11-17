@@ -53,11 +53,11 @@ python src/servidor.py
 ```
 
 Abra `http://127.0.0.1:5000/` e use o botão do Assistente de dúvidas, no canto inferior direito. No Windows, o
-[Inicializador Rápido](../Inicializador%20R%C3%A1pido/) faz tudo isso e pergunta o token uma vez.
+[`iniciar.bat`](inicializador-windows.md) faz tudo isso e pergunta o token uma vez.
 
 ## Conexao com o Gemini: chave, verificacao e erros
 
-**Como a chave chega ao Sentinel AI.** O inicializador (`Inicializador Rápido/Iniciar_NodeWatch.bat` → `Iniciar_NodeWatch.ps1`) pergunta o token uma vez, com a digitação oculta, e grava só a linha `GEMINI_API_KEY=` do `.env` da pasta principal. O servidor (`src/servidor.py`) carrega esse `.env` ao iniciar (`load_dotenv`), e o motor (`src/sentinel_ia.py`) lê a variável do ambiente. Uma variável `GEMINI_API_KEY` já definida no Windows tem precedência e o inicializador não pergunta. Trocou a chave? Reinicie o servidor.
+**Como a chave chega ao Sentinel AI.** O inicializador (`iniciar.bat` → `scripts/iniciar_nodewatch.ps1`) pergunta o token uma vez, com a digitação oculta, e grava só a linha `GEMINI_API_KEY=` do `.env` da pasta principal. O servidor (`src/servidor.py`) carrega esse `.env` ao iniciar (`load_dotenv`), e o motor (`src/sentinel_ia.py`) lê a variável do ambiente. Uma variável `GEMINI_API_KEY` já definida no Windows tem precedência e o inicializador não pergunta. Trocou a chave? Reinicie o servidor.
 
 **Cliente.** Biblioteca `google-genai` (3.x), modelo `GEMINI_MODEL` (padrão `gemini-2.5-flash`), **API `v1beta`** (`GEMINI_API_VERSION`), tempo limite de 60 s e até 4096 tokens de saída.
 

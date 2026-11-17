@@ -1,5 +1,5 @@
-﻿# Iniciar_NodeWatch.ps1 - inicia o NodeWatch no Windows com poucos cliques.
-# Uso: clique duas vezes em Iniciar_NodeWatch.bat (ou rode este arquivo no PowerShell).
+﻿# iniciar_nodewatch.ps1 - inicia o NodeWatch no Windows com poucos cliques.
+# Uso: clique duas vezes em iniciar.bat, na raiz do projeto (ou rode este arquivo no PowerShell).
 # Para parar: Ctrl+C nesta janela.
 #
 # Sequencia de boot visual: cada etapa mostrada na tela corresponde a uma operacao real deste script
@@ -145,7 +145,7 @@ function Banner {
     Write-Host ""
     Write-Host "   " -NoNewline; Digitar "F R A U D   D E T E C T I O N   &   M O N I T O R I N G   S Y S T E M" 'branco'
     W ("   " + ($TRACO * 75)) 'vermelho2'
-    W "   Inicializador Rapido  |  Ctrl+C encerra o servidor iniciado nesta janela" 'cinza'
+    W "   Inicializador do NodeWatch  |  Ctrl+C encerra o servidor iniciado nesta janela" 'cinza'
     Write-Host ""
 }
 $ETAPAS = @(
@@ -275,7 +275,7 @@ $reqMl = Join-Path $raiz "requirements-ml.txt"
 if (-not ((Test-Path -LiteralPath $servidor) -and (Test-Path -LiteralPath $reqBase) -and (Test-Path -LiteralPath $reqMl))) {
     Erro "Nao encontrei o NodeWatch na pasta acima deste script:"
     Detalhe $raiz
-    Detalhe "Mantenha a pasta 'Inicializador Rapido' dentro da pasta principal do repositorio."
+    Detalhe "Mantenha este script na pasta scripts/ da pasta principal do repositorio."
     Sair 1
 }
 Ok "Projeto encontrado em: $raiz"

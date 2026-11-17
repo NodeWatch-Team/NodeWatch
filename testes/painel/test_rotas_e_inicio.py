@@ -75,16 +75,21 @@ def test_inicio_usa_as_linhas_testadas_e_o_aviso_da_chave_cita_o_assistente():
     assert "Legado:" not in principal and "5000/#ml" not in fonte
 
 
-@pytest.mark.parametrize("script", ["start_presentation.ps1", "start_presentation.sh"])
-def test_scripts_de_apresentacao_mostram_o_endereco_certo(script):
-    texto = (RAIZ / script).read_text(encoding="utf-8-sig")
-    assert "Painel do analista: http://127.0.0.1:5000/" in texto
-    assert "/legado" not in texto and "5000/#ml" not in texto
+def test_inicializadores_apontam_para_o_servidor_e_o_painel():
+    sh = (RAIZ / "iniciar.sh").read_text(encoding="utf-8")
+    assert "Painel do analista: http://127.0.0.1:5000/" in sh and "src/servidor.py" in sh
+    assert "exit 1" not in sh[sh.index(".env"):]               # a chave do Gemini é opcional: sem ela o script segue
+    bat = (RAIZ / "iniciar.bat").read_text(encoding="utf-8")
+    assert r"scripts\iniciar_nodewatch.ps1" in bat
+    ps1 = (RAIZ / "scripts" / "iniciar_nodewatch.ps1").read_text(encoding="utf-8-sig")
+    assert r'"src\servidor.py"' in ps1 and "Split-Path -Parent $PSScriptRoot" in ps1    # raiz = pasta acima de scripts/
+    for texto in (sh, bat, ps1):
+        assert "/legado" not in texto and "5000/#ml" not in texto
 
 
 # -- documentação --------------------------------------------------------------------------
 DOCS_ATUAIS = ("README.md", "docs/ui/PAINEL_ANALISTA.md", "docs/SENTINEL_AI.md", "docs/ml/README.md",
-               "Inicializador Rápido/README.md")
+               "docs/inicializador-windows.md")
 
 
 def test_documentacao_indica_o_painel_em_raiz():

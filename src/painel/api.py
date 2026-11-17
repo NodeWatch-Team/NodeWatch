@@ -208,7 +208,7 @@ def estado():
     erro = provisionamento.ultimo_erro()
     motivo = (f"{erro.causa} O que fazer: {erro.acao}" if erro else
               "O modelo de ML ainda não foi instalado nesta máquina. Feche o servidor e rode "
-              "python -m src.ml.provisionamento (ou inicie pelo Inicializador Rápido), depois inicie de novo.")
+              "python -m src.ml.provisionamento (ou inicie por iniciar.bat ou iniciar.sh), depois inicie de novo.")
     return _json({
         "servico": "NodeWatch — painel do analista",
         "modelo": ({"disponivel": True, "versao": lav.get("versao"), "familia": lav.get("familia"),

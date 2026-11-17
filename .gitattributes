@@ -2,3 +2,6 @@
 # O Git não pode converter fim de linha nesses arquivos, senão o SHA-256 muda no checkout do Windows.
 modelos/*.joblib binary
 modelos/*.json -text
+
+# Scripts de shell precisam de LF para rodar no Linux e no macOS (inclusive quando editados no Windows).
+*.sh text eol=lf
