@@ -51,3 +51,15 @@ def test_servir_sobe_o_painel_da_pasta_isolada(tmp_path, monkeypatch):
     monkeypatch.setattr(sentinel_ai.app, "run", lambda **kw: chamadas.append(("run", kw["port"])))
     amb.servir(tmp_path, 5999)
     assert chamadas == [("configurar", tmp_path), ("run", 5999)]
+
+
+def test_preparo_copia_de_novo_o_modelo_do_projeto(tmp_path):
+    # uma cópia antiga de modelos/ (manifesto de outra versão, arquivo que não existe mais no projeto) é substituída
+    (tmp_path / "modelos").mkdir()
+    (tmp_path / "modelos" / "MANIFESTO_MODELO.json").write_text('{"sha256": "antigo"}', encoding="utf-8")
+    (tmp_path / "modelos" / "sobra.txt").write_text("x", encoding="utf-8")
+    amb.sincronizar_do_projeto(tmp_path)
+    for nome in ("MANIFESTO_MODELO.json", "metadados_modelo.json", "modelo_unificado.joblib"):
+        assert (tmp_path / "modelos" / nome).read_bytes() == (RAIZ / "modelos" / nome).read_bytes(), nome
+    assert not (tmp_path / "modelos" / "sobra.txt").exists()
+    assert (tmp_path / "docs" / "ml" / "resultados" / "avaliacao_lavagem.json").is_file()

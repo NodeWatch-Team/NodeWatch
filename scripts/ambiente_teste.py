@@ -131,15 +131,25 @@ def escrever_csv(df: pd.DataFrame, caminho: Path, com_rotulo: bool) -> None:
 # ---------------------------------------------------------------------------------------------------------------
 # Pasta isolada
 # ---------------------------------------------------------------------------------------------------------------
+def sincronizar_do_projeto(pasta: Path) -> None:
+    """Copia de novo, a cada preparo, o modelo distribuído e a avaliação histórica do projeto.
+
+    O painel de teste lê só da pasta isolada. Uma cópia feita uma vez e nunca atualizada deixaria o ambiente com
+    o modelo e o manifesto antigos depois de uma troca de modelo em modelos/. O modelo já instalado em
+    pasta/artefatos_ml é atualizado depois por garantir_modelo (versões anteriores ficam no manifesto novo).
+    """
+    for origem in ("modelos", "docs/ml/resultados"):
+        destino = pasta / origem
+        if destino.exists():
+            shutil.rmtree(destino)
+        shutil.copytree(PROJETO / origem, destino)
+
+
 def preparar(pasta: Path, hismall: Path | None = None, linhas_grande: int = 200_000) -> None:
     from src.ml import provisionamento
 
     pasta.mkdir(parents=True, exist_ok=True)
-    # modelo distribuído e avaliação histórica copiados para a pasta: o painel de teste lê só dela
-    for origem in ("modelos", "docs/ml/resultados"):
-        destino = pasta / origem
-        if not destino.exists():
-            shutil.copytree(PROJETO / origem, destino)
+    sincronizar_do_projeto(pasta)
     print("\n".join(provisionamento._linhas(provisionamento.garantir_modelo(pasta))))
 
     dados, envio = pasta / "dados", pasta / "para_enviar"
