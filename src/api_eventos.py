@@ -62,9 +62,11 @@ _ctx: Dict[str, Any] = {}
 
 
 def _novo_ctx(raiz: Path, modelo=None, config=None, sessoes=None) -> Dict[str, Any]:
-    from src.ml.sessoes import GerenciadorSessoes
+    from src.ml import sessoes as ses
+    if sessoes is None:  # na raiz do projeto, o mesmo gerenciador do painel: uma sessão vale nas duas interfaces
+        sessoes = ses.padrao() if Path(raiz) == _RAIZ else ses.GerenciadorSessoes()
     return {"raiz": Path(raiz), "modelo": modelo, "servico": None, "replays": {}, "config": config,
-            "laboratorio": None, "sessoes": sessoes or GerenciadorSessoes(), "responsavel": None,
+            "laboratorio": None, "sessoes": sessoes, "responsavel": None,
             "analises": None}
 
 
@@ -101,14 +103,11 @@ def _modelo():
         configurar(_RAIZ)
     with _trava:
         if _ctx["modelo"] is None:
-            from src.ml.modelos import NOME_ARTEFATO, ModeloUnificado
-            from src.ml import provisionamento
-            pasta = _ctx["raiz"] / "artefatos_ml"
             # Instalação limpa: o modelo vem de modelos/ (versionado) e é verificado antes de carregar.
-            if not (pasta / NOME_ARTEFATO).is_file() and \
-                    (_ctx["raiz"] / provisionamento.PASTA_DISTRIBUIDA / provisionamento.NOME_MANIFESTO).is_file():
-                provisionamento.garantir_modelo(_ctx["raiz"])
-            _ctx["modelo"] = ModeloUnificado.carregar(pasta)
+            # Na raiz do projeto, o mesmo objeto já carregado pelo painel (src/ml/modelo_ativo.py).
+            from src.ml import modelo_ativo
+            raiz = _ctx["raiz"]
+            _ctx["modelo"] = modelo_ativo.obter(raiz) if Path(raiz) == _RAIZ else modelo_ativo.carregar(raiz)
         return _ctx["modelo"]
 
 

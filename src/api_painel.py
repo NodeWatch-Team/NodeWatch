@@ -74,12 +74,9 @@ def configurar(raiz: Path, modelo: Any = None, config_financeiro: Optional[Dict[
 
     raiz = Path(raiz)
     if sessoes is None:
-        if raiz == _RAIZ:  # o mesmo gerenciador das rotas /api/ml: uma sessão vale nas duas interfaces
-            from src import api_eventos
-            sessoes = api_eventos.sessoes()
-        else:
-            from src.ml.sessoes import GerenciadorSessoes
-            sessoes = GerenciadorSessoes()
+        from src.ml import sessoes as ses
+        # Na raiz do projeto, o gerenciador único do processo (o mesmo das rotas /api/ml antigas).
+        sessoes = ses.padrao() if raiz == _RAIZ else ses.GerenciadorSessoes()
     with _trava:
         registro = Registro(raiz / "artefatos_ml" / "painel" / "logs")
         datasets = RepositorioDatasets(raiz, registro, config_financeiro)
@@ -87,9 +84,9 @@ def configurar(raiz: Path, modelo: Any = None, config_financeiro: Optional[Dict[
         def obter_modelo() -> Any:
             with _trava:
                 if _ctx.get("modelo") is None:
-                    if raiz == _RAIZ:  # mesmo modelo já carregado pelas outras rotas, se houver
-                        from src import api_eventos
-                        _ctx["modelo"] = api_eventos._modelo()
+                    if raiz == _RAIZ:  # um único objeto por processo (src/ml/modelo_ativo.py)
+                        from src.ml import modelo_ativo
+                        _ctx["modelo"] = modelo_ativo.obter(raiz)
                     else:
                         from src.ml.modelos import ModeloUnificado
                         _ctx["modelo"] = ModeloUnificado.carregar(raiz / "artefatos_ml")
