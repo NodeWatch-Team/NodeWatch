@@ -89,7 +89,8 @@ def test_inicializadores_apontam_para_o_servidor_e_o_painel():
 
 # -- documentação --------------------------------------------------------------------------
 DOCS_ATUAIS = ("README.md", "docs/ui/PAINEL_ANALISTA.md", "docs/SENTINEL_AI.md", "docs/ml/README.md",
-               "docs/inicializador-windows.md")
+               "docs/inicializador-windows.md", "docs/COMO_FUNCIONA_O_NODEWATCH.md",
+               "docs/APRESENTACAO_NODEWATCH.md")
 
 
 def test_documentacao_indica_o_painel_em_raiz():
@@ -108,12 +109,6 @@ def test_documentos_atuais_nao_mandam_para_a_interface_antiga(arquivo):
     for removido in ("EVENTOS.md", "ANALISE_DATASETS.md", "BENCHMARK_EVENTOS.md", "README-INTERFACE.md", "evidencias/",
                      "src/main.py", "exemplo_transacoes.csv", "melhorias-e-limitacoes.md", "src/algoritmos"):
         assert removido not in texto, (arquivo, removido)
-
-
-def test_documentos_longos_avisam_que_descrevem_codigo_removido():
-    for arquivo in ("docs/COMO_FUNCIONA_O_NODEWATCH.md", "docs/APRESENTACAO_NODEWATCH.md"):
-        topo = (RAIZ / arquivo).read_text(encoding="utf-8")[:2000]
-        assert "parte deste documento descreve código removido" in topo, arquivo
 
 
 def test_documentacao_trata_null_como_excecao_temporaria_com_o_risco():
