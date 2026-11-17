@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NodeWatch · Grafos e Machine Learning contra a lavagem de dinheiro</title>
-  <meta name="description" content="Artigo técnico do NodeWatch: triagem de transações que combina Teoria dos Grafos e Random Forest para priorizar investigações de lavagem de dinheiro.">
-  <meta name="theme-color" content="#0a0e16">
+  <title>NodeWatch · Priorização inteligente e investigação visual contra a lavagem de dinheiro</title>
+  <meta name="description" content="Roteiro técnico do NodeWatch: um Random Forest prioriza transações suspeitas, o grafo mostra a rede da conta e o analista decide.">
+  <meta name="theme-color" content="#090909">
   <meta name="color-scheme" content="dark">
 
   <meta property="og:type" content="article">
   <meta property="og:locale" content="pt_BR">
-  <meta property="og:title" content="NodeWatch · Grafos e Machine Learning contra a lavagem de dinheiro">
-  <meta property="og:description" content="Triagem inteligente que combina Teoria dos Grafos e Machine Learning para priorizar investigações humanas.">
+  <meta property="og:title" content="NodeWatch · A máquina prioriza. A rede mostra. Quem decide é o analista.">
+  <meta property="og:description" content="Priorização por Machine Learning e investigação visual em grafo para a prevenção à lavagem de dinheiro.">
   <meta property="og:image" content="./site-assets/img/og-image.jpg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -19,41 +19,43 @@
 
   <link rel="icon" href="./site-assets/img/favicon.ico" sizes="16x16 32x32 48x48">
   <link rel="apple-touch-icon" href="./site-assets/img/apple-touch-icon.png">
-  <link rel="stylesheet" href="./site-assets/css/site.css">
+  <link rel="stylesheet" href="./site-assets/css/site.css?v=20261117b">
   <script>document.documentElement.classList.add("js");</script>
   <script src="./site-assets/vendor/react-18.3.1.production.min.js" defer></script>
   <script src="./site-assets/vendor/react-dom-18.3.1.production.min.js" defer></script>
-  <script src="./site-assets/js/site.js" defer></script>
-  <script src="./site-assets/js/artigo.js" defer></script>
+  <script src="./site-assets/js/site.js?v=20261117b" defer></script>
+  <script src="./site-assets/js/artigo.js?v=20261117b" defer></script>
 </head>
 <body>
   <a class="pular" href="#conteudo">Pular para o conteúdo</a>
 
   <header class="cabecalho">
     <div class="cabecalho-interno">
-      <a class="marca" href="#resumo" aria-label="NodeWatch, início do artigo">
+      <a class="marca" href="#abertura" aria-label="NodeWatch, início">
         <img src="./site-assets/img/logo.png" alt="NodeWatch" width="366" height="96">
       </a>
       <button class="menu-botao" type="button" aria-expanded="false" aria-controls="menu-principal">
         <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
-        Menu
+        Blocos
       </button>
-      <nav id="menu-principal" class="menu" aria-label="Seções do artigo">
-        <ul>
-          <li><a href="#resumo">Resumo</a></li>
-          <li><a href="#pipeline">Pipeline</a></li>
-          <li><a href="#ml">Machine Learning</a></li>
-          <li><a href="#referencia">Referência</a></li>
-          <li><a href="#ficha">Ficha</a></li>
-        </ul>
+      <nav id="menu-principal" class="menu" aria-label="Blocos da apresentação">
+        <ol>
+          <li><a href="#abertura"><span class="menu-num">0</span>Abertura</a></li>
+          <li><a href="#problema"><span class="menu-num">1</span>Problema</a></li>
+          <li><a href="#modelo"><span class="menu-num">2</span>Modelo</a></li>
+          <li><a href="#avaliacao"><span class="menu-num">3</span>Avaliação</a></li>
+          <li><a href="#pipeline"><span class="menu-num">4</span>Pipeline</a></li>
+          <li><a href="#painel"><span class="menu-num">5</span>Painel</a></li>
+          <li><a href="#escopo"><span class="menu-num">6</span>Escopo</a></li>
+        </ol>
       </nav>
     </div>
   </header>
 
   <main id="conteudo">
 
-    <!-- 1 · Abertura e resumo executivo -->
-    <section id="resumo" class="secao heroi" aria-labelledby="titulo-resumo">
+    <!-- Bloco 0 · Abertura e vídeo pitch -->
+    <section id="abertura" class="secao heroi" aria-labelledby="titulo-abertura">
       <svg class="heroi-textura" aria-hidden="true" viewBox="0 0 600 520" preserveAspectRatio="xMidYMid slice">
         <g stroke="currentColor" stroke-width="1.2" fill="none">
           <path d="M60 80 L190 40 L300 120 L420 60 L540 140 M190 40 L230 210 L300 120 M230 210 L120 300 L60 80 M420 60 L470 260 L540 140 M470 260 L560 380 M120 300 L210 430 L350 470 L470 400 L560 380 M350 470 L330 330"/>
@@ -71,17 +73,21 @@
         <div class="heroi-topo">
           <div class="heroi-texto">
             <p class="selo">
-              <span>Artigo técnico · Amostra tecnológica</span>
-              <span>Ciência da Computação · Grupo 4</span>
+              <span>Mostra tecnológica · Roteiro técnico</span>
+              <span>Ciência da Computação · Grupo 1</span>
             </p>
-            <h1 id="titulo-resumo">Grafos e Machine Learning para priorizar investigações de lavagem de dinheiro</h1>
-            <p class="subtitulo">O complemento técnico do vídeo pitch: como o NodeWatch transforma transações em grafo, pontua o risco e entrega ao analista uma fila de prioridades explicável.</p>
+            <h1 id="titulo-abertura">NodeWatch <span class="h1-sub">Priorização inteligente e investigação visual para prevenção à lavagem de dinheiro</span></h1>
+            <p class="lema">
+              <span>A máquina <strong>prioriza</strong>.</span>
+              <span>A rede <strong>mostra</strong>.</span>
+              <span>Quem <strong>decide</strong> é o analista.</span>
+            </p>
           </div>
 
           <figure class="video-card" aria-labelledby="video-etiqueta">
             <figcaption id="video-etiqueta" class="video-etiqueta">
               <span class="video-ponto" aria-hidden="true"></span>
-              Vídeo pitch • Apresentação rápida
+              Vídeo pitch · 60 segundos
             </figcaption>
             <div class="video-quadro">
               <iframe
@@ -94,277 +100,318 @@
           </figure>
         </div>
 
-        <div class="problema-solucao">
-          <article class="cartao bloco-problema">
-            <p class="rotulo">O problema</p>
-            <h2 class="h-bloco">Regras estáticas não enxergam o caminho do dinheiro</h2>
-            <ul class="lista-curta">
-              <li><strong><em>Smurfing</em></strong>: valores fracionados abaixo dos limites fixos passam despercebidos.</li>
-              <li><strong><em>Layering</em></strong>: o dinheiro atravessa várias contas intermediárias; cada transação isolada parece normal.</li>
-              <li><strong>Falsos positivos</strong>: limites rígidos disparam sobre o fluxo legítimo e afogam a equipe de investigação.</li>
-            </ul>
-          </article>
-          <article class="cartao bloco-solucao">
-            <p class="rotulo">A solução</p>
-            <h2 class="h-bloco">Triagem inteligente, não bloqueio cego</h2>
-            <ul class="lista-curta">
-              <li><strong>Teoria dos Grafos</strong>: contas viram vértices e transações viram arestas; o grau distinto de cada conta e a novidade do par entram no modelo, e o painel mostra para onde o dinheiro seguiu.</li>
-              <li><strong>Machine Learning</strong>: um Random Forest pontua cada transação com atributos temporais causais.</li>
-              <li><strong>Decisão humana</strong>: o score ordena a fila de investigação; o analista decide.</li>
-            </ul>
-          </article>
-        </div>
+        <p class="escopo-nota">
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 11v6M12 7.5v.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span><strong>Escopo:</strong> ferramenta local de apoio à análise de arquivos de transações. Gera um índice de prioridade para a triagem humana; não bloqueia contas, não aprova pagamentos e não dá veredito.</span>
+        </p>
 
-        <ul class="kpis" aria-label="Indicadores-chave">
-          <li class="kpi">
-            <span class="kpi-numero">5.078.345</span>
-            <span class="kpi-rotulo">transações na base de estudo</span>
-            <span class="kpi-nota">IBM AML HI-Small (sintético)</span>
-          </li>
-          <li class="kpi">
-            <span class="kpi-numero">49</span>
-            <span class="kpi-rotulo">atributos causais</span>
-            <span class="kpi-nota">por transação, só com o passado</span>
-          </li>
-          <li class="kpi">
-            <span class="kpi-numero">0,464</span>
-            <span class="kpi-rotulo">PR-AUC (<em>Average Precision</em>)</span>
-            <span class="kpi-nota">com 0,11% de positivos no teste</span>
-          </li>
-          <li class="kpi kpi-alerta">
-            <span class="kpi-numero">0–1000</span>
-            <span class="kpi-rotulo">escala de score</span>
-            <span class="kpi-nota">alerta operacional em ≥ 701</span>
-          </li>
-        </ul>
+        <ol class="indice" aria-label="Roteiro da apresentação">
+          <li><a href="#problema"><span class="indice-num">1</span><span class="indice-txt">O problema e a evolução da arquitetura</span></a></li>
+          <li><a href="#modelo"><span class="indice-num">2</span><span class="indice-txt">Como o modelo foi criado</span></a></li>
+          <li><a href="#avaliacao"><span class="indice-num">3</span><span class="indice-txt">Avaliação e métricas</span></a></li>
+          <li><a href="#pipeline"><span class="indice-num">4</span><span class="indice-txt">Pipeline de análise</span></a></li>
+          <li><a href="#painel"><span class="indice-num">5</span><span class="indice-txt">Painel do analista e grafo</span></a></li>
+          <li><a href="#escopo"><span class="indice-num">6</span><span class="indice-txt">Escopo ético e créditos</span></a></li>
+        </ol>
       </div>
     </section>
 
-    <!-- 2 · Etapas do pipeline -->
-    <section id="pipeline" class="secao" aria-labelledby="titulo-pipeline">
+    <!-- Bloco 1 · Problema e evolução -->
+    <section id="problema" class="secao bloco" aria-labelledby="titulo-problema">
       <div class="conteudo">
-        <h2 id="titulo-pipeline">Do arquivo ao alerta, em 4 passos</h2>
-        <p class="secao-subtitulo">Os passos 1 e 2 são a análise (leitura, ordenação, pontuação, índices e manifesto, todas medidas na tela); os passos 3 e 4 são a investigação sobre os resultados gravados.</p>
+        <p class="bloco-num">Bloco 1</p>
+        <h2 id="titulo-problema">Cada transação parece normal. O padrão está nas conexões.</h2>
+        <p class="ideia">Olhar linha por linha não basta: a lavagem aparece no <strong>caminho</strong> e no <strong>ritmo</strong> do dinheiro.</p>
 
-        <ol class="pipeline">
-          <li class="etapa-pipe">
-            <span class="etapa-num">1</span>
-            <div>
-              <h3>Ingestão e validação</h3>
-              <ul class="lista-curta">
-                <li>Envio de <code>.csv</code> ou <code>.zip</code> no formato IBM AML ou com colunas em português, sem limite de tamanho.</li>
-                <li>Linhas inválidas ficam fora e são contadas, com a coluna, um exemplo e como corrigir.</li>
-                <li>O modelo só é carregado se o hash <strong>SHA-256</strong> conferir com o manifesto versionado.</li>
-              </ul>
-            </div>
-          </li>
-          <li class="etapa-pipe">
-            <span class="etapa-num">2</span>
-            <div>
-              <h3>Atributos e inferência ML</h3>
-              <ul class="lista-curta">
-                <li>Extração temporal causal: cada transação só enxerga o passado.</li>
-                <li>Entre os atributos estão medidas de grafo de 1 salto: as contrapartes distintas de cada conta e se a aresta entre as duas contas é nova.</li>
-                <li>Random Forest pontua cada transação; o resultado vira um score de 0 a 1000.</li>
-              </ul>
-            </div>
-          </li>
-          <li class="etapa-pipe">
-            <span class="etapa-num">3</span>
-            <div>
-              <h3>Investigação em grafo</h3>
-              <ul class="lista-curta">
-                <li>As transações já pontuadas formam um grafo direcionado: contas são vértices (<span class="mono">V</span>), transações agrupadas por par e moeda são arestas (<span class="mono">E</span>).</li>
-                <li>A rede da conta investigada é explorada salto a salto (até 3), consultando os resultados gravados em SQLite, com as arestas em alerta destacadas.</li>
-                <li>Cadeias com horários compatíveis mostram para onde o dinheiro seguiu, inclusive quando volta à conta.</li>
-              </ul>
-            </div>
-          </li>
-          <li class="etapa-pipe etapa-pipe-alerta">
-            <span class="etapa-num">4</span>
-            <div>
-              <h3>Triagem visual e explicabilidade</h3>
-              <ul class="lista-curta">
-                <li>Painel com grafo interativo em SVG (zoom, arrasto, dicas), filtros e tabela detalhada.</li>
-                <li>Desempenho medido durante a análise: CPU, RAM, vazão e latência por bloco.</li>
-                <li>O <strong>Assistente de dúvidas</strong> (Sentinel AI) responde no contexto da análise aberta, localmente ou com o Gemini, com autorização.</li>
-              </ul>
-            </div>
-          </li>
+        <div class="contraste">
+          <figure class="cartao contraste-lado">
+            <p class="rotulo">Análise tabular isolada</p>
+            <svg viewBox="0 0 320 170" role="img" aria-labelledby="t-tab">
+              <title id="t-tab">Três transferências vistas como linhas separadas de uma tabela, todas com aparência normal</title>
+              <g font-family="ui-monospace, Consolas, monospace" font-size="12">
+                <rect x="10" y="14" width="300" height="40" rx="8" class="d-linha"/><text x="24" y="39" class="d-txt">A → B · 9.800 · 10:02</text><text x="290" y="39" text-anchor="end" class="d-ok">ok</text>
+                <rect x="10" y="64" width="300" height="40" rx="8" class="d-linha"/><text x="24" y="89" class="d-txt">B → C · 9.700 · 10:09</text><text x="290" y="89" text-anchor="end" class="d-ok">ok</text>
+                <rect x="10" y="114" width="300" height="40" rx="8" class="d-linha"/><text x="24" y="139" class="d-txt">C → A · 9.600 · 10:15</text><text x="290" y="139" text-anchor="end" class="d-ok">ok</text>
+              </g>
+            </svg>
+            <figcaption>Cada linha passa por um limite fixo. Nenhuma, sozinha, chama atenção.</figcaption>
+          </figure>
+          <figure class="cartao contraste-lado contraste-alerta">
+            <p class="rotulo rotulo-alerta">Padrões relacionais e temporais</p>
+            <svg viewBox="0 0 320 170" role="img" aria-labelledby="t-rel">
+              <title id="t-rel">As mesmas três transferências desenhadas como um ciclo A, B, C, de volta a A, em 13 minutos</title>
+              <defs><marker id="m-seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-seta"/></marker></defs>
+              <g class="d-aresta" stroke-width="2" fill="none" marker-end="url(#m-seta)">
+                <path d="M95 128 L148 42"/><path d="M174 42 L227 128"/><path d="M212 142 L110 142"/>
+              </g>
+              <g font-family="ui-monospace, Consolas, monospace" font-size="11" class="d-hora">
+                <text x="100" y="80">10:02</text><text x="208" y="80">10:09</text><text x="146" y="160">10:15</text>
+              </g>
+              <g class="d-no"><circle cx="161" cy="30" r="17"/><circle cx="84" cy="140" r="17"/><circle cx="238" cy="140" r="17"/></g>
+              <g font-weight="700" font-size="13" text-anchor="middle" class="d-no-txt"><text x="161" y="35">B</text><text x="84" y="145">A</text><text x="238" y="145">C</text></g>
+            </svg>
+            <figcaption>Em 13 minutos o dinheiro dá a volta e retorna à origem: um <em>ciclo</em>. O mesmo vale para <em>fan-out</em> (um para muitos), <em>fan-in</em> (muitos para um) e repasses rápidos em janelas de até 72 h.</figcaption>
+          </figure>
+        </div>
+
+        <h3 class="sub-bloco">Evolução da arquitetura</h3>
+        <div class="evolucao">
+          <article class="cartao evolucao-lado evolucao-legado">
+            <p class="rotulo">Versão legada</p>
+            <h4>Só algoritmos clássicos de grafos</h4>
+            <ul class="lista-curta">
+              <li>Ciclos por <strong>DFS</strong>, componentes fortemente conexos (<strong>Kosaraju/SCC</strong>) e <strong>centralidade</strong> de grau.</li>
+              <li>Regras sobre a estrutura, sem um modelo treinado com exemplos.</li>
+              <li>Medidos como atributos extras do modelo, não trouxeram ganho (AP 0,4657 → 0,4691, precisão −2,5 p.p.) e foram removidos.</li>
+            </ul>
+          </article>
+          <div class="evolucao-seta" aria-hidden="true">→</div>
+          <article class="cartao evolucao-lado evolucao-atual">
+            <p class="rotulo rotulo-verde">Arquitetura atual</p>
+            <h4>Responsabilidades separadas</h4>
+            <ul class="lista-curta">
+              <li><strong>Random Forest</strong> detecta e prioriza: um score para cada transação, em escala.</li>
+              <li><strong>Grafo</strong> na camada visual, depois da inferência: mostra a rede da conta para a investigação.</li>
+              <li><strong>Analista</strong> decide, com as evidências na tela.</li>
+            </ul>
+          </article>
+        </div>
+        <p class="nota-ref">Registro da decisão: <a href="https://github.com/NodeWatch-Team/NodeWatch/blob/main/docs/decisoes/0001-grafos-e-ml.md" target="_blank" rel="noopener">docs/decisoes/0001-grafos-e-ml.md</a>.</p>
+      </div>
+    </section>
+
+    <!-- Bloco 2 · Criação do modelo -->
+    <section id="modelo" class="secao bloco" aria-labelledby="titulo-modelo">
+      <div class="conteudo">
+        <p class="bloco-num">Bloco 2</p>
+        <h2 id="titulo-modelo">Como o modelo de Machine Learning foi criado</h2>
+        <p class="ideia">Um <strong>Random Forest</strong> aprendeu com 5 milhões de exemplos rotulados a reconhecer transações parecidas com lavagem, usando <strong>só o passado</strong> de cada conta.</p>
+
+        <ol class="fluxo-criacao" aria-label="Etapas da criação do modelo">
+          <li><span>Base IBM AML</span><small>5.078.345 transações</small></li>
+          <li><span>Divisão no tempo</span><small>treino · validação · teste</small></li>
+          <li><span>49 atributos</span><small>só com o passado</small></li>
+          <li><span>Treino de candidatos</span><small>RF · boosting · logística</small></li>
+          <li><span>Escolha e limiar</span><small>na validação</small></li>
+          <li class="fluxo-fim"><span>Teste congelado</span><small>medido uma vez</small></li>
         </ol>
 
-        <div class="telas">
-          <figure class="tela">
-            <button class="tela-abrir" type="button" aria-label="Ampliar imagem: Etapa 1, ingestão e validação">
-              <img src="./site-assets/img/tela-dataset.jpg" width="1100" height="688" loading="lazy" alt="Painel do analista com envio de arquivo, escolha de dataset, botão Analisar e uma análise concluída">
-            </button>
-            <figcaption><strong>Etapa 1 · Ingestão</strong> Envio e validação do dataset; nada é pontuado antes do clique em Analisar.</figcaption>
-          </figure>
-          <figure class="tela">
-            <button class="tela-abrir" type="button" aria-label="Ampliar imagem: Etapa 3, visão geral do score">
-              <img src="./site-assets/img/tela-visao.jpg" width="1100" height="688" loading="lazy" alt="Indicadores do recorte com transações, alertas, período e score, e a explicação da escala de 0 a 1000">
-            </button>
-            <figcaption><strong>Etapa 3 · Score</strong> Transações, alertas e distribuição do score de 0 a 1000.</figcaption>
-          </figure>
-          <figure class="tela">
-            <button class="tela-abrir" type="button" aria-label="Ampliar imagem: Etapa 4, contas de maior risco">
-              <img src="./site-assets/img/tela-contas.jpg" width="1100" height="688" loading="lazy" alt="Lista das contas com mais transações em alerta e quadros com os números da conta em foco">
-            </button>
-            <figcaption><strong>Etapa 4 · Fila de prioridade</strong> Contas ordenadas pela quantidade de transações em alerta.</figcaption>
-          </figure>
-          <figure class="tela">
-            <button class="tela-abrir" type="button" aria-label="Ampliar imagem: Etapa 4, grafo da conta em foco">
-              <img src="./site-assets/img/tela-grafo.jpg" width="982" height="614" loading="lazy" alt="Grafo com a conta em foco, contas ligadas a alerta em vermelho e uma sequência de duas transações destacada em azul">
-            </button>
-            <figcaption><strong>Etapa 4 · Grafo</strong> Contas em alerta em vermelho; em azul, uma sequência de repasse com horários compatíveis.</figcaption>
-          </figure>
+        <div class="pilares">
+          <article class="cartao pilar">
+            <p class="pilar-num">1</p>
+            <h3>Tipo de aprendizado e tarefa</h3>
+            <p><strong>Aprendizado supervisionado</strong>, com <strong>classificação binária</strong>: o alvo é <code>Is Laundering</code> (1 = lavagem, 0 = legítima).</p>
+            <p>O modelo devolve um valor contínuo de 0 a 1 (proporção de votos das árvores, <em>não</em> uma probabilidade calibrada). O painel o converte num <strong>índice de prioridade de 0 a 1000</strong> ancorado no limiar 0,0910: score 701 = limiar.</p>
+          </article>
+          <article class="cartao pilar">
+            <p class="pilar-num">2</p>
+            <h3>Base, rótulos e tipologias</h3>
+            <p><em>IBM Transactions for Anti-Money Laundering</em>, versão <strong>HI-Small</strong> (sintética, publicada no Kaggle; Altman et al., 2023): 5.078.345 transações, 5.177 de lavagem, ou seja, <strong>0,10%</strong> de positivos.</p>
+            <p>O arquivo de padrões (<em>Fan-Out</em>, <em>Fan-In</em>, <em>Cycle</em>, <em>Scatter-Gather</em>…) serviu <strong>só no estudo dos dados e na avaliação</strong> (recall por tipologia). Não é atributo do modelo e não é exigido pelo painel.</p>
+          </article>
+          <article class="cartao pilar">
+            <p class="pilar-num">3</p>
+            <h3>Engenharia de atributos</h3>
+            <p><strong>49 atributos</strong> por transação, calculados só com o que aconteceu antes dela. <strong>Nenhum</strong> vem de DFS, SCC ou centralidade.</p>
+            <ul class="lista-curta lista-mini">
+              <li><strong>Da transação:</strong> valor em USD (log), moeda, formato de pagamento, moedas diferentes, mesmo banco.</li>
+              <li><strong>Janelas de 6 h, 24 h e 72 h:</strong> envios e recebimentos da conta, somas e razão saída/entrada.</li>
+              <li><strong>Ritmo:</strong> minutos desde o último envio e o último recebimento; valor atípico (z-score).</li>
+              <li><strong>Contrapartes:</strong> par de contas novo, destinos e origens distintos já vistos.</li>
+            </ul>
+          </article>
+          <article class="cartao pilar">
+            <p class="pilar-num">4</p>
+            <h3>Treino, validação e teste</h3>
+            <p>Divisão <strong>pelo tempo</strong>, nunca embaralhada, para não usar o futuro (<em>data leakage</em>):</p>
+            <div class="divisao" role="img" aria-label="Treino de 01 a 06 de setembro de 2022 com 3.248.921 transações; validação de 07 a 08 com 965.524; teste de 09 a 10 com 862.792">
+              <span class="div-treino">Treino<small>01–06/09 · 3.248.921</small></span>
+              <span class="div-val">Validação<small>07–08/09 · 965.524</small></span>
+              <span class="div-teste">Teste<small>09–10/09 · 862.792</small></span>
+            </div>
+            <p>Desbalanceamento: no treino entram todos os 2.530 positivos e 20% dos negativos, com peso 5 (651.808 linhas). Validação e teste mantêm a proporção real. O modelo e o limiar foram escolhidos na validação.</p>
+          </article>
         </div>
-        <p class="nota">
-          <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 11v6M12 7.5v.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          <span>Capturas reais do painel, com dados do HI-Small (01–03/09/2022, período de treino): ilustram a interface, não medem desempenho.</span>
-        </p>
-      </div>
-    </section>
 
-    <!-- 3 · Como o Machine Learning funciona -->
-    <section id="ml" class="secao" aria-labelledby="titulo-ml">
-      <div class="conteudo">
-        <h2 id="titulo-ml">Como o Machine Learning funciona no NodeWatch</h2>
-        <p class="secao-subtitulo">Um modelo, uma regra de ouro (só o passado) e um score feito para ordenar a fila.</p>
-
-        <!-- Componente React (site-assets/js/artigo.js). O conteúdo abaixo é a versão estática, substituída quando o React carrega. -->
-        <div id="ml-interativo" class="ml-interativo">
-          <div class="ml-estatico">
-            <article class="cartao">
-              <h3>Modelo · Detecção de lavagem (49 atributos)</h3>
-              <p>Random Forest treinado no IBM AML HI-Small: 5.078.345 transações, 5.177 positivas em 8 tipologias. Avalia velocidade de repasse, novidade do par de contas, desvio de valor e agregações em janelas deslizantes.</p>
-            </article>
-            <article class="cartao">
-              <h3>Rigor causal</h3>
-              <p>Para pontuar uma transação no instante <span class="mono">t</span>, só entram dados de instantes <span class="mono">&lt; t</span>.</p>
-            </article>
-            <article class="cartao">
-              <h3>Score 0–1000</h3>
-              <p>0–300 baixa · 301–700 intermediária · 701–1000 alta (alerta). Alerta é prioridade de investigação, não prova de lavagem.</p>
-            </article>
-          </div>
+        <div class="rf-ficha">
+          <p class="rotulo">Random Forest escolhido</p>
+          <dl class="fatos">
+            <div><dt>Árvores</dt><dd>100</dd></div>
+            <div><dt>Folha mínima</dt><dd>50 amostras</dd></div>
+            <div><dt>Amostra por árvore</dt><dd>50%</dd></div>
+            <div><dt>Atributos por divisão</dt><dd>√49 (<code>sqrt</code>)</dd></div>
+          </dl>
+          <p class="nota-ref">AP na validação: Random Forest 0,499 · HistGradientBoosting 0,445 · regressão logística 0,19. Biblioteca: scikit-learn 1.9.1; semente 42; versão <code>lavagem-20261102T083253Z</code>.</p>
         </div>
       </div>
     </section>
 
-    <!-- 4 · Referência rápida -->
-    <section id="referencia" class="secao" aria-labelledby="titulo-referencia">
+    <!-- Bloco 3 · Avaliação -->
+    <section id="avaliacao" class="secao bloco" aria-labelledby="titulo-avaliacao">
       <div class="conteudo">
-        <h2 id="titulo-referencia">Referência rápida</h2>
-        <p class="secao-subtitulo">Algoritmos, métricas, ferramentas e bases, definidos em uma linha cada.</p>
+        <p class="bloco-num">Bloco 3</p>
+        <h2 id="titulo-avaliacao">Avaliação no teste congelado</h2>
+        <p class="ideia">Com 0,11% de positivos, <strong>acurácia engana</strong>: um modelo que nunca alerta acerta 99,89%. Por isso medimos a <strong>qualidade da fila</strong>.</p>
 
-        <h3 class="ref-grupo">Grafos no NodeWatch</h3>
-        <div class="cartoes cartoes-3">
-          <article class="cartao">
-            <p class="ref-sigla">Grau distinto</p>
-            <h4>Atributo do modelo</h4>
-            <p>Contrapartes distintas acumuladas: quantos destinos diferentes a conta de origem já pagou e quantas origens diferentes a conta de destino já recebeu, mais se o par é <strong>novo</strong>. Calculado conta a conta, só com o passado.</p>
-          </article>
-          <article class="cartao">
-            <p class="ref-sigla">Busca salto a salto</p>
-            <h4>Rede da conta em foco</h4>
-            <p>A partir da conta investigada, segue quem recebeu (jusante) e quem enviou (montante), nível a nível, até <strong>3 saltos</strong>, com até 30 vértices e 60 arestas, consultando o SQLite da análise.</p>
-          </article>
-          <article class="cartao">
-            <p class="ref-sigla">Ordem no tempo</p>
-            <h4>Cadeias de repasse</h4>
-            <p>Cada aresta desenhada é marcada como direta, sequência com horários compatíveis, simultânea ou sem ordem confirmada: mostra para onde o dinheiro seguiu, inclusive quando volta à conta.</p>
-          </article>
-        </div>
-        <p class="nota-ref">Ciclos por DFS, componentes fortemente conexos (Kosaraju) e centralidade foram implementados e medidos em fases anteriores. Como atributos extras, não melhoraram o modelo (AP 0,4657 → 0,4691, precisão −2,5 p.p.) e saíram do sistema: <a href="https://github.com/NodeWatch-Team/NodeWatch/blob/main/docs/decisoes/0001-grafos-e-ml.md" target="_blank" rel="noopener">registro da decisão</a>.</p>
-
-        <h3 class="ref-grupo">Algoritmo de Machine Learning</h3>
-        <article class="cartao ref-destaque">
-          <p class="ref-sigla">Random Forest Classifier</p>
-          <p>Conjunto de árvores de decisão treinadas em amostras diferentes; o voto médio é o score. Venceu na validação (AP 0,499, contra 0,445 do <em>gradient boosting</em> e 0,19 da regressão logística) por três motivos:</p>
-          <ul class="lista-curta lista-colunas">
-            <li><strong>Robusto em dados tabulares heterogêneos</strong>: mistura contagens, razões, tempos e categorias sem normalização.</li>
-            <li><strong>Baixa variância</strong>: a média de muitas árvores reduz o sobreajuste de uma árvore isolada.</li>
-            <li><strong>Baixa latência em CPU</strong>: pontua milhares de transações por segundo, sem GPU.</li>
-          </ul>
-        </article>
-
-        <h3 class="ref-grupo">Métricas de avaliação <span class="ref-contexto">(teste congelado, modelo de lavagem)</span></h3>
         <div class="cartoes cartoes-4">
           <article class="cartao metrica">
             <p class="metrica-numero">0,464</p>
-            <h4>PR-AUC / <em>Average Precision</em></h4>
-            <p>Métrica principal: mede a qualidade da ordenação sem depender de limiar. Um palpite aleatório daria 0,001.</p>
+            <h4>Average Precision (PR-AUC)</h4>
+            <p>Qualidade da ordenação, sem limiar. O acaso daria 0,0011; a regra "taxa por formato", 0,0064.</p>
           </article>
           <article class="cartao metrica">
-            <p class="metrica-numero">~63%</p>
-            <h4>Precision no limiar</h4>
-            <p>De cada 100 alertas, cerca de 63 são lavagem de fato (389 de 620).</p>
+            <p class="metrica-numero">62,7%</p>
+            <h4>Precisão</h4>
+            <p>Dos 620 alertas, 389 eram lavagem.</p>
           </article>
           <article class="cartao metrica">
-            <p class="metrica-numero">~41%</p>
-            <h4>Recall no limiar</h4>
-            <p>Fração da lavagem encontrada (389 de 956). Nas 8 tipologias conhecidas, de 55% a 72%.</p>
+            <p class="metrica-numero">40,7%</p>
+            <h4>Recall</h4>
+            <p>Das 956 lavagens do teste, 389 foram encontradas.</p>
           </article>
-          <article class="cartao metrica metrica-limite">
-            <p class="metrica-numero">99,9%</p>
-            <h4>Acurácia: descartada</h4>
-            <p>Um modelo que nunca alerta acerta 99,9%, porque 99,9% das transações são legítimas. A acurácia não mede nada aqui.</p>
+          <article class="cartao metrica">
+            <p class="metrica-numero">0,494</p>
+            <h4>F1-score</h4>
+            <p>Equilíbrio entre precisão e recall no limiar 0,0910.</p>
           </article>
         </div>
 
-        <h3 class="ref-grupo">Ferramentas (stack)</h3>
-        <dl class="stack">
-          <div><dt>Python</dt><dd>linguagem do backend, dos algoritmos e do treino</dd></div>
-          <div><dt>Pandas</dt><dd>leitura e preparação das tabelas de transações</dd></div>
-          <div><dt>NumPy</dt><dd>cálculo vetorizado dos atributos em janelas</dd></div>
-          <div><dt>Scikit-Learn</dt><dd>Random Forest, validação e métricas</dd></div>
-          <div><dt>Flask</dt><dd>servidor e API do painel do analista</dd></div>
-          <div><dt>SQLite</dt><dd>resultados de cada análise, filtrados e paginados no servidor</dd></div>
-          <div><dt>React 18</dt><dd>interface do painel e deste artigo</dd></div>
-          <div><dt>SVG</dt><dd>desenho do grafo interativo</dd></div>
-          <div><dt>CSS</dt><dd>design system do painel, sem framework</dd></div>
-          <div><dt>Gemini ou Anthropic</dt><dd>opcionais: motor do Sentinel AI (sem chave, o assistente responde no modo local)</dd></div>
-        </dl>
-
-        <h3 class="ref-grupo">Bases de dados</h3>
-        <div class="tabela-rolagem">
-          <table class="tabela">
-            <thead>
-              <tr><th scope="col">Base</th><th scope="col">Conteúdo</th><th scope="col">Volume</th><th scope="col">Uso</th></tr>
-            </thead>
-            <tbody>
-              <tr>
-                <th scope="row">IBM AML HI-Small</th>
-                <td>Transações sintéticas geradas por simulador (Altman et al., 2023), 01–18/09/2022</td>
-                <td class="mono">5.078.345 tx · 5.177 lavagem</td>
-                <td>Modelo de lavagem</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="erros">
+          <article class="cartao erro erro-fp">
+            <p class="erro-num">231</p>
+            <h4>Falsos positivos</h4>
+            <p>Transações legítimas que viram alerta: <strong>fila extra de revisão</strong>. São cerca de 2,7 a cada 10 mil transações.</p>
+          </article>
+          <article class="cartao erro erro-fn">
+            <p class="erro-num">567</p>
+            <h4>Falsos negativos</h4>
+            <p>Lavagem sem alerta: <strong>um padrão passa</strong>. O ponto fraco são os casos sem tipologia conhecida (39% do teste), com recall de 2%.</p>
+          </article>
         </div>
+
+        <h3 class="sub-bloco">Por que três faixas em vez de um corte seco</h3>
+        <p class="texto-bloco">O alerta continua sendo exatamente "passou do limiar" (score ≥ 701). A faixa intermediária mostra o que ficou perto dele, para o analista usar se outras evidências apontarem para a conta. Arraste o score:</p>
+        <!-- Componente React (site-assets/js/artigo.js); a versão estática é substituída quando o React carrega. -->
+        <div id="simulador-score">
+          <div class="faixas-lista">
+            <article class="faixa-item faixa-basal"><p class="mono">0–300</p><h4>Baixa</h4><p>Compatível com o histórico.</p></article>
+            <article class="faixa-item faixa-observacao"><p class="mono">301–700</p><h4>Intermediária</h4><p>Abaixo do limiar, mas perto dele.</p></article>
+            <article class="faixa-item faixa-alerta"><p class="mono">701–1000</p><h4>Alta (alerta)</h4><p>Passou do limiar: topo da fila.</p></article>
+          </div>
+        </div>
+        <p class="nota-ref">Teste: 09–10/09/2022, 862.792 transações, 956 de lavagem. Fonte: <a href="https://github.com/NodeWatch-Team/NodeWatch/blob/main/docs/ml/RELATORIO_ML.md" target="_blank" rel="noopener">docs/ml/RELATORIO_ML.md</a> e <code>modelos/resultados/avaliacao_lavagem.json</code>. O período de teste já foi consultado mais de uma vez; os números não são uma avaliação inédita.</p>
       </div>
     </section>
 
-    <!-- 5 · Ficha acadêmica -->
-    <section id="ficha" class="secao" aria-labelledby="titulo-ficha">
+    <!-- Bloco 4 · Pipeline -->
+    <section id="pipeline" class="secao bloco" aria-labelledby="titulo-pipeline">
       <div class="conteudo">
-        <h2 id="titulo-ficha">Ficha acadêmica</h2>
+        <p class="bloco-num">Bloco 4</p>
+        <h2 id="titulo-pipeline">Do CSV ao painel em 5 etapas</h2>
+        <p class="ideia">Na análise entra <strong>só o arquivo de transações</strong>: nenhum rótulo e nenhum arquivo de tipologias. O modelo já treinado pontua; nada é treinado aqui.</p>
+
+        <!-- Componente React (site-assets/js/artigo.js); a lista estática é substituída quando o React carrega. -->
+        <div id="pipeline-interativo">
+          <ol class="pipeline">
+            <li class="etapa-pipe"><span class="etapa-num">1</span><div><h3>Ingestão e validação</h3><p>Lê o <code>.csv</code> ou <code>.zip</code> em blocos de 200 mil linhas e confere o contrato de colunas.</p></div></li>
+            <li class="etapa-pipe"><span class="etapa-num">2</span><div><h3>Ordenação cronológica</h3><p>Ordena por data e hora para construir as janelas sem olhar o futuro.</p></div></li>
+            <li class="etapa-pipe"><span class="etapa-num">3</span><div><h3>Atributos e pontuação em blocos</h3><p>49 atributos e Random Forest em blocos de cerca de 20 mil transações: score 0–1000 e motivos.</p></div></li>
+            <li class="etapa-pipe"><span class="etapa-num">4</span><div><h3>Índices no SQLite</h3><p>Resultados indexados localmente para filtrar e paginar sem refazer cálculo.</p></div></li>
+            <li class="etapa-pipe"><span class="etapa-num">5</span><div><h3>Manifesto e liberação</h3><p>Registra status, tempos, modelo e avisos; o painel abre os resultados.</p></div></li>
+          </ol>
+        </div>
+
+        <h3 class="sub-bloco">Observabilidade durante a análise</h3>
+        <div class="cartoes cartoes-3">
+          <article class="cartao obs">
+            <h4>Fluxo linha a linha</h4>
+            <p>O log da execução lista as transações à medida que são gravadas, cada uma com score, faixa e os motivos verificáveis dos alertas.</p>
+          </article>
+          <article class="cartao obs">
+            <h4>Progresso por etapa</h4>
+            <p>As 5 etapas aparecem em tempo real com o que já foi lido ou pontuado e a estimativa de tempo restante, calculada pela vazão medida.</p>
+          </article>
+          <article class="cartao obs">
+            <h4>Latência e vazão na tela</h4>
+            <p>Latência de cada consulta em milissegundos, vazão em transações por segundo, CPU, RAM e duração de cada etapa.</p>
+          </article>
+        </div>
+        <p class="nota-ref">Medido nesta máquina de desenvolvimento: 200 mil transações sintéticas em cerca de 46 s, incluindo a gravação no SQLite. O HI-Small inteiro (5.078.345 transações) também roda pelo painel.</p>
+      </div>
+    </section>
+
+    <!-- Bloco 5 · Painel do analista -->
+    <section id="painel" class="secao bloco" aria-labelledby="titulo-painel">
+      <div class="conteudo">
+        <p class="bloco-num">Bloco 5 · ponte para a demonstração</p>
+        <h2 id="titulo-painel">Painel do analista: onde a rede mostra</h2>
+        <p class="ideia">O grafo entra <strong>depois</strong> da inferência: ele não muda o score, ajuda a entender o que o modelo colocou no topo da fila.</p>
+
+        <!-- Componente React (site-assets/js/artigo.js); a versão estática é substituída quando o React carrega. -->
+        <div id="painel-abas">
+          <div class="telas">
+            <figure class="tela">
+              <button class="tela-abrir" type="button" aria-label="Ampliar imagem: execução da análise">
+                <img src="./site-assets/img/tela-dataset.jpg" width="1100" height="688" loading="lazy" alt="Vista Análise com o dataset escolhido, etapas concluídas e o log da execução">
+              </button>
+              <figcaption><strong>Execução e logs</strong> Etapas, progresso e o fluxo de transações pontuadas.</figcaption>
+            </figure>
+            <figure class="tela">
+              <button class="tela-abrir" type="button" aria-label="Ampliar imagem: visão geral">
+                <img src="./site-assets/img/tela-visao.jpg" width="1100" height="688" loading="lazy" alt="Visão geral com indicadores, faixas de score e contas prioritárias">
+              </button>
+              <figcaption><strong>Visão geral</strong> Indicadores, faixas de score e contas prioritárias.</figcaption>
+            </figure>
+            <figure class="tela">
+              <button class="tela-abrir" type="button" aria-label="Ampliar imagem: grafo da conta em foco">
+                <img src="./site-assets/img/tela-grafo.jpg" width="982" height="614" loading="lazy" alt="Grafo da conta em foco com contas ligadas a alerta em vermelho">
+              </button>
+              <figcaption><strong>Investigação em grafo</strong> A rede da conta em foco, até 3 saltos.</figcaption>
+            </figure>
+          </div>
+        </div>
+        <p class="nota-ref">Capturas reais do painel com dados sintéticos: ilustram a interface, não medem desempenho.</p>
+      </div>
+    </section>
+
+    <!-- Bloco 6 · Escopo, limitações e créditos -->
+    <section id="escopo" class="secao bloco" aria-labelledby="titulo-escopo">
+      <div class="conteudo">
+        <p class="bloco-num">Bloco 6</p>
+        <h2 id="titulo-escopo">Escopo ético, limitações e créditos</h2>
+        <p class="ideia">O NodeWatch <strong>ordena a fila</strong>. Ele não acusa ninguém.</p>
+
+        <div class="cartoes cartoes-3">
+          <article class="cartao limite">
+            <h4>Dados sintéticos</h4>
+            <p>Treinado e medido só no IBM AML HI-Small, gerado por simulador. O desempenho em transações reais de um banco é desconhecido.</p>
+          </article>
+          <article class="cartao limite">
+            <h4>Prioridade, não prova</h4>
+            <p>O score não é probabilidade e alerta não é prova jurídica. Os motivos são fatos conferíveis, não a explicação da decisão do modelo.</p>
+          </article>
+          <article class="cartao limite">
+            <h4>Decisão humana</h4>
+            <p>Ferramenta local (<code>127.0.0.1</code>), sem bloqueio automático e sem autenticação de produção: apoio à triagem, sempre revisada por uma pessoa.</p>
+          </article>
+        </div>
+
+        <h3 class="sub-bloco">Equipe</h3>
         <dl class="ficha">
           <div><dt>Projeto</dt><dd>NodeWatch</dd></div>
-          <div><dt>Curso</dt><dd>Ciência da Computação · Grupo 4</dd></div>
+          <div><dt>Curso</dt><dd>Ciência da Computação · Grupo 1</dd></div>
           <div><dt>Orientação</dt><dd>Profa. Andrea Ono Sakai</dd></div>
           <div><dt>Licença</dt><dd>MIT</dd></div>
         </dl>
         <ul class="equipe" aria-label="Integrantes">
           <li class="cartao pessoa"><span class="pessoa-nome">Caio Winkler Marangoni</span></li>
-          <li class="cartao pessoa"><span class="pessoa-nome">Guilherme Libório Camargo</span></li>
           <li class="cartao pessoa"><span class="pessoa-nome">Guilherme Lombardi</span></li>
           <li class="cartao pessoa"><span class="pessoa-nome">Ryan dos Santos Veloso</span></li>
+          <li class="cartao pessoa"><span class="pessoa-nome">Guilherme Liborio Camargo</span></li>
         </ul>
         <div class="botoes ficha-botoes">
-          <a class="botao botao-primario" href="https://github.com/NodeWatch-Team/NodeWatch" target="_blank" rel="noopener">Código no GitHub<span class="sr"> (abre em nova aba)</span></a>
-          <a class="botao botao-secundario" href="https://github.com/NodeWatch-Team/NodeWatch/blob/main/docs/ml/RELATORIO_ML.md" target="_blank" rel="noopener">Relatório completo de ML<span class="sr"> (abre em nova aba)</span></a>
+          <a class="botao botao-primario" href="https://github.com/NodeWatch-Team/NodeWatch" target="_blank" rel="noopener">NodeWatch-Team/NodeWatch<span class="sr"> (abre em nova aba)</span></a>
+          <a class="botao botao-secundario" href="https://github.com/NodeWatch-Team/NodeWatch/blob/main/docs/COMO_FUNCIONA_O_NODEWATCH.md" target="_blank" rel="noopener">Manual técnico<span class="sr"> (abre em nova aba)</span></a>
         </div>
       </div>
     </section>
@@ -373,8 +420,8 @@
   <footer class="rodape">
     <div class="conteudo">
       <img class="rodape-logo" src="./site-assets/img/logo.png" alt="" width="366" height="96" loading="lazy">
-      <p>NodeWatch · Ciência da Computação, Grupo 4 · orientação: Profa. Andrea Ono Sakai · licença MIT.</p>
-      <p class="rodape-aviso">Protótipo acadêmico com dados sintéticos. O score indica prioridade de investigação; a decisão final é sempre do analista humano.</p>
+      <p>NodeWatch · Ciência da Computação, Grupo 1 · orientação: Profa. Andrea Ono Sakai · licença MIT · <a href="https://nodewatch-team.github.io/NodeWatch/">nodewatch-team.github.io/NodeWatch</a></p>
+      <p class="rodape-aviso">Protótipo acadêmico com dados sintéticos. A máquina prioriza, a rede mostra, quem decide é o analista.</p>
     </div>
   </footer>
 
