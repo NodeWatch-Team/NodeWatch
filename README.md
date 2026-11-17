@@ -143,7 +143,7 @@ Nas vezes seguintes aparece "(já instalado)" e nada é copiado de novo.
 
 1. Abra `http://127.0.0.1:5000/`.
 2. Em **Dataset e análise**, envie um `.csv`/`.zip` no formato do IBM AML ou em português (seção [Formato do CSV de entrada](#formato-do-csv-de-entrada)), ou escolha `transacoes_inventadas.csv` na lista **Ou escolher um dataset disponível** e clique em **Validar este dataset**.
-3. Clique em **Analisar**. As seis etapas aparecem com o progresso; ao terminar, os indicadores, as contas, o grafo e a tabela aparecem abaixo.
+3. Clique em **Analisar**. O acompanhamento mostra as cinco etapas numa linha, com o progresso geral, o tempo e as contagens, e o log da execução ocupa a largura toda logo abaixo; ao terminar, os indicadores, as contas, o grafo e a tabela ficam disponíveis.
 4. A análise fica em **Análises recentes** e pode ser reaberta depois, mesmo após reiniciar o servidor.
 
 ### Como saber se a ML está funcionando
