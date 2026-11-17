@@ -51,13 +51,11 @@ import numpy as np
 import pandas as pd
 
 from src.ml import eventos as ev
-from src.ml.esquemas import COLUNAS_HISMALL, ESQUEMA_REDE_V1, FEATURES_REDE, CLASSES_REDE
+from src.ml.esquemas import CLASSES_REDE
 from src.ml.incremental import EstadoFinanceiro
 from src.ml.ingestao import _abrir_binario, _normalizar_cabecalho
 from src.ml.previsao import AVISO_LAVAGEM, _deriva, pontuar_lavagem, tabela_previsoes_rede
-from src.ml.formatos import (  # noqa: F401  (reexportados para quem ainda importa daqui)
-    CAMPOS_GRAFO, CAMPOS_PT, FORMATOS, OBRIGATORIAS_REDE, _FMT_HISMALL, detectar_formato, ler_tempo as _tempo,
-)
+from src.ml.formatos import FORMATOS, detectar_formato, ler_tempo as _tempo
 
 LIMITE_BYTES = 256_000_000
 LIMITE_HISTORICO_BYTES = 512_000_000

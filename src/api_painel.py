@@ -114,7 +114,7 @@ def _c() -> Dict[str, Any]:
 
 
 def _json(dados: Any, status: int = 200):
-    from src.ml.exploracao import para_json
+    from src.ml.serializacao import para_json
     return jsonify(para_json(dados)), status
 
 
@@ -189,7 +189,7 @@ def _filtros():
 @bp.get("/estado")
 @_protegido()
 def estado():
-    from src.ml.exploracao import modelo_resumo
+    from src.ml.resultados_oficiais import modelo_resumo
     from src.painel import armazenamento as arm
     from src.painel import datasets as ds
     from src.painel import pipeline as pl
@@ -268,7 +268,7 @@ def _estado_assistente() -> Dict[str, Any]:
 
 def _legenda_score(raiz: Path, limiar: Optional[float]) -> Dict[str, Any]:
     """Como ler o score: original 0–1 não calibrado → índice 0–1000, com o limiar e a evidência disponível."""
-    from src.ml.exploracao import _PASTAS_RESULTADOS, _primeiro
+    from src.ml.resultados_oficiais import PASTAS_RESULTADOS, ler_primeiro
     from src.painel import score as sc
     saida: Dict[str, Any] = {
         "calibrado": False, "limiar_original": limiar, "score_alerta": sc.SCORE_ALERTA,
@@ -281,7 +281,7 @@ def _legenda_score(raiz: Path, limiar: Optional[float]) -> Dict[str, Any]:
                                      if limiar and 0 < limiar < 1 else None),
         "evidencia_de_nao_calibracao": None,
     }
-    aval, fonte = _primeiro(raiz, "avaliacao_lavagem.json", _PASTAS_RESULTADOS)
+    aval, fonte = ler_primeiro(raiz, "avaliacao_lavagem.json", PASTAS_RESULTADOS)
     caixas = (((aval or {}).get("teste") or {}).get("calibracao") or {}).get("caixas") or []
     exemplos = [{"de": cx["de"], "ate": cx["ate"], "transacoes": cx["n"], "score_medio": cx["prob_media"],
                  "fracao_rotulada_lavagem": cx["frequencia_observada"]} for cx in caixas if cx.get("n")]
@@ -692,7 +692,7 @@ def _metricas_do_dataset(aid: str) -> Dict[str, Any]:
 
 def _historicas(c: Dict[str, Any]) -> Dict[str, Any]:
     """Métricas do teste oficial do modelo (docs/ml/resultados), usadas no painel operacional e pelo Sentinel AI."""
-    from src.ml.exploracao import _PASTAS_RESULTADOS, avaliacao_oficial
+    from src.ml.resultados_oficiais import PASTAS_RESULTADOS, avaliacao_oficial
     oficial = avaliacao_oficial(c["raiz"]).get("lavagem", {})
     historicas: Dict[str, Any]
     if not oficial.get("disponivel"):
@@ -703,7 +703,7 @@ def _historicas(c: Dict[str, Any]) -> Dict[str, Any]:
         caminho = c["raiz"] / fonte
         data = (datetime.fromtimestamp(caminho.stat().st_mtime, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
                 if caminho.is_file() else None)
-        from src.ml.exploracao import modelo_resumo
+        from src.ml.resultados_oficiais import modelo_resumo
         lav = (modelo_resumo(c["raiz"]).get("cabecas") or {}).get("lavagem") or {}
         limites = lav.get("limites") or {}
         conjuntos = []
@@ -731,7 +731,7 @@ def _historicas(c: Dict[str, Any]) -> Dict[str, Any]:
 @bp.get("/operacao/metricas")
 @_protegido()
 def operacao_metricas():
-    from src.ml.exploracao import _PASTAS_RESULTADOS
+    from src.ml.resultados_oficiais import PASTAS_RESULTADOS
     c = _c()
     historicas = _historicas(c)
     aid = request.args.get("analise") or ""
@@ -745,7 +745,7 @@ def operacao_metricas():
             "f1": "Média harmônica entre precisão e recall.",
             "average_precision": "Resumo da curva precisão × recall em todos os limiares (qualidade da ordenação).",
         },
-        "pastas_consultadas": list(_PASTAS_RESULTADOS),
+        "pastas_consultadas": list(PASTAS_RESULTADOS),
     })
 
 
