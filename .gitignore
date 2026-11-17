@@ -90,3 +90,6 @@ artefatos_ml/
 ml_config.local.toml
 # Ambiente de teste local (scripts/ambiente_teste.py): pasta isolada do painel, com modelo e datasets sintéticos.
 artefatos_teste/
+
+# Configurações locais do Claude Code (caminhos de cada máquina)
+.claude/launch.json
