@@ -87,7 +87,7 @@ Testado em 12/11/2026 numa cópia limpa (sem `.venv`, sem `.env`, sem `artefatos
 | **Modelo treinado** (`modelos/modelo_unificado.joblib`, 3,0 MB) | ✅ | instalado automaticamente em `artefatos_ml/` na primeira execução, com SHA-256 conferido ([detalhes](modelos/README.md)) |
 | Bibliotecas Python | ❌ | `pip install -r requirements.txt -r requirements-ml.txt` (precisa de internet uma vez) |
 | Dataset IBM AML HI-Small | ❌ | **não é necessário** para usar o painel; só para treinar de novo (Kaggle, licença CDLA-Sharing-1.0) |
-| Exemplos pequenos para testar | ✅ | `docs/exemplos/*.csv` (dados inventados), já listados no painel |
+| Exemplos pequenos para testar | ✅ | `dados/exemplos/*.csv` (dados inventados), já listados no painel |
 | Chave do Gemini (`.env`) | ❌ | opcional; ativa o Sentinel AI no Assistente de dúvidas |
 
 ### Pré-requisitos e hardware
@@ -162,7 +162,7 @@ Nas vezes seguintes aparece "(já instalado)" e nada é copiado de novo.
 
 ### Modo real × demonstrativo
 
-Não existe modo demonstrativo: o painel sempre usa o **modelo real**, treinado no IBM AML HI-Small e distribuído em `modelos/`. Os arquivos de `docs/exemplos/` são **dados inventados** para testar o fluxo; eles passam pelo mesmo modelo, mas não representam o desempenho medido (que está em `modelos/resultados/`).
+Não existe modo demonstrativo: o painel sempre usa o **modelo real**, treinado no IBM AML HI-Small e distribuído em `modelos/`. Os arquivos de `dados/exemplos/` são **dados inventados** para testar o fluxo; eles passam pelo mesmo modelo, mas não representam o desempenho medido (que está em `modelos/resultados/`).
 
 ### Estratégia de distribuição (resumo)
 
@@ -330,7 +330,7 @@ NodeWatch/
 - `python -m pytest -q` passa por inteiro (332 testes);
 - `python src/servidor.py` instala e confere o modelo, sobe o servidor e mostra o endereço do painel;
 - `/health` responde `{"status": "ok", ...}`;
-- uma análise do exemplo `docs/exemplos/transacoes_inventadas.csv` termina com 12 transações válidas e 3 recusadas;
+- uma análise do exemplo `dados/exemplos/transacoes_inventadas.csv` termina com 12 transações válidas e 3 recusadas;
 - `.env` fica fora do controle de versão.
 
 ---

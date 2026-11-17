@@ -121,7 +121,7 @@ O formulário de envio tem um único campo, **Transações** (`.csv` ou `.zip` c
 - sem limite de tamanho imposto pela aplicação, nem na tela, nem na API, nem para o CSV descompactado de um ZIP. A rota `POST /api/painel/datasets` lê o formulário sem o `MAX_CONTENT_LENGTH` do app (que continua valendo para os pedidos JSON, lidos inteiros na memória); o Werkzeug grava a parte do arquivo num temporário em disco e o servidor a copia em blocos de 1 MB. A validação e a leitura da análise seguem em blocos de 200 mil linhas. O teto prático é o espaço em disco (o envio ocupa o dobro do arquivo enquanto é copiado) e, na análise, a memória (ver Processamento);
 - o nome enviado vira só um rótulo sanitizado; no disco o arquivo se chama `dados.csv` ou `dados.zip`, em pasta com identificador gerado pelo servidor;
 - tudo fica em `artefatos_ml/painel/datasets/`, pasta ignorada pelo git;
-- nenhuma rota aceita caminho. Os datasets "do servidor" são descobertos em pastas fixas (`dados/`, `docs/exemplos/`, `artefatos_ml/exemplos/` e o arquivo de `ml_config.local.toml`) e identificados por um código.
+- nenhuma rota aceita caminho. Os datasets "do servidor" são descobertos em pastas fixas (`dados/`, `dados/exemplos/`, `artefatos_ml/exemplos/` e o arquivo de `ml_config.local.toml`) e identificados por um código.
 
 **Estados do dataset:** válido; válido com linhas recusadas (elas ficam fora da análise e são listadas); inválido (formato, codificação, colunas obrigatórias ou nenhuma linha válida). Formato de pagamento vazio ou desconhecido é aceito e aparece como "Não informado".
 
@@ -340,7 +340,7 @@ Uso normal conferido do começo ao fim, com arquivos pequenos e sem reprocessar 
 | `/` | painel do analista, sem erros no console |
 | `/legado`, `/#ml`, `/#ml/eventos`, `/#grafos` | interface antiga, com a faixa de aviso e o link para `/`; o link leva ao painel |
 | Envio de `com_linhas_ruins.csv` (399 linhas) pela tela | validação com 394 válidas e 5 recusadas listadas; análise concluída; valor mínimo 1 deixou 5 fora do recorte; filtros, tabela, detalhes, grafo e painel lateral funcionando |
-| Dataset do servidor `docs/exemplos/transacoes_inventadas.csv` | validação (12 válidas, 3 recusadas) e análise concluída; grafo de `MERCADO1` mostra a ida e volta `MERCADO1 → NOVA0001 → MERCADO1` como sequência |
+| Dataset do servidor `dados/exemplos/transacoes_inventadas.csv` | validação (12 válidas, 3 recusadas) e análise concluída; grafo de `MERCADO1` mostra a ida e volta `MERCADO1 → NOVA0001 → MERCADO1` como sequência |
 | Alertas | conferidos na análise já gravada (571 alertas): linhas com faixa e "⚠ Sim", detalhe com score 706 e limiar 0,0910, grafo com arestas vermelhas. Os dois arquivos pequenos não geram alertas (score máximo 177) |
 | Carregamento, erro, cancelamento e fim de sessão | texto de carregamento anunciado; arquivo com colunas erradas recusado com a correção indicada; cancelamento deixa resultado parcial; página fechada no meio da análise deixa resultado parcial; nada recomeçou sozinho |
 | Segurança | origem externa e `null` recebem 403 (leitura, escrita e pré-verificação); `Host` externo, 403; nenhuma resposta com `Access-Control-Allow-Origin` |

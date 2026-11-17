@@ -453,7 +453,7 @@ Esta seção não faz parte das falas. **Repositório de pesquisa** é o clone `
 | Queda e recuperação | `docs/ml/evidencias/demo_queda.txt`; `docs/ml/REVISAO_CONFIABILIDADE_EVENTOS.md` |
 | Vínculo e dados que faltam | `docs/ml/CONTRATO_INTEGRACAO.md`; `docs/ml/EVENTOS.md`, seção 9 |
 | Grafos: 35% e limites do recorte | `docs/melhorias-e-limitacoes.md` |
-| Exemplo inventado | `docs/exemplos/transacoes_inventadas.csv` |
+| Exemplo inventado | `dados/exemplos/transacoes_inventadas.csv` |
 
 ## 5.3 O que confirmar antes da apresentação
 

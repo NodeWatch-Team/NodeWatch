@@ -144,7 +144,7 @@ Isso é **aprendizado supervisionado**: o modelo aprendeu com exemplos cuja resp
 
 # 4 Tutorial completo com dados inventados
 
-> **Tudo aqui é inventado.** Contas, bancos, valores e datas foram criados à mão em `docs/exemplos/transacoes_inventadas.csv` só para ilustrar o formato e a leitura. Os scores abaixo não dizem nada sobre o desempenho do modelo.
+> **Tudo aqui é inventado.** Contas, bancos, valores e datas foram criados à mão em `dados/exemplos/transacoes_inventadas.csv` só para ilustrar o formato e a leitura. Os scores abaixo não dizem nada sobre o desempenho do modelo.
 
 **Verificado agora**: as saídas abaixo são as reais, com o modelo salvo.
 
@@ -376,7 +376,7 @@ Portanto, a tarefa de ML é **antecipar uma regra** uma medição à frente.
 
 **Saídas:** `classe_prevista` é a classe de maior probabilidade. `score_alerta_rede = P(RISCO) + P(FALHA)`, e `alerta_rede` é verdadeiro se ≥ 0,3173. As duas podem discordar.
 
-**Exemplo (inventado, verificado agora com o modelo real;** `docs/exemplos/medicoes_inventadas_rede.csv`):
+**Exemplo (inventado, verificado agora com o modelo real;** `dados/exemplos/medicoes_inventadas_rede.csv`):
 
 | Medição | Sinais | P(OK) / P(RISCO) / P(FALHA) | Classe | Score | Alerta |
 |---|---|---|---|---|---|
@@ -653,7 +653,7 @@ Vale qualquer arquivo que cumpra um contrato, sejam quais forem nome, caminho, p
 
 ## 12.1 Transações: `hismall_v1` (formato do IBM AML)
 
-Mínimo válido (`docs/exemplos/transacoes_inventadas_formato_ibm.csv`, verificado agora):
+Mínimo válido (`dados/exemplos/transacoes_inventadas_formato_ibm.csv`, verificado agora):
 
 ```text
 Timestamp,From Bank,Account,To Bank,Account,Amount Received,Receiving Currency,Amount Paid,Payment Currency,Payment Format
@@ -1033,7 +1033,7 @@ O treino documentado usou Python 3.14.0, numpy 2.5.4, pandas 3.1.0 e scikit-lear
 | `python -m src.treino.cli prever --tarefa estado_rede --entrada a.csv --saida s.csv` | Inferência de rede, sem sessão |
 | `python -m src.treino.cli prever --tarefa lavagem --entrada a.csv --historico h.zip --saida s.csv` | Inferência de lavagem, em lote, sem sessão |
 | `python -m src.treino.cli tarefas` | Cabeças e pendências da fusão |
-| `python docs/exemplos/gerar_exemplos_inventados.py` | Refaz os arquivos do tutorial |
+| `python scripts/gerar_exemplos.py` | Refaz os arquivos do tutorial |
 | `python scripts/produtor_eventos_exemplo.py --sessao <id> --tipo rede --limite 500` | Produtor; o id aparece na área Eventos |
 | `python scripts/benchmark_eventos.py` | Benchmark, com o servidor parado |
 | `python docs/gerar_pdf_como_funciona.py` | Gera este PDF (`pip install markdown pymupdf`) |

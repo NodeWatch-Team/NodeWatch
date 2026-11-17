@@ -54,7 +54,7 @@ PASTA = Path("artefatos_ml") / "painel" / "datasets"
 # Pastas fixas (relativas à raiz) onde o servidor procura datasets já disponíveis.
 PASTAS_SERVIDOR: Tuple[Tuple[str, str], ...] = (
     ("dados", "pasta dados/ do projeto"),
-    ("docs/exemplos", "exemplos inventados do repositório"),
+    ("dados/exemplos", "exemplos inventados do repositório"),
     ("artefatos_ml/exemplos", "exemplos gerados por `python -m src.treino.cli exemplos`"),
 )
 NAO_INFORMADO = "Não informado"

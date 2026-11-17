@@ -67,12 +67,9 @@ venv.bak/
 Thumbs.db
 
 # Datasets pesados (PaySim e variantes)
-dados/PS_*.csv
-dados/paysim*.csv
-dados/*.zip
-dados/HI-Small_Trans.csv
-dados/HI-Small_Patterns.txt
-dados/ibm_*.csv
+# dados/ é para os arquivos de cada máquina (HI-Small, PaySim...); só os exemplos inventados são versionados.
+dados/*
+!dados/exemplos/
 
 # Logs e artefatos locais
 *.log

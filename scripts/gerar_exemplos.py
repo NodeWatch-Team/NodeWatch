@@ -4,12 +4,13 @@ Nenhuma linha vem de um dado real: contas, bancos, valores e datas foram criados
 mão para ilustrar o formato e a leitura do resultado. Os scores desses arquivos não
 dizem nada sobre o desempenho do modelo.
 
-Uso: python docs/exemplos/gerar_exemplos_inventados.py
+Uso: python scripts/gerar_exemplos.py
 """
 
 from pathlib import Path
 
-PASTA = Path(__file__).resolve().parent
+PASTA = Path(__file__).resolve().parents[1] / "dados" / "exemplos"
+PASTA.mkdir(parents=True, exist_ok=True)
 
 CAB_PT = ("id_transacao,timestamp,banco_origem,conta_origem,banco_destino,conta_destino,"
           "valor_pago,moeda_pagamento,valor_recebido,moeda_recebimento,formato")
