@@ -160,17 +160,6 @@ def test_estado_mostra_o_nome_da_tela_e_a_tecnologia(cliente):
     assert a["sentinel"]["envia"] and "arquivo do dataset" in a["sentinel"]["nao_envia"]
 
 
-def test_chat_da_interface_antiga_usa_o_mesmo_motor(monkeypatch):
-    from src import sentinel_ai
-    falso = ProvedorFalso(resposta="resposta antiga")
-    monkeypatch.setattr(sentinel_ai, "_has_api_key", lambda: True)
-    monkeypatch.setattr(sentinel_ia, "_call_llm", falso)  # a rota chama o motor (sentinel_ia)
-    r = app.test_client().post("/api/chat", json={"messages": [{"role": "user", "content": "oi"}], "languageMode": "tecnica"})
-    assert r.status_code == 200 and r.get_json()["content"] == "resposta antiga"
-    assert falso.chamadas[0]["system"].startswith(sentinel_ia.SYSTEM_PROMPT)
-    assert sentinel_ia.PROMPT_PAINEL not in falso.chamadas[0]["system"]  # o chat antigo continua como era
-
-
 def test_nome_na_tela_continua_assistente_de_duvidas():
     from pathlib import Path
     secoes = (Path(__file__).resolve().parents[2] / "interface" / "assets" / "painel-secoes.js").read_text(encoding="utf-8")

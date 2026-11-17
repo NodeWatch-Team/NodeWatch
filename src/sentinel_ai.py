@@ -1,26 +1,22 @@
-"""Sentinel AI - Assistente tecnico integrado ao dashboard NodeWatch.
+"""Servidor do NodeWatch (Flask): painel do analista e a API dele.
 
-Servidor Flask que expoe um endpoint de chat conectado a uma API de LLM,
-usando o system prompt do Sentinel AI para auxiliar analistas na
-interpretacao de alertas e navegacao pela interface.
+Rotas:
+    /                 painel do analista (interface/painel.html)
+    /assets/<arquivo> arquivos estáticos do painel (interface/assets)
+    /api/painel/*     API do painel (src/api_painel.py)
+    /health           situação do servidor e do Sentinel AI
 
-Provedores suportados:
-    - gemini  (padrao) — Google Gemini via google-genai
-    - anthropic        — Anthropic Claude via anthropic SDK
-
-Tambem serve o painel (rota /), a API somente leitura da secao
-"Machine Learning" (/api/ml, em src/api_ml.py) e a API de eventos e previsao
-sob demanda (/api/ml/eventos e /api/ml/prever, em src/api_eventos.py). As
-duas funcionam sem chave de API.
+Ao iniciar, instala e confere o modelo de ML (src/ml/provisionamento.py) e só
+aceita pedidos locais (src/seguranca_local.py). O painel funciona sem chave de
+API; a chave (GEMINI_API_KEY ou ANTHROPIC_API_KEY no .env) só ativa o Sentinel
+AI no Assistente de dúvidas, com a autorização do analista na tela.
 
 Uso:
-    1. Copie .env.example para .env e insira sua GEMINI_API_KEY (so o chat precisa)
-    2. python src/sentinel_ai.py
+    python src/sentinel_ai.py
 """
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 from pathlib import Path
@@ -49,9 +45,9 @@ from src.api_painel import bp as painel_bp  # noqa: E402
 _INTERFACE_DIR = _PROJECT_ROOT / "interface"
 
 app = Flask(__name__)
-# Limite global so para as rotas da interface antiga. O envio de datasets do painel (/api/painel/datasets)
-# desliga este limite no proprio pedido: o arquivo vai para o disco em blocos, sem passar inteiro pela memoria.
-app.config["MAX_CONTENT_LENGTH"] = 800 * 1000 * 1000  # rotas da interface antiga (/legado), que leem o corpo na memória
+# Limite global para corpos lidos na memória (pedidos JSON). O envio de datasets do painel (/api/painel/datasets)
+# desliga este limite no próprio pedido: o arquivo vai para o disco em blocos, sem passar inteiro pela memória.
+app.config["MAX_CONTENT_LENGTH"] = 800 * 1000 * 1000
 app.register_blueprint(ml_bp)
 app.register_blueprint(eventos_bp)
 app.register_blueprint(painel_bp)  # painel do analista (/api/painel)
@@ -82,78 +78,20 @@ def _somente_acesso_local():
     return None
 
 # Motor do Sentinel AI (provedores, prompt de sistema, modos de linguagem): src/sentinel_ia.py.
-# O mesmo motor atende o chat da interface antiga (/api/chat) e o Assistente de dúvidas do painel.
-from src import sentinel_ia  # noqa: E402
-from src.sentinel_ia import (  # noqa: E402
-    LANGUAGE_PROMPT_LEIGA, LANGUAGE_PROMPT_TECNICA, SYSTEM_PROMPT,
-    _call_llm, _get_api_key_name, _get_model_name, _has_api_key,
-)
+# Atende o Assistente de dúvidas do painel (/api/painel/assistente).
+from src.sentinel_ia import _get_api_key_name, _get_model_name, _has_api_key  # noqa: E402
 
 
 @app.route("/")
 def index():
-    """Painel do analista, a interface atual (dataset → análise → investigação). É o endereço a usar."""
+    """Painel do analista (dataset → análise → investigação)."""
     return send_from_directory(str(_INTERFACE_DIR), "painel.html")
-
-
-@app.route("/legado")
-def legado():
-    """Interface ANTIGA, preservada para consulta: grafos de demonstração, seção de ML antiga (análise de rede,
-    Analisar dataset, Eventos) e chat Sentinel AI. Não é o painel do analista; endereços antigos com #ml ou
-    #grafos chegam aqui pelo redirecionamento de interface/painel.html."""
-    return send_from_directory(str(_INTERFACE_DIR), "index.html")
 
 
 @app.route("/assets/<path:filename>")
 def serve_assets(filename):
     """Serve arquivos estaticos da pasta interface/assets."""
     return send_from_directory(str(_INTERFACE_DIR / "assets"), filename)
-
-
-@app.route("/api/chat", methods=["POST"])
-def chat():
-    """Recebe mensagens do chat e retorna resposta do Sentinel AI."""
-    if not _has_api_key():
-        return jsonify({
-            "error": "IA nao configurada. Configure sua GEMINI_API_KEY "
-                     "no arquivo .env e reinicie o sistema."
-        }), 503
-
-    data = request.get_json(silent=True) or {}
-    messages = data.get("messages", [])
-    context = data.get("context")
-    language_mode = data.get("languageMode", "leiga")
-
-    if language_mode not in ("leiga", "tecnica"):
-        language_mode = "leiga"
-
-    if not messages:
-        return jsonify({"error": "Nenhuma mensagem enviada."}), 400
-
-    # Monta system prompt com modo de linguagem e contexto dinamico
-    lang_block = LANGUAGE_PROMPT_LEIGA if language_mode == "leiga" else LANGUAGE_PROMPT_TECNICA
-    system = SYSTEM_PROMPT + "\n" + lang_block
-    if context:
-        system += (
-            "\n\n## Estado atual da interface (JSON)\n\n"
-            f"```json\n{json.dumps(context, ensure_ascii=False, indent=2)}\n```"
-        )
-
-    try:
-        text = sentinel_ia._call_llm(system, messages)
-        if not (text or "").strip():
-            raise sentinel_ia.RespostaInvalida("resposta vazia do provedor")
-    except Exception as exc:
-        # Erro classificado: detalhe técnico (mascarado) só no log; usuário recebe mensagem clara
-        info = sentinel_ia.classificar_erro(exc)
-        sentinel_ia.registrar_falha(info)
-        print(f"[Sentinel AI] /api/chat falhou ({info['categoria']}): {info['detalhe_tecnico']}", file=sys.stderr)
-        status = {"limite": 429, "timeout": 504, "conexao": 502, "servico_indisponivel": 502,
-                  "sem_chave": 503, "biblioteca_ausente": 503}.get(info["categoria"], 500)
-        return jsonify({"error": f"{info['mensagem']} {info['acao']}".strip(), "categoria": info["categoria"],
-                        "tentar_de_novo": info["tentar_de_novo"]}), status
-    sentinel_ia.registrar_sucesso()
-    return jsonify({"role": "assistant", "content": text})
 
 
 @app.route("/health", methods=["GET"])
@@ -172,7 +110,7 @@ def health():
 # Main
 # ---------------------------------------------------------------------------
 def linhas_de_inicio(host: str = HOST, porta: int = PORT, origens_extras=None) -> list:
-    """Endereços mostrados ao iniciar: o painel novo primeiro; a interface antiga identificada como antiga."""
+    """Endereços mostrados ao iniciar (e avisos de acesso fora do padrão local)."""
     origens_extras = ORIGENS_EXTRAS if origens_extras is None else origens_extras
     base = f"http://{host}:{porta}"
     linhas = [f"  Servidor: {base}"]
@@ -186,16 +124,10 @@ def linhas_de_inicio(host: str = HOST, porta: int = PORT, origens_extras=None) -
                           " chamar a API. Use so enquanto precisar e reinicie o servidor sem NODEWATCH_ORIGENS.")
     linhas += [
         "",
-        f"  >> Painel do analista (use este): {base}/",
-        "",
-        "  Interface antiga, so para consulta (nao e o painel do analista):",
-        f"     {base}/legado               grafos de demonstracao e chat Sentinel AI",
-        f"     {base}/legado#ml            secao de ML antiga (analise de rede, Analisar dataset)",
-        f"     {base}/legado#ml/eventos    eventos: replay, API de ingestao, simulacao",
+        f"  >> Painel do analista: {base}/",
         f"  Health: {base}/health",
     ]
     return linhas
-
 
 
 if __name__ == "__main__":
@@ -208,8 +140,8 @@ if __name__ == "__main__":
         key_name = _get_api_key_name()
         print(
             f"\n[AVISO] {key_name} nao definida! Ela ativa o Sentinel AI no Assistente de duvidas do painel\n"
-            "  (com a sua autorizacao na tela) e o chat da interface antiga. Sem ela, o painel do analista\n"
-            "  funciona sem chave e o assistente responde no modo local.\n"
+            "  (com a sua autorizacao na tela). Sem ela, o painel do analista funciona sem chave e o\n"
+            "  assistente responde no modo local.\n"
             "  Copie .env.example para .env e insira sua chave:\n"
             "  Windows:    Copy-Item .env.example .env\n"
             "  Linux/Mac:  cp .env.example .env\n"

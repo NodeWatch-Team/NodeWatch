@@ -1,4 +1,4 @@
-"""Rotas e instruções de acesso: / é o painel do analista; /legado é a interface antiga; NODEWATCH_ORIGENS=null é exceção."""
+"""Rotas e instruções de acesso: / é o painel do analista (a interface antiga foi removida); NODEWATCH_ORIGENS=null é exceção."""
 
 from __future__ import annotations
 
@@ -36,37 +36,25 @@ def test_raiz_serve_o_painel_do_analista(cliente):
     assert "Grafos (demonstração)" not in html and "babel" not in html.lower().replace("sem babel", "")
 
 
-def test_legado_serve_a_interface_antiga(cliente):
-    r = cliente.get("/legado")
-    html = r.get_data(as_text=True)
-    assert r.status_code == 200
-    assert html.replace("\r\n", "\n") == (RAIZ / "interface" / "index.html").read_text(encoding="utf-8")
-    assert "<SecaoML" in html and "'#grafos'" in html and "SentinelChat" in html   # ML antigo, grafos e chat
-    assert "painel-app.js" not in html
-
-
-def test_enderecos_antigos_com_hash_levam_a_interface_antiga():
+def test_so_o_painel_e_servido(cliente):
+    assert "Painel do analista" in sentinel_ai.index.__doc__
+    rotas = {r.rule for r in app.url_map.iter_rules()}
+    assert "/legado" not in rotas and "/api/chat" not in rotas          # interface antiga e o chat dela foram removidos
+    assert cliente.get("/legado").status_code == 404
     html = (RAIZ / "interface" / "painel.html").read_text(encoding="utf-8")
-    assert "if (/^#\\/?(ml|grafos)(\\/|$)/.test(location.hash)) location.replace('/legado' + location.hash);" in html
-
-
-def test_docstrings_das_rotas_dizem_qual_e_a_atual_e_qual_e_a_antiga():
-    assert "interface atual" in sentinel_ai.index.__doc__ and "endereço a usar" in sentinel_ai.index.__doc__
-    assert "Interface ANTIGA" in sentinel_ai.legado.__doc__ and "Não é o painel do analista" in sentinel_ai.legado.__doc__
+    assert "/legado" not in html                                         # sem redirecionamento para a interface antiga
 
 
 # -- mensagens de início ------------------------------------------------------------------
-def test_inicio_mostra_o_painel_novo_primeiro_e_marca_a_interface_antiga():
+def test_inicio_mostra_so_o_painel():
     linhas = linhas_de_inicio("127.0.0.1", 5000, [])
     texto = "\n".join(linhas)
-    painel = next(i for i, l in enumerate(linhas) if "Painel do analista" in l)
-    antiga = next(i for i, l in enumerate(linhas) if "Interface antiga" in l)
-    assert linhas[painel].strip() == ">> Painel do analista (use este): http://127.0.0.1:5000/"
-    assert painel < antiga and "nao e o painel do analista" in linhas[antiga]
+    painel = next(l for l in linhas if "Painel do analista" in l)
+    assert painel.strip() == ">> Painel do analista: http://127.0.0.1:5000/"
     # as mensagens de início seguem o resto do arquivo: sem acentos, para não corromper em terminais e logs cp1252
     assert all(l.isascii() for l in linhas)
-    assert all("/legado" in l for l in linhas if "#ml" in l)          # nada de "/#ml" na raiz
-    assert "http://127.0.0.1:5000/legado " in texto and "Origens extras" not in texto and "[AVISO]" not in texto
+    assert "legado" not in texto and "#ml" not in texto and "Interface antiga" not in texto
+    assert "Origens extras" not in texto and "[AVISO]" not in texto
 
 
 def test_inicio_avisa_do_risco_quando_null_esta_liberada():
@@ -78,12 +66,12 @@ def test_inicio_avisa_do_risco_quando_null_esta_liberada():
     assert "iframes" not in "\n".join(linhas_de_inicio("127.0.0.1", 5000, ["http://a.test"]))
 
 
-def test_inicio_usa_as_linhas_testadas_e_o_aviso_da_chave_cita_so_o_chat():
+def test_inicio_usa_as_linhas_testadas_e_o_aviso_da_chave_cita_o_assistente():
     fonte = (RAIZ / "src" / "sentinel_ai.py").read_text(encoding="utf-8")
     principal = fonte[fonte.index('if __name__ == "__main__":'):]
     assert 'print("\\n".join(linhas_de_inicio()))' in principal
-    assert "Assistente de duvidas do painel" in principal and "chat da interface antiga" in principal
-    assert "funciona sem chave e o assistente responde no modo local" in principal
+    assert "Assistente de duvidas do painel" in principal and "interface antiga" not in principal
+    assert "assistente responde no modo local" in principal
     assert "Legado:" not in principal and "5000/#ml" not in fonte
 
 
@@ -91,8 +79,7 @@ def test_inicio_usa_as_linhas_testadas_e_o_aviso_da_chave_cita_so_o_chat():
 def test_scripts_de_apresentacao_mostram_o_endereco_certo(script):
     texto = (RAIZ / script).read_text(encoding="utf-8-sig")
     assert "Painel do analista: http://127.0.0.1:5000/" in texto
-    assert "Interface antiga (grafos, ML antigo, chat): http://127.0.0.1:5000/legado" in texto
-    assert "5000/#ml" not in texto
+    assert "/legado" not in texto and "5000/#ml" not in texto
 
 
 # -- documentação --------------------------------------------------------------------------
@@ -189,12 +176,3 @@ def test_documentos_nao_mandam_para_a_raiz_com_hash_antigo(arquivo):
     texto = caminho.read_text(encoding="utf-8")
     assert "5000/#" not in texto, arquivo                       # áreas antigas: /legado#ml…
     assert "5000/legado#ml" in texto or "5000/`" in texto, arquivo
-
-
-def test_interface_antiga_se_identifica_e_aponta_para_o_painel(cliente):
-    html = cliente.get("/legado").get_data(as_text=True)
-    faixa = html[html.index('<div role="note" aria-label="Interface antiga do NodeWatch"'):]
-    faixa = faixa[:faixa.index("</div>")]
-    assert "Interface antiga do NodeWatch" in faixa and "Abrir o painel do analista" in faixa
-    assert "href={window.NODEWATCH_API + '/'}" in faixa          # funciona também aberta como arquivo
-    assert html.index('role="note" aria-label="Interface antiga do NodeWatch"') < html.index("{/* TOPBAR */}")

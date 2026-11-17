@@ -170,23 +170,13 @@ def test_pergunta_preservada_e_nova_tentativa(cliente, analise, monkeypatch):
     assert [c["messages"][-1]["content"] for c in p.chamadas] == [pergunta, pergunta]
 
 
-# 11. endpoints: teste de conexão e chat da interface antiga
+# 11. endpoint de teste de conexão
 def test_endpoint_de_verificacao(cliente, monkeypatch):
     _provedor(monkeypatch, _cliente_erro(400, "API key not valid. Please pass a valid API key."), "OK")
     v = cliente.post("/api/painel/assistente/verificar").get_json()
     assert v["estado"] == "falhou" and v["categoria"] == "chave_invalida" and "detalhe_tecnico" not in v
     v = cliente.post("/api/painel/assistente/verificar").get_json()
     assert v["estado"] == "conectado"
-
-
-def test_chat_antigo_classifica_o_erro(monkeypatch):
-    _provedor(monkeypatch, _cliente_erro(429, "Resource has been exhausted", "RESOURCE_EXHAUSTED"))
-    app.config["TESTING"] = True
-    resp = app.test_client().post("/api/chat", json={"messages": [{"role": "user", "content": "oi"}]})
-    corpo = resp.get_json()
-    if resp.status_code in (401, 403):  # proteção local ativa neste processo: o chat não chega ao provedor
-        pytest.skip("rota protegida pela segurança local")
-    assert resp.status_code == 429 and corpo["categoria"] == "limite" and corpo["tentar_de_novo"] is True
 
 
 # 12. a chave nunca aparece em resposta, log do sistema ou saída de erro

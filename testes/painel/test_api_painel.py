@@ -63,14 +63,14 @@ def analise(cliente, tmp_path):
 
 
 # -- página e ausência de efeitos ao abrir ---------------------------------------------
-def test_pagina_inicial_e_o_painel_e_a_interface_anterior_fica_em_legado(cliente):
+def test_pagina_inicial_e_o_painel_e_a_interface_antiga_nao_existe_mais(cliente):
     r = cliente.get("/")
     html = r.get_data(as_text=True)
     assert r.status_code == 200 and 'lang="pt-BR"' in html and "painel-app.js" in html and "babel" not in html.lower().replace("sem babel", "")
     for arq in ("painel.css", "painel-base.js", "painel-log.js", "painel-grafo.js", "painel-secoes.js", "painel-app.js"):
         assert cliente.get(f"/assets/{arq}").status_code == 200, arq
-    legado = cliente.get("/legado")
-    assert legado.status_code == 200 and "Machine Learning" in legado.get_data(as_text=True)
+    for antiga in ("/legado", "/api/chat"):  # interface antiga e o chat dela foram removidos
+        assert cliente.get(antiga).status_code == 404, antiga
 
 
 def test_abrir_a_pagina_e_consultar_nao_inicia_nada(cliente, tmp_path):

@@ -97,7 +97,6 @@ Write-Host ""
 Write-Host "Iniciando Sentinel AI..." -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  Painel do analista: http://127.0.0.1:5000/" -ForegroundColor White
-Write-Host "  Interface antiga (grafos, ML antigo, chat): http://127.0.0.1:5000/legado" -ForegroundColor White
 Write-Host ""
 
 # 7. Iniciar o backend

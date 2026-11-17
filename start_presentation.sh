@@ -89,7 +89,6 @@ echo ""
 echo "Iniciando Sentinel AI..."
 echo ""
 echo "  Painel do analista: http://127.0.0.1:5000/"
-echo "  Interface antiga (grafos, ML antigo, chat): http://127.0.0.1:5000/legado"
 echo ""
 
 # 7. Iniciar o backend

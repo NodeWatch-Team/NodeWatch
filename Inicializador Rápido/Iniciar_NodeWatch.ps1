@@ -522,7 +522,6 @@ Progresso 6
 Etapa 7
 Info "Iniciando o NodeWatch (python src\sentinel_ai.py)..."
 Detalhe "Painel do analista: $URL"
-Detalhe "Interface antiga:   ${URL}legado"
 Detalhe "Para parar: Ctrl+C nesta janela."
 Detalhe "Mensagens do servidor:" 'escuro'
 Write-Host ""

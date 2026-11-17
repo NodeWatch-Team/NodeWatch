@@ -209,8 +209,8 @@ def test_pagina_antiga_nao_esta_ligada_ao_painel():
     textos = {a: (INTERFACE / "assets" / a).read_text(encoding="utf-8") for a in
               ("painel-base.js", "painel-grafo.js", "painel-secoes.js", "painel-app.js")}
     assert all("legado" not in t.lower() for t in textos.values())               # nenhum link ou menção nos componentes
-    assert html.count("/legado") == 2 and "location.replace('/legado' + location.hash)" in html  # só o redirecionamento dos endereços antigos
-    assert "href=\"/legado" not in html and "Análise de rede" not in html
+    assert "legado" not in html.lower() and "Análise de rede" not in html          # a interface antiga foi removida
+    assert not (INTERFACE / "index.html").exists()
     assert all("Análise de rede" not in t and "estado_rede" not in t and "#ml" not in t for t in textos.values())
     assert "nodewatch-logo.png" in textos["painel-app.js"] and "assets/logo" not in textos["painel-app.js"].replace("nodewatch-logo", "")
     for arq in ("nodewatch-logo.png", "nodewatch-simbolo.png"):
