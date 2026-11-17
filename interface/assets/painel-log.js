@@ -1,9 +1,11 @@
 /* NodeWatch — log da execução na tela de análise.
-   Três peças, todas com dados reais do servidor:
-     MetricasExecucao     área fixa (sticky): durante a análise, quatro blocos ao vivo (pontuação, log, RAM);
+   Um painel na largura toda da execução, com três peças, todas com dados reais do servidor:
+     ListaFluxo           o painel do log: cabeçalho (título, status do acompanhamento, limiar, "Como ler" e a
+                          navegação por posição), a faixa de métricas e as transações já pontuadas, em lista
+                          virtualizada (o DOM só tem as linhas visíveis); as que chegam enquanto a lista segue as
+                          mais recentes entram com um realce curto (CSS);
+     MetricasExecucao     faixa horizontal compacta: durante a análise, quatro medidas ao vivo (pontuação, log, RAM);
                           depois do fim, uma linha de resumo e o atalho para a Operação (casa das métricas completas);
-     ListaFluxo           transações já pontuadas, em lista virtualizada (o DOM só tem as linhas visíveis);
-                          as que chegam enquanto a lista segue as mais recentes entram com um realce curto (CSS);
      ResumoPrecisaoRecall precisão e recall do dataset (parciais durante a análise, finais ao terminar).
    Valor ausente aparece como "indisponível", nunca 0. Sem temporizadores próprios: o manifesto chega pelo polling
    da página (1 s), RAM e CPU por useIntervalo (2 s, só durante a análise) e a rolagem usa requestAnimationFrame. */
@@ -103,11 +105,7 @@
         dica ? h('span', { className: 'sr' }, ' (' + dica + ')') : null));
   }
 
-  /* Em tela estreita a área aberta ocuparia o contêiner inteiro: começa recolhida (o resumo continua no título). */
-  const telaEstreita = () => { try { return window.matchMedia('(max-width: 720px)').matches; } catch (e) { return false; } };
-
   function MetricasExecucao({ m, leitura, aoOperacao }) {
-    const [aberto, setAberto] = React.useState(() => !telaEstreita());
     const pont = m.etapas.find(e => e.id === 'pontuacao');
     const ub = pont && pont.progresso ? pont.progresso.ultimo_bloco : null;
     const d = leitura.dados;
@@ -138,9 +136,9 @@
     if (!d) rodape = leitura.falhou ? 'Leitura falhou · nova tentativa em 2 s.' : 'Lendo…';
     else if (leitura.falhou) rodape = 'Sem atualização desde ' + hora(d.medido_em) + ' · nova tentativa em 2 s.';
     else rodape = 'Ao vivo · ' + hora(d.medido_em) + ' · atualiza a cada 2 s.';
-    return h('details', { className: 'log-metricas-area', open: aberto, onToggle: e => setAberto(e.currentTarget.open) },
-      h('summary', null, 'Métricas de execução', aberto ? null : h('span', { className: 'log-detalhe', style: { textTransform: 'none', letterSpacing: 0 } },
-        ' — última pontuação ' + (ub ? ms(ub.total_ms) : '—') + ' · RAM ' + (ramProcesso || '—'))),
+    /* Faixa horizontal e compacta, sempre à vista (fora da área rolável): as quatro medidas numa linha; em tela
+       estreita, duas por linha. A hora da leitura fica no fim da faixa. */
+    return h('div', { className: 'log-metricas-area', role: 'group', 'aria-label': 'Métricas de execução' },
       h('dl', { className: 'log-metricas' },
         h(Metrica, { nome: 'Última pontuação', valor: ub ? ms(ub.total_ms) : null, sub: ub ? f.plural(ub.transacoes, 'transação', 'transações') : null, dica: dicaPontuacao }),
         h(Metrica, { nome: 'Log de transações', valor: lat ? ms(lat.ultima_ms) : null, sub: lat ? 'mediana ' + ms(lat.mediana_ms) : null,
@@ -153,7 +151,9 @@
       h('p', { className: 'log-rodape' }, rodape));
   }
 
-  /* ── Uma entrada do log (altura fixa, definida no CSS por largura de tela) ── */
+  /* ── Uma entrada do log (altura fixa, definida no CSS pela largura do painel do log) ──
+     Ordem de leitura: o principal primeiro (posição, ID e hora; previsão e alerta), depois o secundário (origem,
+     destino, valor e formato, rótulo). No painel largo, origem e destino ficam lado a lado (grade no CSS). */
   const textoRotulo = (l, comRotulo) => !comRotulo || l.rotulo === null || l.rotulo === undefined ? 'sem rótulo' : l.rotulo === 1 ? 'lavagem' : 'não lavagem';
   /* setsize: total final, ou -1 (desconhecido, válido em role=feed) enquanto a análise cresce; assim o React.memo
      não redesenha todas as entradas visíveis a cada atualização do manifesto. */
@@ -167,16 +167,16 @@
       h('div', { className: 'log-cab', id: idTitulo },
         h('span', { className: 'log-pos' }, h('span', { className: 'sr' }, 'Posição no fluxo: '), 'nº ' + f.inteiro(l.id_exibicao)),
         h('span', { className: 'mono log-id', title: TEXTO_ID }, h('span', { className: 'sr' }, 'ID de exibição (gerado pelo NodeWatch): '), f.idExibicao(l.id_exibicao, validas)),
-        h('span', null, h('span', { className: 'sr' }, 'Data e hora: '), f.dataHora(l.data_hora))),
-      h('div', null, h('span', { className: 'log-rot' }, 'Origem: '), 'Banco ' + l.banco_origem + ' · Conta ', h('span', { className: 'mono' }, l.conta_origem)),
-      h('div', null, h('span', { className: 'log-rot' }, 'Destino: '), 'Banco ' + l.banco_destino + ' · Conta ', h('span', { className: 'mono' }, l.conta_destino)),
-      h('div', null, h('span', { className: 'log-rot' }, 'Valor: '), h('span', { className: 'log-valor' }, f.valor(l.valor_pago)), ' ', h('span', { className: 'log-moeda' }, l.moeda_pagamento),
-        ' · ', h('span', { className: 'log-rot' }, 'Formato: '), l.formato),
-      h('div', { className: 'log-previsao' + (l.alerta ? ' alerta' : '') }, h('span', { className: 'log-rot' }, 'Previsão do modelo: '), 'score ', h('strong', null, l.score),
+        h('span', { className: 'log-hora' }, h('span', { className: 'sr' }, 'Data e hora: '), f.dataHora(l.data_hora))),
+      h('div', { className: 'log-previsao' + (l.alerta ? ' alerta' : '') }, h('span', { className: 'log-rot' }, 'Previsão do modelo: '), 'score ', h('strong', { className: 'log-score' }, l.score),
         ' (faixa ' + NOME_FAIXA[l.faixa] + ') · ', l.alerta ? h('strong', null, '⚠ Com alerta: possível lavagem, para investigação') : 'Sem alerta'),
+      h('div', { className: 'log-origem' }, h('span', { className: 'log-rot' }, 'Origem: '), 'Banco ' + l.banco_origem + ' · Conta ', h('span', { className: 'mono' }, l.conta_origem)),
+      h('div', { className: 'log-destino' }, h('span', { className: 'log-rot' }, 'Destino: '), 'Banco ' + l.banco_destino + ' · Conta ', h('span', { className: 'mono' }, l.conta_destino)),
+      h('div', { className: 'log-valor-linha' }, h('span', { className: 'log-rot' }, 'Valor: '), h('span', { className: 'log-valor' }, f.valor(l.valor_pago)), ' ', h('span', { className: 'log-moeda' }, l.moeda_pagamento),
+        ' · ', h('span', { className: 'log-rot' }, 'Formato: '), l.formato),
       ROTULO ? h('div', { className: 'log-rotulo' }, h('span', { className: 'log-rot' }, 'Rótulo do dataset: '), textoRotulo(l, comRotulo)) : null,
       /* só em análises gravadas por versões anteriores, com arquivo de padrões; nas demais a linha não existe */
-      comTipologias ? h('div', null, h('span', { className: 'log-rot' }, 'Tipologia registrada: '),
+      comTipologias ? h('div', { className: 'log-tipologia' }, h('span', { className: 'log-rot' }, 'Tipologia registrada: '),
         tipos.length ? tipos.join(', ') + ' (registrada no dataset)'
           : h('span', { title: TEXTO_SEM_TIPOLOGIA }, 'Sem classificação', h('span', { className: 'sr' }, ' (' + TEXTO_SEM_TIPOLOGIA + ')'))) : null);
   });
@@ -185,7 +185,9 @@
      Altura de linha fixa (medida numa sonda com a altura do CSS), sobra de 10 linhas, espaçador com total × altura.
      Busca em janelas de até 200 IDs, com cache de 20 páginas e no máximo 1 requisição em voo. */
   const pagina = id => Math.floor((id - 1) / JANELA);
-  function ListaFluxo({ m, topo }) {
+  /* titulo e notas: cabeçalho do log (LogAnalise); metricas: a faixa de MetricasExecucao. A navegação e o status do
+     acompanhamento ficam aqui porque dependem do estado da lista ("seguindo", posição de leitura). */
+  function ListaFluxo({ m, titulo, notas, metricas }) {
     const total = m.contagens.pontuadas || 0;
     const validas = m.contagens.validas;
     const emAndamento = m.status === 'em_andamento';
@@ -343,30 +345,40 @@
       setSeguir(false);
       ancora.current = null;
       focoPendente.current = alvo;
-      // a entrada pedida fica logo abaixo da área fixa de métricas (que tem a altura geo.inicio), não atrás dela
+      // a entrada pedida fica no topo da área rolável (geo.inicio: deslocamento da lista dentro dela)
       rolarPara(geo.inicio + ((alvo - 1) * H - geo.inicio) / fator);
     };
     const vazioTexto = total ? null : emAndamento
       ? 'Nenhuma transação pontuada ainda: a lista começa quando a etapa de pontuação gravar o primeiro bloco.'
       : 'Nenhuma transação foi pontuada nesta análise.';
-    return h('div', { className: 'log-rolagem' + (ROTULO ? '' : ' sem-rotulo') + (comTipologias(m) ? '' : ' sem-tipologias'), ref, tabIndex: 0, onScroll: aoRolar,
-      'aria-label': 'Log da execução: métricas e transações pontuadas, rolável' },
-      h('div', { className: 'log-fixo' }, topo,
-        total ? h('div', { className: 'log-barra' },
-          /* "Seguindo": a lista acompanha as mais recentes; o ponto pulsa uma vez a cada lote novo (chave = total) */
-          seguir ? h('span', { className: 'seguindo' }, h('span', { key: 'lote-' + total, className: 'ponto-seguindo', 'aria-hidden': 'true' }),
-            'Seguindo', h('span', { className: 'sr' }, ' as mais recentes'))
-            : h('button', { type: 'button', className: 'botao pequeno', 'aria-label': 'Ir para as mais recentes',
-              onClick: () => { ancora.current = null; if (emAndamento) setSeguir(true); else if (ref.current) rolarPara(ref.current.scrollHeight); } }, h(Icone, { nome: 'seta' }), 'Mais recentes'),
+    /* Status do acompanhamento: ao vivo seguindo as mais recentes, ao vivo com leitura livre (posição do topo) ou,
+       depois do fim, o estado gravado. O ponto pulsa uma vez a cada lote novo (chave = total). */
+    const posTopo = total ? Math.min(total, Math.floor(inicioVirtual / H) + 1) : 0;
+    const status = !emAndamento
+      ? h('span', { className: 'log-status' }, 'Análise ' + (NOME_STATUS[m.status] || m.status) + ' · ' + f.plural(total, 'transação', 'transações'))
+      : seguir || !total
+        ? h('span', { className: 'log-status vivo' }, h('span', { key: 'lote-' + total, className: 'ponto-seguindo', 'aria-hidden': 'true' }),
+          total ? 'Ao vivo · seguindo as mais recentes' : 'Ao vivo · aguardando o primeiro bloco')
+        : h('span', { className: 'log-status pausado' }, h('span', { className: 'ponto-pausado', 'aria-hidden': 'true' }), 'Ao vivo · leitura livre a partir do nº ' + f.inteiro(posTopo));
+    return h('div', { className: 'log-painel' },
+      h('div', { className: 'log-cabeca' },
+        h('div', { className: 'log-titulo' }, titulo, status),
+        notas,
+        total ? h('div', { className: 'log-nav' },
+          seguir ? null : h('button', { type: 'button', className: 'botao pequeno', 'aria-label': 'Ir para as mais recentes',
+            onClick: () => { ancora.current = null; if (emAndamento) setSeguir(true); else if (ref.current) rolarPara(ref.current.scrollHeight); } }, h(Icone, { nome: 'seta' }), 'Mais recentes'),
           h('form', { className: 'linha', onSubmit: irParaPosicao },
             h('label', { htmlFor: 'log-ir-' + m.id, className: 'log-ir-rotulo' }, h('span', { className: 'sr' }, 'Ir para a '), 'Posição'),
-            h('input', { id: 'log-ir-' + m.id, type: 'number', min: 1, max: total, step: 1, value: irPara, onChange: e => setIrPara(e.target.value), className: 'log-ir' }),
-            h('button', { type: 'submit', className: 'botao pequeno' }, 'Ir'))) : null,
-        erro ? h('div', { className: 'log-erro' }, h(Erro, { erro }), h('button', { type: 'button', className: 'botao pequeno', onClick: () => { setErro(null); setVersao(v => v + 1); } }, 'Tentar de novo')) : null),
-      h('div', { className: 'log-lista', ref: lista, style: { height: (total ? alturaLista : 0) + 'px' } },
-        h('div', { className: 'log-sonda', ref: sonda, 'aria-hidden': 'true' }),
-        total ? h('div', { role: 'feed', 'aria-label': 'Transações pontuadas, em ordem cronológica (' + f.inteiro(total) + ')' }, linhas) : null),
-      vazioTexto ? h('p', { className: 'log-vazio' }, vazioTexto) : null);
+            h('input', { id: 'log-ir-' + m.id, type: 'number', min: 1, max: total, step: 1, value: irPara, onChange: e => setIrPara(e.target.value), className: 'log-ir', placeholder: '1 a ' + f.inteiro(total) }),
+            h('button', { type: 'submit', className: 'botao pequeno' }, 'Ir'))) : null),
+      metricas,
+      erro ? h('div', { className: 'log-erro' }, h(Erro, { erro }), h('button', { type: 'button', className: 'botao pequeno', onClick: () => { setErro(null); setVersao(v => v + 1); } }, 'Tentar de novo')) : null,
+      h('div', { className: 'log-rolagem' + (ROTULO ? '' : ' sem-rotulo') + (comTipologias(m) ? '' : ' sem-tipologias'), ref, tabIndex: 0, onScroll: aoRolar,
+        'aria-label': 'Transações pontuadas do log da execução, rolável' },
+        h('div', { className: 'log-lista', ref: lista, style: { height: (total ? alturaLista : 0) + 'px' } },
+          h('div', { className: 'log-sonda', ref: sonda, 'aria-hidden': 'true' }),
+          total ? h('div', { role: 'feed', 'aria-label': 'Transações pontuadas, em ordem cronológica (' + f.inteiro(total) + ')' }, linhas) : null),
+        vazioTexto ? h('p', { className: 'log-vazio' }, vazioTexto) : null));
   }
 
   /* ── Precisão e recall do dataset (fora da lista e da área fixa) ── */
@@ -415,7 +427,7 @@
       treino);
   }
 
-  /* ── Log da execução: cabeçalho, área fixa de métricas, lista e resumo ── */
+  /* ── Log da execução: painel na largura toda (cabeçalho, faixa de métricas, lista) e o resumo abaixo ── */
   /* aoOperacao (opcional): abre a gaveta Operação; sem ele, o atalho "Detalhes em Operação" não aparece. */
   function LogAnalise({ m, estado, aoOperacao }) {
     const leitura = useDesempenho(m);
@@ -434,18 +446,19 @@
     }, [m.id, m.status, atual && atual.id, c.pontuadas]);
     const idTitulo = 'log-t-' + m.id;
     const ibm = (m.dataset || {}).formato === 'hismall_v1';
+    const notas = h('div', { className: 'log-notas' },
+      h('span', { className: 'chip so-texto', title: textoLimiar(m) }, h('span', { className: 'sr' }, textoLimiar(m)), h('span', { 'aria-hidden': 'true' }, 'Limiar ', h('strong', null, (m.conversao_score && m.conversao_score.ancoras && m.conversao_score.ancoras[1] ? m.conversao_score.ancoras[1].score : '—')))),
+      h(Dica, { texto: ibm ? NOTA_IBM : (estado && estado.aviso_faixas) || '' }),
+      /* "Como ler" começa recolhido e abre como um quadro sobre a lista: repete o que a legenda da tabela já explica */
+      h('details', { className: 'log-como' }, h('summary', null, 'Como ler as entradas do log'),
+        h(Legenda, null, 'nº = posição no fluxo (ordem cronológica, igual ao ID de exibição). ' + TEXTO_ID + '. ',
+          '"Previsão do modelo" é o score e o alerta gravados' + (ROTULO ? '; "Rótulo do dataset" é o valor que veio no arquivo, não é previsão.' : '.'),
+          ' Entradas com alerta têm a faixa vermelha à esquerda.',
+          comTipologias(m) ? ' O modelo não classifica tipologia: só aparece a tipologia registrada no arquivo de padrões. "Sem classificação" = ' + TEXTO_SEM_TIPOLOGIA + '.' : '')));
     return h('section', { className: 'log-analise', 'aria-labelledby': idTitulo },
-      h('h3', { id: idTitulo }, h(Icone, { nome: 'operacao' }), 'Log da execução'),
       h('p', { className: 'sr', role: 'status', 'aria-live': 'polite' }, anuncio),
-      h('div', { className: 'log-notas' },
-        h('span', { className: 'chip so-texto', title: textoLimiar(m) }, h('span', { className: 'sr' }, textoLimiar(m)), h('span', { 'aria-hidden': 'true' }, 'Limiar ', h('strong', null, (m.conversao_score && m.conversao_score.ancoras && m.conversao_score.ancoras[1] ? m.conversao_score.ancoras[1].score : '—')))),
-        h(Dica, { texto: ibm ? NOTA_IBM : (estado && estado.aviso_faixas) || '' }),
-        /* "Como ler" começa recolhido: repete o que a legenda da tabela já explica */
-        h('details', null, h('summary', null, 'Como ler as entradas do log'),
-          h(Legenda, null, 'nº = posição no fluxo (ordem cronológica, igual ao ID de exibição). ' + TEXTO_ID + '. ',
-            '"Previsão do modelo" é o score e o alerta gravados' + (ROTULO ? '; "Rótulo do dataset" é o valor que veio no arquivo, não é previsão.' : '.'),
-            comTipologias(m) ? ' O modelo não classifica tipologia: só aparece a tipologia registrada no arquivo de padrões. "Sem classificação" = ' + TEXTO_SEM_TIPOLOGIA + '.' : ''))),
-      h(ListaFluxo, { key: m.id, m, topo: h(MetricasExecucao, { m, leitura, aoOperacao }) }),
+      h(ListaFluxo, { key: m.id, m, titulo: h('h3', { id: idTitulo }, h(Icone, { nome: 'operacao' }), 'Log da execução'), notas,
+        metricas: h(MetricasExecucao, { m, leitura, aoOperacao }) }),
       h(ResumoPrecisaoRecall, { m }));
   }
 
