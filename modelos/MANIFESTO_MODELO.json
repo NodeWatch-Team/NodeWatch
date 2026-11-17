@@ -1,12 +1,15 @@
 {
   "formato_manifesto": 1,
   "artefato": "modelo_unificado.joblib",
-  "sha256": "7cbbfd393621288e92166400f1ac9eac1575e5e24da16af26d87b6a8938059ff",
-  "bytes": 38849342,
+  "sha256": "f4f61451911217ee554eec7ad96a08d79554e9ccf10212cd5c40e35a67c1c5fc",
+  "sha256_anteriores": [
+    "7cbbfd393621288e92166400f1ac9eac1575e5e24da16af26d87b6a8938059ff"
+  ],
+  "bytes": 3032698,
   "metadados": "metadados_modelo.json",
-  "sha256_metadados": "eff1d937442104e9e96a694276a4305a60239b21025a20a6ed2e401f0d193505",
-  "salvo_em": "2026-11-02T08:32:53+00:00",
-  "preparado_em": "2026-11-12T23:12:28+00:00",
+  "sha256_metadados": "0fd7db6de814467005248610a0a72d6e95f5b2ba47805743890c97c11ee4d005",
+  "salvo_em": "2026-11-17T03:35:02+00:00",
+  "preparado_em": "2026-11-17T03:35:02+00:00",
   "lavagem": {
     "versao": "lavagem-20261102T083253Z",
     "familia": "random_forest",
@@ -20,11 +23,7 @@
     "treinado_ate": "2022-09-07",
     "sha256_dados_treino": "93c9d65156a28596c756bd1395531e231c5950bbbdbfe665500bc866ed595179"
   },
-  "outras_cabecas": {
-    "fusao_rede_transacao": "indisponivel",
-    "estado_rede": "treinada",
-    "estado_rede__com_classe_atual": "treinada"
-  },
+  "outras_cabecas": {},
   "dependencias": {
     "python": "3.14.0",
     "scikit-learn": "1.9.1",

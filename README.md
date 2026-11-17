@@ -84,7 +84,7 @@ Testado em 12/11/2026 numa cópia limpa (sem `.venv`, sem `.env`, sem `artefatos
 | Item | Vem no repositório? | Como chega à máquina |
 |---|---|---|
 | Código, interface, testes | ✅ | `git clone` |
-| **Modelo treinado** (`modelos/modelo_unificado.joblib`, 38,8 MB) | ✅ | instalado automaticamente em `artefatos_ml/` na primeira execução, com SHA-256 conferido ([detalhes](modelos/README.md)) |
+| **Modelo treinado** (`modelos/modelo_unificado.joblib`, 3,0 MB) | ✅ | instalado automaticamente em `artefatos_ml/` na primeira execução, com SHA-256 conferido ([detalhes](modelos/README.md)) |
 | Bibliotecas Python | ❌ | `pip install -r requirements.txt -r requirements-ml.txt` (precisa de internet uma vez) |
 | Dataset IBM AML HI-Small | ❌ | **não é necessário** para usar o painel; só para treinar de novo (Kaggle, licença CDLA-Sharing-1.0) |
 | Exemplos pequenos para testar | ✅ | `docs/exemplos/*.csv` (dados inventados), já listados no painel |
@@ -95,7 +95,7 @@ Testado em 12/11/2026 numa cópia limpa (sem `.venv`, sem `.env`, sem `artefatos
 - **Python 3.14** (versão testada; mínimo 3.12) e Git.
 - **Internet no primeiro uso**, para instalar as bibliotecas (e, se o arquivo do modelo faltar, para baixá-lo).
 - **Disco:** cerca de 55 MB do repositório e 540 MB do ambiente virtual (`.venv`), mais as análises que você fizer (cada análise guarda um SQLite).
-- **Memória (medida no teste):** o processo com o modelo carregado usa cerca de 305 MB; o pico na análise de 150 mil transações foi de 577 MB, em 3,5 s. Arquivos de milhões de transações precisam de mais de 1 GB livre.
+- **Memória (medida no teste):** o processo com o modelo carregado usa cerca de 210 MB (17/11/2026); o pico na análise de 150 mil transações foi de 577 MB, medido com o modelo anterior, maior, em 3,5 s. Arquivos de milhões de transações precisam de mais de 1 GB livre.
 - Não precisa de GPU.
 
 ### Instalação e inicialização (comandos testados)

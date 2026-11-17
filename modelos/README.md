@@ -4,9 +4,9 @@ Esta pasta guarda o **modelo treinado** que o painel do analista usa, para que q
 
 | Arquivo | O que é |
 |---|---|
-| `modelo_unificado.joblib` | O `ModeloUnificado` (`src/ml/modelos.py`): cabeça `lavagem` (Random Forest), preparador `financeiro` (câmbio, categorias, colunas) e as cabeças de rede |
+| `modelo_unificado.joblib` | O `ModeloUnificado` (`src/ml/modelos.py`): cabeça `lavagem` (Random Forest) e preparador `financeiro` (câmbio, categorias, colunas). 3,0 MB |
 | `metadados_modelo.json` | Resumo legível do modelo: hiperparâmetros, colunas, limiar, períodos, critérios de escolha |
-| `MANIFESTO_MODELO.json` | SHA-256 e tamanho do modelo, versões das bibliotecas com que foi salvo, origem e licença dos dados, endereço de download |
+| `MANIFESTO_MODELO.json` | SHA-256 e tamanho do modelo, SHA-256 das versões distribuídas anteriores, versões das bibliotecas com que foi salvo, origem e licença dos dados, endereço de download |
 
 ## Como ele chega ao `artefatos_ml/`
 
@@ -18,6 +18,8 @@ Na primeira execução, `python -m src.ml.provisionamento` (chamado também ao i
 4. carrega o modelo e faz uma previsão de teste.
 
 Um modelo treinado na própria máquina (`python -m src.ml.cli treinar`) fica em `artefatos_ml/` e **nunca é sobrescrito**: o comando só o valida.
+
+Uma cópia de uma **versão distribuída anterior** (SHA-256 listado em `sha256_anteriores` no manifesto) não é modelo próprio: ela é trocada pela versão atual na próxima execução, sem ser carregada antes.
 
 ## Versão
 
@@ -31,7 +33,9 @@ Um modelo treinado na própria máquina (`python -m src.ml.cli treinar`) fica em
 | Bibliotecas | Python 3.14.0, scikit-learn 1.9.1, NumPy 2.5.4, pandas 3.1.0, joblib 1.6.0 |
 | SHA-256 do modelo | ver `MANIFESTO_MODELO.json` |
 
-Os resultados de treino e de avaliação deste modelo estão em `docs/ml/resultados/` e no manual `docs/MANUAL_TECNICO_E_ESTUDO_NODEWATCH.md`.
+Os resultados de treino e de avaliação deste modelo estão em `docs/ml/resultados/` e em [`docs/ml/RELATORIO_ML.md`](../docs/ml/RELATORIO_ML.md).
+
+**Reempacotamento de 17/11/2026:** o arquivo distribuído até então (SHA-256 `7cbbfd39…`, 38,8 MB) trazia também as cabeças do módulo didático de telemetria de rede (`estado_rede` e `estado_rede__com_classe_atual`) e o lugar reservado da fusão rede-transação. Elas foram retiradas sem treinar nada: a cabeça `lavagem` e o preparador `financeiro` são os mesmos objetos. Conferido antes da troca: probabilidades idênticas (diferença máxima 0,0) numa matriz aleatória de 100 mil linhas e score, alerta e motivos idênticos em todas as transações de análises completas com 5 mil e 200 mil transações sintéticas. O arquivo caiu para 3,0 MB, e o processo do servidor com o modelo carregado, de cerca de 335 MB para cerca de 210 MB.
 
 **Diferença em relação ao arquivo do treino original:** os metadados internos tinham o caminho absoluto dos arquivos de dados na máquina de quem treinou; aqui ficou só o nome do arquivo. Nada do que o modelo calcula mudou: com uma thread, as previsões são idênticas bit a bit às do original; com várias threads, a diferença (≈ 3e-16) é a mesma que o original tem consigo mesmo, e os alertas são os mesmos.
 
