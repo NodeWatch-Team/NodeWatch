@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from src.ml import sessoes
-from src.ml.esquemas import COLUNAS_HISMALL, FEATURES_REDE
+from src.ml.esquemas import COLUNAS_HISMALL
 from src.ml.formatos import CAMPOS_PT, detectar_formato, ler_tempo
 from src.ml.resultados_oficiais import avaliacao_oficial, modelo_resumo
 from src.ml.serializacao import para_json
@@ -24,7 +24,7 @@ def test_formatos_de_transacoes_sao_analisaveis():
     assert pt["formato"] == "transacao_hismall_v1" and pt["analisavel"] and pt["rotulos"]
 
 
-def test_previsoes_grafo_e_rede_sao_reconhecidos_mas_nao_viram_analise_de_transacoes():
+def test_previsoes_e_grafo_antigo_sao_reconhecidos_mas_nao_viram_analise():
     prev = detectar_formato(["arquivo_origem", "linha_origem", "score_lavagem", "alerta_lavagem"])
     assert prev["formato"] == "previsao_lavagem_v1" and not prev["analisavel"] and prev["possiveis"] == []
     assert "PREVISÕES" in prev["leitura"] and "Explorar" not in prev["leitura"]   # a tela antiga não existe mais
@@ -32,8 +32,10 @@ def test_previsoes_grafo_e_rede_sao_reconhecidos_mas_nao_viram_analise_de_transa
     assert grafo["formato"] == "csv_grafo_nodewatch" and not grafo["analisavel"] and grafo["possiveis"] == []
     assert "CLI" not in grafo["leitura"]                                          # a CLI de grafos foi removida
     assert "moeda_pagamento" in grafo["faltando"]["transacao_hismall_v1"]
-    rede = detectar_formato(["id_fluxo", "anchor_id", "probe_id", "timestamp", *FEATURES_REDE])
-    assert rede["formato"] == "rede_v1" and rede["dominio"] == "rede"
+    # medições de rede (módulo didático removido) não são um formato aceito: só a lista do que falta
+    rede = detectar_formato(["id_fluxo", "anchor_id", "probe_id", "timestamp", "perda_pct", "alvo"])
+    assert rede["formato"] is None and not rede["analisavel"] and set(rede["faltando"]) == {"hismall_v1", "transacao_hismall_v1"}
+    assert detectar_formato(["classe_prevista", "score_alerta_rede"])["formato"] is None
 
 
 def test_cabecalho_incompleto_informa_o_que_falta_sem_completar():
@@ -55,8 +57,8 @@ def test_ler_tempo_aceita_os_formatos_documentados_e_recusa_o_resto():
 # -- métricas oficiais e metadados ------------------------------------------------------------------
 def test_sem_resultados_gravados_tudo_fica_indisponivel_com_motivo(tmp_path: Path):
     a = avaliacao_oficial(tmp_path)
-    assert a["rede"]["disponivel"] is False and "avaliar" in a["rede"]["motivo"]
-    assert a["lavagem"]["disponivel"] is False
+    assert "rede" not in a
+    assert a["lavagem"]["disponivel"] is False and "avaliar" in a["lavagem"]["motivo"]
     assert a["modelo"]["disponivel"] is False and "metadados_modelo.json" in a["modelo"]["motivo"]
     assert "teste" in a["reuso_do_teste"]
     assert modelo_resumo(tmp_path)["disponivel"] is False

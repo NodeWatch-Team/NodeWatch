@@ -1,15 +1,15 @@
-"""Arquitetura única: codificadores por fonte, cabeças por tarefa.
+"""Artefato do modelo: codificador e cabeça por tarefa, grades de treino.
 
-``ModeloUnificado`` é o único artefato salvo. Ele reúne:
+``ModeloUnificado`` é o único artefato salvo (``modelo_unificado.joblib``). Ele reúne:
 
-* ``codificadores`` — ``rede`` (preditores do esquema ``rede_v1``) e
-  ``financeiro`` (:class:`~src.ml.preparacao.PreparadorFinanceiro`);
-* ``cabecas`` — ``estado_rede`` (3 classes), ``lavagem`` (binária) e
-  ``fusao_rede_transacao`` (bloqueada sem vínculo verificável).
+* ``codificadores`` — ``financeiro`` (:class:`~src.ml.preparacao.PreparadorFinanceiro`:
+  câmbio, formatos, moedas, colunas e quantis do treino);
+* ``cabecas`` — ``lavagem`` (:class:`CabecaClassificacao` binária).
 
-As cabeças disponíveis hoje são treinadas e avaliadas separadamente, cada uma
-nos seus próprios dados: as duas fontes não têm amostras em comum, então
-nenhum componente compartilhado aprenderia a relação entre elas.
+O nome "unificado" vem da versão anterior, que também guardava as cabeças do
+módulo didático de telemetria de rede (removidas em 17/11/2026). As classes e
+os caminhos deste módulo não podem mudar sem salvar o artefato de novo: o
+arquivo ``joblib`` guarda referências a ``src.ml.modelos`` e ``src.ml.preparacao``.
 
 Segurança: arquivos ``joblib`` executam código ao serem carregados. Carregue
 apenas artefatos gerados por você.
@@ -24,24 +24,23 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional
 
 import joblib
 from joblib import effective_n_jobs
 import numpy as np
 import pandas as pd
 import sklearn
-from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.ensemble._forest import ForestClassifier
 from sklearn.linear_model import LogisticRegression
 
 from src.ml import VERSAO_MODULO
-from src.ml.esquemas import CLASSES_REDE, ESQUEMAS
+from src.ml.esquemas import ESQUEMAS
 
 NOME_ARTEFATO = "modelo_unificado.joblib"
 # Abaixo deste número de linhas a previsão roda com 1 thread: em lotes pequenos, criar
-# threads custa mais que prever (RF da rede, 1 linha: 27,7 ms com n_jobs=4 e 8,8 ms com 1).
+# threads custa mais que prever.
 LIMITE_LINHAS_UMA_THREAD = 1_000
 
 
@@ -85,32 +84,6 @@ def _montar(familia: str, linear: bool, fabrica_de: Callable[..., Callable[[], A
     return Candidato(f"{familia}[{rotulo}]", familia, linear, params, fabrica_de(*args, **params))
 
 
-def grade_rede(tipo: str, semente: int, n_jobs: int) -> List[Candidato]:
-    """Busca pequena e documentada (treino → macro-F1 na validação)."""
-    if tipo == "rapida":
-        return [
-            _montar("logistica", True, _lr, {"C": 1.0, "class_weight": None}, semente),
-            _montar("hist_gradient_boosting", False, _hgb, {"max_iter": 30, "class_weight": None}, semente),
-            _montar("random_forest", False, _rf, {"n_estimators": 10, "min_samples_leaf": 20,
-                                                  "max_samples": 0.5, "class_weight": None}, semente, n_jobs),
-        ]
-    c: List[Candidato] = []
-    for C in (0.1, 1.0):
-        for cw in (None, "balanced"):
-            c.append(_montar("logistica", True, _lr, {"C": C, "class_weight": cw}, semente))
-    for folha in (20, 100):
-        for cw in (None, "balanced_subsample"):
-            c.append(_montar("random_forest", False, _rf, {
-                "n_estimators": 150, "min_samples_leaf": folha, "max_samples": 0.5, "class_weight": cw,
-            }, semente, n_jobs))
-    for folhas in (31, 63):
-        for cw in (None, "balanced"):
-            c.append(_montar("hist_gradient_boosting", False, _hgb, {
-                "max_iter": 200, "learning_rate": 0.1, "max_leaf_nodes": folhas, "class_weight": cw,
-            }, semente))
-    return c
-
-
 def grade_financeira(tipo: str, semente: int, n_jobs: int) -> List[Candidato]:
     """Busca pequena (treino subamostrado com pesos → AP na validação)."""
     if tipo == "rapida":
@@ -145,7 +118,7 @@ class CabecaClassificacao:
     familia: str
     params: Dict[str, Any]
     limiar_alerta: float
-    usa_classe_atual: bool = False
+    usa_classe_atual: bool = False  # só o módulo de rede usava; fica porque o artefato salvo traz o campo
     metadados: Dict[str, Any] = field(default_factory=dict)
 
     status: str = "treinada"
@@ -241,71 +214,6 @@ def _copia_uma_thread(pipeline: Any) -> Any:
     return pipe1
 
 
-class FusaoIndisponivel(RuntimeError):
-    """A fusão rede↔transação não pode ser treinada com os dados atuais."""
-
-    def __init__(self, faltando: Sequence[str]):
-        self.faltando = list(faltando)
-        lista = "\n  - ".join(self.faltando)
-        super().__init__(
-            "A cabeça fusao_rede_transacao está indisponível. Entradas pendentes:\n  - " + lista
-        )
-
-
-@dataclass
-class CabecaFusao:
-    """Lugar reservado para o modelo financeiro com sinais de rede.
-
-    Treinar exige transações com ``timestamp_disponivel``, uma tabela de
-    vínculo válida no tempo, telemetria do mesmo período e rótulos com data de
-    confirmação. Sem isso, :meth:`verificar_requisitos` lista o que falta e
-    :meth:`treinar` levanta :class:`FusaoIndisponivel`.
-    """
-
-    tarefa: str = "fusao_rede_transacao"
-    status: str = "indisponivel"
-    motivo: str = (
-        "Não há vínculo verificável entre as transações do HI-Small (setembro de 2022) e os "
-        "fluxos de dataset_final.csv (setembro-outubro de 2026): não há chave comum nem "
-        "sobreposição temporal."
-    )
-    requisitos: List[str] = field(default_factory=lambda: [
-        "transações no esquema transacao_v1 com timestamp_disponivel",
-        "tabela vinculo_v1 (transação ou chave técnica → id_fluxo, com validade e fonte documentada)",
-        "telemetria rede_v1 do mesmo período das transações",
-        "previsões de rede fora da amostra (modelo de rede treinado antes de cada transação)",
-        "rotulo_fraude com origem_rotulo e timestamp_confirmacao",
-    ])
-
-    def verificar_requisitos(self, transacoes: Optional[pd.DataFrame] = None,
-                             vinculo: Optional[pd.DataFrame] = None,
-                             previsoes_rede: Optional[pd.DataFrame] = None) -> List[str]:
-        faltando: List[str] = []
-        if transacoes is None or "timestamp_disponivel" not in transacoes:
-            faltando.append(self.requisitos[0])
-        if vinculo is None or vinculo.empty:
-            faltando.append(self.requisitos[1])
-        if previsoes_rede is None or previsoes_rede.empty:
-            faltando.append(self.requisitos[2])
-        if previsoes_rede is None or "modelo_rede_treinado_ate" not in previsoes_rede:
-            faltando.append(self.requisitos[3])
-        if transacoes is None or not {"rotulo_fraude", "origem_rotulo", "timestamp_confirmacao"} <= set(transacoes):
-            faltando.append(self.requisitos[4])
-        return faltando
-
-    def treinar(self, transacoes: Optional[pd.DataFrame] = None,
-                vinculo: Optional[pd.DataFrame] = None,
-                previsoes_rede: Optional[pd.DataFrame] = None) -> None:
-        faltando = self.verificar_requisitos(transacoes, vinculo, previsoes_rede)
-        if faltando:
-            raise FusaoIndisponivel(faltando)
-        raise NotImplementedError(
-            "Com dados vinculados disponíveis: gerar atributos financeiros, anexar sinais de rede "
-            "com src.ml.integracao.associar_sinais_rede e comparar, na mesma divisão temporal, o "
-            "modelo financeiro com e sem esses sinais."
-        )
-
-
 # ---------------------------------------------------------------------------
 # Modelo unificado
 # ---------------------------------------------------------------------------
@@ -323,7 +231,7 @@ def versoes() -> Dict[str, str]:
 @dataclass
 class ModeloUnificado:
     codificadores: Dict[str, Any] = field(default_factory=dict)
-    cabecas: Dict[str, Any] = field(default_factory=lambda: {"fusao_rede_transacao": CabecaFusao()})
+    cabecas: Dict[str, Any] = field(default_factory=dict)
     metadados: Dict[str, Any] = field(default_factory=dict)
 
     def tarefas_disponiveis(self) -> Dict[str, str]:
@@ -334,8 +242,6 @@ class ModeloUnificado:
             raise KeyError(f"Tarefa '{tarefa}' não treinada. Disponíveis: {self.tarefas_disponiveis()}")
         c = self.cabecas[tarefa]
         if getattr(c, "status", "") != "treinada":
-            if isinstance(c, CabecaFusao):
-                raise FusaoIndisponivel(c.requisitos)
             raise RuntimeError(f"Tarefa '{tarefa}' com status {c.status}.")
         return c
 
@@ -348,8 +254,6 @@ class ModeloUnificado:
 
     def prever(self, tarefa: str, *args, **kwargs):
         from src.ml import previsao
-        if tarefa.startswith("estado_rede"):
-            return previsao.prever_rede(self, *args, tarefa=tarefa, **kwargs)
         if tarefa == "lavagem":
             return previsao.prever_lavagem(self, *args, **kwargs)
         self.cabeca(tarefa)  # levanta o erro adequado
@@ -368,13 +272,9 @@ class ModeloUnificado:
             "tarefas": self.tarefas_disponiveis(),
             "metadados": self.metadados,
             "cabecas": {
-                nome: (
-                    {"familia": c.familia, "params": c.params, "classes": [str(x) for x in c.classes],
-                     "colunas_entrada": c.colunas_entrada, "limiar_alerta": c.limiar_alerta,
-                     "usa_classe_atual": c.usa_classe_atual, "metadados": c.metadados}
-                    if isinstance(c, CabecaClassificacao)
-                    else {"status": c.status, "motivo": c.motivo, "requisitos": c.requisitos}
-                )
+                nome: {"familia": c.familia, "params": c.params, "classes": [str(x) for x in c.classes],
+                       "colunas_entrada": c.colunas_entrada, "limiar_alerta": c.limiar_alerta,
+                       "usa_classe_atual": c.usa_classe_atual, "metadados": c.metadados}
                 for nome, c in self.cabecas.items()
             },
         }
@@ -392,7 +292,14 @@ class ModeloUnificado:
         caminho = Path(pasta) / NOME_ARTEFATO
         if not caminho.is_file():
             raise FileNotFoundError(f"Artefato não encontrado: {caminho}. Rode 'treinar' antes.")
-        modelo = joblib.load(caminho)
+        try:
+            modelo = joblib.load(caminho)
+        except (AttributeError, ModuleNotFoundError) as exc:  # pickle de uma versão com classes que já saíram
+            raise RuntimeError(
+                f"{caminho} foi salvo por uma versão anterior do NodeWatch e usa classes que não existem mais "
+                f"({exc}). Se é o modelo distribuído, rode python -m src.ml.provisionamento (ou inicie o "
+                "servidor) para trocá-lo pela versão atual; um modelo treinado nesta máquina precisa ser "
+                "treinado de novo.") from None
         if not isinstance(modelo, ModeloUnificado):
             raise TypeError(f"{caminho} não contém um ModeloUnificado.")
         salvo = modelo.metadados.get("versoes", {}).get("scikit-learn")
@@ -409,10 +316,3 @@ class ModeloUnificado:
             return ModeloUnificado()
 
 
-def baseline_majoritaria(y_treino: Sequence) -> DummyClassifier:
-    return DummyClassifier(strategy="most_frequent").fit(np.zeros((len(y_treino), 1)), y_treino)
-
-
-def proba_persistencia(classe_atual: Sequence, classes: Sequence[str] = CLASSES_REDE) -> np.ndarray:
-    c = np.asarray(classe_atual, dtype=object)
-    return np.stack([(c == k).astype(float) for k in classes], axis=1)

@@ -58,8 +58,7 @@ def modelo_resumo(raiz: Path) -> Dict[str, Any]:
 
 def avaliacao_oficial(raiz: Path) -> Dict[str, Any]:
     saida: Dict[str, Any] = {}
-    for tarefa, arq_aval, arq_treino in (("rede", "avaliacao_estado_rede.json", "treino_estado_rede.json"),
-                                         ("lavagem", "avaliacao_lavagem.json", "treino_lavagem.json")):
+    for tarefa, arq_aval, arq_treino in (("lavagem", "avaliacao_lavagem.json", "treino_lavagem.json"),):
         aval, f_aval = ler_primeiro(raiz, arq_aval, PASTAS_RESULTADOS)
         treino, f_treino = ler_primeiro(raiz, arq_treino, PASTAS_RESULTADOS)
         if aval is None:
@@ -72,28 +71,16 @@ def avaliacao_oficial(raiz: Path) -> Dict[str, Any]:
             bloco["grade_validacao"] = treino.get("grade_validacao")
             bloco["limiar_validacao"] = treino.get("limiar")
             bloco["escolhido_nome"] = (treino.get("escolhido") or {}).get("nome")
-        if tarefa == "rede":
-            for parte in ("validacao", "teste"):
-                p = aval.get(parte) or {}
-                bloco[parte] = {k: p.get(k) for k in ("modelo", "persistencia", "majoritaria", "com_classe_atual",
-                                                       "eventos", "alertas", "calibracao_nao_ok")}
-                for chave in ("alertas",):
-                    for ref in (bloco[parte].get(chave) or {}).values():
-                        if isinstance(ref, dict):
-                            ref.pop("por_fluxo", None)
-            bloco["grupos_ineditos"] = {k: {kk: vv for kk, vv in v.items() if kk != "folds"}
-                                        for k, v in (aval.get("grupos_ineditos") or {}).items()}
-        else:
-            for parte in ("teste", "cauda"):
-                p = aval.get(parte) or {}
-                bloco[parte] = {}
-                for ref in ("modelo", "baseline_prevalencia", "baseline_formato"):
-                    if ref in p:
-                        bloco[parte][ref] = {k: v for k, v in p[ref].items() if k != "curva_pr_resumida"}
-                if "padroes" in p:
-                    bloco[parte]["padroes"] = p["padroes"]
-                if "calibracao" in p:
-                    bloco[parte]["calibracao"] = {k: v for k, v in p["calibracao"].items() if k != "caixas"}
+        for parte in ("teste", "cauda"):
+            p = aval.get(parte) or {}
+            bloco[parte] = {}
+            for ref in ("modelo", "baseline_prevalencia", "baseline_formato"):
+                if ref in p:
+                    bloco[parte][ref] = {k: v for k, v in p[ref].items() if k != "curva_pr_resumida"}
+            if "padroes" in p:
+                bloco[parte]["padroes"] = p["padroes"]
+            if "calibracao" in p:
+                bloco[parte]["calibracao"] = {k: v for k, v in p["calibracao"].items() if k != "caixas"}
         saida[tarefa] = bloco
     saida["reuso_do_teste"] = (
         "O período de teste já foi consultado mais de uma vez (avaliação de 26/10/2026, comparação de "

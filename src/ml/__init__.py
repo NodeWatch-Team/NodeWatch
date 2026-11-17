@@ -1,16 +1,12 @@
-"""Módulo de Machine Learning do NodeWatch.
+"""Módulo de Machine Learning do NodeWatch: detecção de lavagem de dinheiro.
 
-Arquitetura única e modular (scikit-learn) com uma entrada por fonte de dados
-e uma cabeça por tarefa:
+Uma tarefa, ``lavagem``: pontua transações do IBM AML HI-Small (sintético)
+pelo rótulo ``Is Laundering``, com 49 atributos que só olham o passado de
+cada conta. O modelo distribuído fica em ``modelos/`` e é instalado em
+``artefatos_ml/`` por :mod:`src.ml.provisionamento`.
 
-* ``estado_rede``  — prevê o estado (``OK``/``RISCO``/``FALHA``) da próxima
-  medição de um fluxo de rede (``dataset_final.csv``);
-* ``lavagem``      — pontua transações do IBM AML HI-Small pelo rótulo
-  sintético ``Is Laundering``;
-* ``fusao_rede_transacao`` — combinaria sinais de rede e transações. Fica
-  bloqueada até existirem transações com telemetria realmente vinculada.
-
-Uso pela linha de comando: ``python -m src.ml.cli --help``.
+Uso pela linha de comando (treino, avaliação, previsão em arquivos):
+``python -m src.ml.cli --help``.
 """
 
 VERSAO_MODULO = "0.1.0"

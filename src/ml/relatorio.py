@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
-from src.ml.esquemas import CLASSES_REDE, ESQUEMAS, Esquema
+from src.ml.esquemas import ESQUEMAS, Esquema
 
 
 def _ler(p: Path) -> Optional[Dict[str, Any]]:
@@ -37,10 +37,6 @@ def _tabela(cabecalho: Sequence[str], linhas: Iterable[Sequence[Any]]) -> str:
     for l in linhas:
         out.append("| " + " | ".join(_f(x) if not isinstance(x, str) else x for x in l) + " |")
     return "\n".join(out)
-
-
-def _matriz(m: List[List[int]], classes: Sequence[str]) -> str:
-    return _tabela(["real \\ previsto", *classes], [[c, *m[i]] for i, c in enumerate(classes)])
 
 
 # ---------------------------------------------------------------------------
@@ -85,101 +81,16 @@ def escrever_documentacao(pasta_docs: Path) -> List[Path]:
 
 
 # ---------------------------------------------------------------------------
-def _secao_rede(art: Path) -> List[str]:
-    treino = _ler(art / "resultados" / "treino_estado_rede.json")
-    aval = _ler(art / "resultados" / "avaliacao_estado_rede.json")
-    aud = _ler(art / "auditoria" / "auditoria_rede.json")
-    out = ["## 1. Tarefa `estado_rede` — estado da próxima medição", ""]
-    if aud:
-        dv = aud.get("divergencias_dentro_do_split", {})
-        hz = aud.get("horizonte", {})
-        out += ["### 1.1 Auditoria (refeita nesta execução)", "", _tabela(["item", "valor"], [
-            ["linhas", aud["linhas"]], ["fluxos", aud["fluxos"]], ["NaN / inf", f"{aud['nan']} / {aud['inf']}"],
-            ["duplicatas id_fluxo+timestamp", aud["duplicatas_id_fluxo_timestamp"]],
-            ["alvo = classe_atual seguinte", _f(aud.get("alvo_vs_proxima_classe", {}).get("taxa"), 6)],
-            ["divergências dentro do split (seguidas de lacuna)",
-             f"{dv.get('divergencias')} de {_f(dv.get('pares'))} ({dv.get('seguidas_de_lacuna')})"],
-            ["regra de limiares reproduz classe_atual", _f(aud.get("regra_classe_atual_reproduz"), 4)],
-            ["intervalo mediano (s)", _f(aud["intervalo_s"]["mediana"], 0)],
-            ["menor lacuna entre splits (s) / p99,9 do intervalo (s)",
-             f"{_f(hz.get('menor_lacuna_entre_splits_s'), 0)} / {_f(hz.get('intervalo_p999_s'), 0)}"],
-            ["expurgo necessário pelo horizonte", _f(hz.get("expurgo_necessario"))],
-            ["colunas constantes", ", ".join(aud.get("constantes", [])) or "—"],
-        ]), ""]
-        jan = aud.get("janelas", {})
-        if jan:
-            out += ["Conferência das janelas (fração de linhas que coincide com a rolagem para trás, "
-                    "por medições; a última coluna é o contraste olhando para frente):", "",
-                    _tabela(["janela", "perda média", "rtt máx", "jitter máx", "n acima p95", "jitter máx (para frente)"],
-                            [[k, v["perda_media_para_tras"], v["rtt_max_para_tras"], v["jitter_max_para_tras"],
-                              v["n_acima_para_tras"], v["jitter_max_para_frente"]] for k, v in jan.items()]), ""]
-    if treino:
-        out += ["### 1.2 Seleção na validação (ajuste só no treino)", "",
-                f"Escolhido: **{treino['escolhido']['nome']}**; limiar de `score_alerta_rede` = "
-                f"{_f(treino['limiar']['limiar'])} (máximo F1 de não-OK na validação).", "",
-                _tabela(["configuração", "macro-F1", "recall RISCO", "recall FALHA", "balanced acc.", "s"],
-                        [[r["nome"], r["validacao"]["macro_f1"], r["validacao"]["por_classe"]["RISCO"]["recall"],
-                          r["validacao"]["por_classe"]["FALHA"]["recall"], r["validacao"]["balanced_accuracy"],
-                          r["validacao"].get("segundos")] for r in treino["grade_validacao"]]), ""]
-    if aval:
-        te = aval["teste"]
-        nomes = [("majoritaria", "majoritária (treino)"), ("persistencia", "persistência"),
-                 ("modelo", "modelo escolhido"), ("com_classe_atual", "modelo + classe_atual")]
-        presentes = [(k, n) for k, n in nomes if k in te]
-        out += ["### 1.3 Teste (avaliação única, artefato congelado)", "",
-                _tabela(["referência", "macro-F1", "balanced acc.", "acurácia", "F1 OK", "F1 RISCO", "F1 FALHA",
-                         "recall RISCO", "recall FALHA"],
-                        [[n, te[k]["macro_f1"], te[k]["balanced_accuracy"], te[k]["acuracia"],
-                          *[te[k]["por_classe"][c]["f1"] for c in CLASSES_REDE],
-                          te[k]["por_classe"]["RISCO"]["recall"], te[k]["por_classe"]["FALHA"]["recall"]]
-                         for k, n in presentes]), "",
-                "Matriz de confusão do modelo (teste):", "", _matriz(te["modelo"]["matriz_confusao"], CLASSES_REDE), "",
-                "Matriz de confusão da persistência (teste):", "",
-                _matriz(te["persistencia"]["matriz_confusao"], CLASSES_REDE), ""]
-        ev = te["eventos"]
-        out += ["Inícios de evento e transições (teste):", "",
-                _tabela(["referência", "inícios não-OK", "detectados", "inícios FALHA detectados",
-                         "transições", "acurácia nas transições"],
-                        [[n, ev[k]["inicios_nao_ok"]["n"], ev[k]["inicios_nao_ok"]["taxa_deteccao"],
-                          ev[k]["inicios_FALHA"]["taxa_deteccao"], ev[k].get("transicoes", {}).get("n"),
-                          ev[k].get("transicoes", {}).get("acuracia")]
-                         for k, n in presentes if k in ev]), ""]
-        al = te["alertas"]
-        out += ["Alertas (teste; tempo observado ≈ linhas × intervalo mediano):", "",
-                _tabela(["referência", "alertas", "corretos", "falsos", "não alertados", "falsos por fluxo-hora",
-                         "mediana por fluxo", "p90 por fluxo"],
-                        [[n, al[k]["alertas"], al[k]["alertas_corretos"], al[k]["falsos_alertas"],
-                          al[k]["eventos_nao_alertados"], al[k]["falsos_por_fluxo_hora"],
-                          al[k]["por_fluxo"]["mediana"], al[k]["por_fluxo"]["p90"]] for k, n in presentes if k in al]), ""]
-        cal = te["calibracao_nao_ok"]
-        out += [f"Calibração de P(não OK) no teste: Brier {_f(cal['brier'])}, ECE {_f(cal['ece'])}; "
-                f"Brier multiclasse {_f(te['brier_multiclasse'])}.", "",
-                _tabela(["faixa de prob.", "n", "prob. média", "frequência observada"],
-                        [[f"{_f(c['de'], 1)}–{_f(c['ate'], 1)}", c["n"], c["prob_media"], c["frequencia_observada"]]
-                         for c in cal["caixas"]]), ""]
-        out += ["Troca entre recall e falsos alertas (`score_alerta_rede`):", "",
-                _tabela(["limiar", "precisão val.", "recall val.", "falsos/fluxo-h val.",
-                         "precisão teste", "recall teste", "falsos/fluxo-h teste"],
-                        [[a["limiar"], a["precisao"], a["recall"], a["falsos_por_fluxo_hora"],
-                          b["precisao"], b["recall"], b["falsos_por_fluxo_hora"]]
-                         for a, b in zip(aval["validacao"]["curva_limiares"], te["curva_limiares"])]), ""]
-        gi = aval.get("grupos_ineditos", {})
-        if gi:
-            out += ["Grupos inéditos (treino sem os grupos, teste só neles, no período de teste):", "",
-                    _tabela(["agrupamento", "grupos", "macro-F1 média", "desvio-padrão", "persistência (média)"],
-                            [[k, v["n_grupos"], v["macro_f1_media"], v["macro_f1_dp"], v["macro_f1_persistencia_media"]]
-                             for k, v in gi.items()]), ""]
-    return out
 
 
 def _secao_lavagem(art: Path) -> List[str]:
     treino = _ler(art / "resultados" / "treino_lavagem.json")
     aval = _ler(art / "resultados" / "avaliacao_lavagem.json")
     aud = _ler(art / "auditoria" / "auditoria_financeiro.json")
-    out = ["## 2. Tarefa `lavagem` — IBM AML HI-Small (sintético)", ""]
+    out = ["## 1. Tarefa `lavagem` — IBM AML HI-Small (sintético)", ""]
     if aud:
         sp = aud["splits"]
-        out += ["### 2.1 Auditoria", "", _tabela(["item", "valor"], [
+        out += ["### 1.1 Auditoria", "", _tabela(["item", "valor"], [
             ["transações / positivos", f"{_f(aud['leitura']['linhas'])} / {_f(aud.get('positivos'))}"],
             ["período", " a ".join(aud["periodo"])],
             ["contas distintas", aud["leitura"]["contas_distintas"]],
@@ -204,7 +115,7 @@ def _secao_lavagem(art: Path) -> List[str]:
                     f"com transações; {p['positivos_sem_padrao']} positivos sem padrão; "
                     f"{p['tentativas_em_mais_de_um_split']} tentativas atravessam splits.", ""]
     if treino:
-        out += ["### 2.2 Seleção na validação", "",
+        out += ["### 1.2 Seleção na validação", "",
                 f"Escolhido: **{treino['escolhido']['nome']}**; limiar {_f(treino['limiar']['limiar'], 6)} "
                 f"(máximo F1 na validação). {len(treino['atributos'])} atributos.", "",
                 _tabela(["configuração", "AP validação", "F1 no limiar", "precisão", "recall", "s"],
@@ -216,8 +127,8 @@ def _secao_lavagem(art: Path) -> List[str]:
             if nome not in aval:
                 continue
             b = aval[nome]
-            titulo = "### 2.3 Teste (artefato congelado)" if nome == "teste" else \
-                "### 2.4 Cauda do gerador (fora das métricas principais)"
+            titulo = "### 1.3 Teste (artefato congelado)" if nome == "teste" else \
+                "### 1.4 Cauda do gerador (fora das métricas principais)"
             out += [titulo, "", _tabela(
                 ["referência", "AP", "precisão", "recall", "F1", "falsos/10 mil", "VP", "FP", "FN"],
                 [[n, b[k]["average_precision"], b[k]["precisao"], b[k]["recall"], b[k]["f1"],
@@ -259,13 +170,8 @@ def gerar_relatorio(pasta_artefatos: Path, pasta_docs: Path) -> Path:
         linhas += ["Ambiente: " + ", ".join(f"{k} {val}" for k, val in v.items()) + ".", ""]
     tarefas = meta.get("tarefas", {})
     if tarefas:
-        linhas += [_tabela(["cabeça do modelo unificado", "status"], [[k, s] for k, s in tarefas.items()]), ""]
-    linhas += _secao_rede(art)
+        linhas += [_tabela(["cabeça do modelo", "status"], [[k, s] for k, s in tarefas.items()]), ""]
     linhas += _secao_lavagem(art)
-    fusao = meta.get("cabecas", {}).get("fusao_rede_transacao", {})
-    linhas += ["## 3. Fusão rede ↔ transação", "", f"Status: **{fusao.get('status', 'indisponivel')}**. "
-               + fusao.get("motivo", ""), "", "Entradas necessárias:", ""]
-    linhas += [f"- {r}" for r in fusao.get("requisitos", [])] + [""]
     notas = Path(pasta_docs) / "notas_relatorio.md"
     if notas.is_file():
         linhas += [notas.read_text(encoding="utf-8")]

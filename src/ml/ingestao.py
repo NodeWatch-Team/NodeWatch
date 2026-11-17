@@ -1,4 +1,4 @@
-"""Ingestão e validação dos dados de rede e do IBM AML HI-Small.
+"""Ingestão e validação do IBM AML HI-Small (transações, contas e padrões).
 
 Nenhuma função daqui altera os arquivos de entrada. Cada registro lido recebe
 ``arquivo_origem`` e ``linha_origem`` (posição 0-based dentro do arquivo), o
@@ -14,7 +14,7 @@ import re
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Iterator, List, Union
 
 import numpy as np
 import pandas as pd
@@ -22,13 +22,10 @@ import pandas as pd
 from src.ml.esquemas import (
     COLUNAS_HISMALL,
     ESQUEMA_HISMALL_V1,
-    ESQUEMA_REDE_V1,
-    SPLITS,
     ErroEsquema,
 )
 
 Caminho = Union[str, Path]
-CHAVE_REDE = ("id_fluxo", "timestamp")
 COLUNAS_RASTREIO = ("arquivo_origem", "linha_origem")
 
 
@@ -42,125 +39,6 @@ def sha256_arquivo(caminho: Caminho, bloco: int = 1 << 22) -> str:
         for parte in iter(lambda: fh.read(bloco), b""):
             h.update(parte)
     return h.hexdigest()
-
-
-# ---------------------------------------------------------------------------
-# Rede
-# ---------------------------------------------------------------------------
-_DTYPES_TEXTO_REDE = {"id_fluxo": str, "split": str, "classe_atual": str, "alvo": str}
-
-
-def ler_rede(
-    caminhos: Sequence[Caminho],
-    modo: str = "treino",
-    conflitos: str = "erro",
-    exigir: Sequence[str] = (),
-) -> Tuple[pd.DataFrame, Dict[str, Any]]:
-    """Lê um ou mais CSVs ``rede_v1``.
-
-    Em ``modo="treino"``, duplicatas idênticas por ``id_fluxo`` + ``timestamp``
-    são removidas (mantém a primeira, na ordem dos arquivos) e duplicatas com
-    valores diferentes geram :class:`ErroDados` (``conflitos="erro"``) ou são
-    excluídas por completo (``conflitos="excluir"``). Em ``modo="inferencia"``
-    nada é removido: as duplicatas só são relatadas, para preservar a
-    identidade de cada linha de entrada.
-
-    Returns:
-        ``(df, relatorio)``. ``df`` mantém a ordem de leitura.
-    """
-    if not caminhos:
-        raise ValueError("Nenhum arquivo de rede informado.")
-    if conflitos not in ("erro", "excluir"):
-        raise ValueError(f"conflitos inválido: {conflitos}")
-    quadros: List[pd.DataFrame] = []
-    arquivos: List[Dict[str, Any]] = []
-    cabecalho: Optional[List[str]] = None
-    for c in caminhos:
-        p = Path(c)
-        if not p.is_file():
-            raise FileNotFoundError(f"Arquivo de rede não encontrado: {p}")
-        df = pd.read_csv(p, dtype=_DTYPES_TEXTO_REDE)
-        colunas = list(df.columns)
-        faltam_rastreio = [col for col in COLUNAS_RASTREIO if col in colunas]
-        if faltam_rastreio:
-            raise ErroEsquema(ESQUEMA_REDE_V1.id, [f"coluna reservada no arquivo {p.name}: {faltam_rastreio}"])
-        if cabecalho is None:
-            cabecalho = colunas
-        elif colunas != cabecalho:
-            raise ErroEsquema(
-                ESQUEMA_REDE_V1.id,
-                [f"cabeçalho de {p.name} difere do primeiro arquivo: {colunas} != {cabecalho}"],
-            )
-        df.insert(0, "linha_origem", np.arange(len(df), dtype=np.int64))
-        df.insert(0, "arquivo_origem", p.name)
-        quadros.append(df)
-        arquivos.append({"caminho": str(p), "linhas": int(len(df)), "sha256": sha256_arquivo(p)})
-    if len({a["caminho"] for a in arquivos}) != len(arquivos):
-        raise ErroDados("O mesmo arquivo foi informado mais de uma vez.")
-    df = pd.concat(quadros, ignore_index=True)
-    ESQUEMA_REDE_V1.validar(df, modo=modo, exigir=exigir)
-    df["timestamp"] = df["timestamp"].astype(np.int64)
-
-    relatorio: Dict[str, Any] = {"arquivos": arquivos, "linhas_lidas": int(len(df))}
-    dup = df.duplicated(list(CHAVE_REDE), keep=False)
-    relatorio["linhas_com_chave_repetida"] = int(dup.sum())
-    relatorio["duplicatas_removidas"] = 0
-    relatorio["chaves_conflitantes"] = 0
-    if dup.any():
-        valores = [c for c in cabecalho if c not in CHAVE_REDE]
-        grupo = df.loc[dup].groupby(list(CHAVE_REDE), sort=False)[valores]
-        distintos = grupo.nunique(dropna=False).max(axis=1)
-        chaves_conf = distintos[distintos > 1].index
-        relatorio["chaves_conflitantes"] = int(len(chaves_conf))
-        relatorio["exemplos_conflito"] = [list(map(_nativo, k)) for k in list(chaves_conf)[:10]]
-        if modo == "treino":
-            if len(chaves_conf) and conflitos == "erro":
-                raise ErroDados(
-                    f"{len(chaves_conf)} chave(s) id_fluxo+timestamp com valores diferentes "
-                    f"entre registros (ex.: {relatorio['exemplos_conflito'][:3]}). "
-                    "Corrija a origem ou use conflitos='excluir'."
-                )
-            idx = pd.MultiIndex.from_frame(df[list(CHAVE_REDE)])
-            em_conflito = idx.isin(chaves_conf)
-            antes = len(df)
-            df = df.loc[~em_conflito]
-            relatorio["linhas_excluidas_por_conflito"] = int(antes - len(df))
-            antes = len(df)
-            df = df.loc[~df.duplicated(list(CHAVE_REDE), keep="first")]
-            relatorio["duplicatas_removidas"] = int(antes - len(df))
-            df = df.reset_index(drop=True)
-    relatorio["linhas_finais"] = int(len(df))
-    return df, relatorio
-
-
-def _nativo(v: Any) -> Any:
-    return v.item() if hasattr(v, "item") else v
-
-
-def verificar_splits(df: pd.DataFrame) -> Dict[str, Any]:
-    """Confere se treino < validação < teste no tempo (global e por fluxo)."""
-    presentes = [s for s in SPLITS if s in set(df["split"].unique())]
-    faixas = df.groupby("split")["timestamp"].agg(["min", "max", "count"])
-    saida: Dict[str, Any] = {
-        "faixas": {s: {k: int(faixas.loc[s, k]) for k in ("min", "max", "count")} for s in presentes},
-        "problemas": [],
-        "lacunas_s": {},
-    }
-    por_fluxo = df.groupby(["id_fluxo", "split"])["timestamp"].agg(["min", "max"]).unstack("split")
-    for a, b in zip(presentes, presentes[1:]):
-        if faixas.loc[a, "max"] >= faixas.loc[b, "min"]:
-            saida["problemas"].append(f"sobreposição global entre {a} e {b}")
-        ambos = por_fluxo[("max", a)].notna() & por_fluxo[("min", b)].notna()
-        lacuna = (por_fluxo[("min", b)] - por_fluxo[("max", a)])[ambos]
-        ruins = int((lacuna <= 0).sum())
-        if ruins:
-            saida["problemas"].append(f"{ruins} fluxo(s) com {b} antes do fim de {a}")
-        saida["lacunas_s"][f"{a}->{b}"] = {
-            "min": float(lacuna.min()), "mediana": float(lacuna.median()), "max": float(lacuna.max())
-        }
-    fluxos_por_split = df.groupby("split")["id_fluxo"].nunique()
-    saida["fluxos_por_split"] = {s: int(fluxos_por_split[s]) for s in presentes}
-    return saida
 
 
 # ---------------------------------------------------------------------------

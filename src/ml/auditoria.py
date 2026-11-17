@@ -1,4 +1,4 @@
-"""Auditoria dos dados, refeita a cada execução.
+"""Auditoria dos dados do IBM AML HI-Small, refeita a cada execução.
 
 As funções devolvem dicionários serializáveis em JSON. ``para_markdown``
 gera um resumo legível. Nada aqui altera rótulos ou dados: divergências são
@@ -14,11 +14,8 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from src.ml.esquemas import CLASSES_REDE, FEATURES_REDE, SPLITS
-from src.ml.ingestao import DadosHISmall, verificar_splits
-from src.ml.preparacao import MINUTOS_DIA, SENTINELAS_REDE, atribuir_split_financeiro, minuto_de
-
-_INSTANTANEAS = ("razao_rtt_p95", "razao_rtt_p99", "razao_jitter_p95", "amplitude_rtt_rel")
+from src.ml.ingestao import DadosHISmall
+from src.ml.preparacao import MINUTOS_DIA, atribuir_split_financeiro
 
 
 def _contagem(s: pd.Series) -> Dict[str, Any]:
@@ -29,154 +26,6 @@ def _contagem(s: pd.Series) -> Dict[str, Any]:
 
 def _quantis(s: pd.Series, qs=(0, 0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99, 0.999, 1)) -> Dict[str, float]:
     return {str(q): float(v) for q, v in s.quantile(list(qs)).items()}
-
-
-def regra_classe_atual(df: pd.DataFrame) -> np.ndarray:
-    """Regra que reproduz ``classe_atual`` a partir da medição atual (auditoria)."""
-    falha = (df["rtt_ausente"] == 1) | (df["razao_rtt_p99"] > 1) | (df["perda_pct"] >= 50)
-    risco = ~falha & ((df["razao_rtt_p95"] > 1) | (df["razao_jitter_p95"] > 1) | (df["perda_pct"] > 0))
-    return np.where(falha, "FALHA", np.where(risco, "RISCO", "OK"))
-
-
-# ---------------------------------------------------------------------------
-# Rede
-# ---------------------------------------------------------------------------
-def auditar_rede(df: pd.DataFrame, multiplo_consecutivo: float = 2.0) -> Dict[str, Any]:
-    s = df.sort_values(["id_fluxo", "timestamp"], kind="stable").reset_index(drop=True)
-    feats = [c for c in FEATURES_REDE if c in s]
-    a: Dict[str, Any] = {
-        "linhas": int(len(s)),
-        "colunas_dados": int(len([c for c in s.columns if c not in ("arquivo_origem", "linha_origem")])),
-        "fluxos": int(s["id_fluxo"].nunique()),
-        "anchors": int(s["anchor_id"].nunique()),
-        "probes": int(s["probe_id"].nunique()),
-        "id_fluxo_igual_probe_anchor": float(
-            (s["id_fluxo"] == s["probe_id"].astype(str) + "_" + s["anchor_id"].astype(str)).mean()
-        ),
-    }
-    num = s[feats].to_numpy(dtype="float64")
-    a["nan"] = int(np.isnan(num).sum())
-    a["inf"] = int(np.isinf(num).sum())
-    a["duplicatas_id_fluxo_timestamp"] = int(s.duplicated(["id_fluxo", "timestamp"]).sum())
-    for col in ("alvo", "split", "classe_atual"):
-        if col in s:
-            a[f"distribuicao_{col}"] = _contagem(s[col])
-    if "split" in s and "alvo" in s:
-        a["alvo_por_split"] = {
-            sp: _contagem(s.loc[s["split"] == sp, "alvo"]) for sp in SPLITS if (s["split"] == sp).any()
-        }
-
-    # Intervalos entre medições do mesmo fluxo (e do mesmo split, se houver).
-    grupo = ["id_fluxo", "split"] if "split" in s else ["id_fluxo"]
-    dt = s.groupby(grupo)["timestamp"].diff()
-    mediana = float(dt.median())
-    a["intervalo_s"] = {
-        "quantis": _quantis(dt.dropna()),
-        "mediana": mediana,
-        "acima_2x_mediana": int((dt > 2 * mediana).sum()),
-        "acima_3600": int((dt > 3600).sum()),
-    }
-    limite_consec = multiplo_consecutivo * mediana
-    a["limite_consecutivo_s"] = limite_consec
-
-    # Alvo vs classe_atual da próxima observação.
-    if "alvo" in s and "classe_atual" in s:
-        prox = s.groupby("id_fluxo")["classe_atual"].shift(-1)
-        m = prox.notna()
-        a["alvo_vs_proxima_classe"] = {
-            "pares": int(m.sum()), "iguais": int((s["alvo"][m] == prox[m]).sum()),
-        }
-        a["alvo_vs_proxima_classe"]["taxa"] = (
-            a["alvo_vs_proxima_classe"]["iguais"] / max(a["alvo_vs_proxima_classe"]["pares"], 1)
-        )
-        prox_g = s.groupby(grupo)["classe_atual"].shift(-1)
-        dt_prox = -s.groupby(grupo)["timestamp"].diff(-1)
-        m2 = prox_g.notna()
-        div = m2 & (s["alvo"] != prox_g)
-        exemplos = s.loc[div, ["id_fluxo", "timestamp"] + (["split"] if "split" in s else [])
-                         + ["classe_atual", "alvo"]].assign(
-            proxima_classe=prox_g[div], proximo_intervalo_s=dt_prox[div])
-        a["divergencias_dentro_do_split"] = {
-            "pares": int(m2.sum()),
-            "divergencias": int(div.sum()),
-            "seguidas_de_lacuna": int((dt_prox[div] > limite_consec).sum()),
-            "exemplos": json.loads(exemplos.head(50).to_json(orient="records")),
-        }
-        a["regra_classe_atual_reproduz"] = float((regra_classe_atual(s) == s["classe_atual"]).mean())
-
-    # Splits, lacunas e necessidade de expurgo pelo horizonte (1 medição).
-    if "split" in s:
-        sp = verificar_splits(s)
-        a["splits"] = sp
-        horizonte = float(dt.quantile(0.999))
-        menor_lacuna = min((v["min"] for v in sp["lacunas_s"].values()), default=float("inf"))
-        a["horizonte"] = {
-            "definicao": "próxima medição do mesmo fluxo",
-            "intervalo_p999_s": horizonte,
-            "menor_lacuna_entre_splits_s": menor_lacuna,
-            "expurgo_necessario": bool(menor_lacuna <= horizonte),
-        }
-
-    # Sentinelas por coluna.
-    sent: Dict[str, Any] = {}
-    for col, valor in SENTINELAS_REDE.items():
-        if col not in s:
-            continue
-        msk = s[col] == valor
-        info: Dict[str, Any] = {"valor": valor, "n": int(msk.sum())}
-        if "rtt_ausente" in s:
-            ra = s["rtt_ausente"] == 1
-            info["com_rtt_ausente"] = int((msk & ra).sum())
-            if col in _INSTANTANEAS:
-                info["coincide_com_rtt_ausente"] = bool((msk == ra).all())
-        sent[col] = info
-    a["sentinelas"] = sent
-    a["negativos_nao_sentinela"] = {
-        c: int(((s[c] < 0) & (s[c] != SENTINELAS_REDE.get(c, np.nan))).sum()) for c in feats
-        if ((s[c] < 0) & (s[c] != SENTINELAS_REDE.get(c, np.nan))).any()
-    }
-    a["constantes"] = [c for c in feats if s[c].nunique() <= 1]
-
-    # Janelas: conferência com rolagem para trás (e, por contraste, para frente).
-    a["janelas"] = _conferir_janelas(s)
-
-    # Referência dos percentis: fração acima de p95/p99 com RTT presente.
-    if "split" in s:
-        pres = s[s["rtt_ausente"] == 0]
-        a["fracao_acima_referencia"] = {
-            col: {sp: float((pres.loc[pres["split"] == sp, col] > 1).mean())
-                  for sp in SPLITS if (pres["split"] == sp).any()}
-            for col in ("razao_rtt_p95", "razao_rtt_p99", "razao_jitter_p95")
-        }
-    return a
-
-
-def _conferir_janelas(s: pd.DataFrame) -> Dict[str, Any]:
-    def rolar(col: str, k: int, func: str, para_frente: bool = False) -> pd.Series:
-        base = s.iloc[::-1] if para_frente else s
-        janela = base.groupby("id_fluxo", sort=False)[col].rolling(k, min_periods=1)
-        r = getattr(janela, func)()
-        return r.reset_index(level=0, drop=True).reindex(s.index)
-
-    acima = (s["razao_rtt_p95"] > 1).astype(float)
-    s = s.assign(_acima=acima)
-    g = s.groupby("id_fluxo", sort=False)
-    saida: Dict[str, Any] = {}
-    for k in (3, 6, 12):
-        perda = rolar("perda_pct", k, "mean")
-        jitter = rolar("razao_jitter_p95", k, "max")
-        rtt = rolar("razao_rtt_p95", k, "max")
-        n_acima = g["_acima"].rolling(k, min_periods=1).sum().reset_index(level=0, drop=True).reindex(s.index)
-        n_acima = n_acima.where(rtt != -1, -1)
-        jitter_fr = rolar("razao_jitter_p95", k, "max", para_frente=True)
-        saida[f"w{k}"] = {
-            "perda_media_para_tras": float(np.isclose(perda, s[f"perda_media_w{k}"], atol=1e-3).mean()),
-            "jitter_max_para_tras": float(np.isclose(jitter, s[f"jitter_p95_max_w{k}"], rtol=1e-4, atol=1e-5).mean()),
-            "rtt_max_para_tras": float(np.isclose(rtt, s[f"rtt_p95_max_w{k}"], rtol=1e-4, atol=1e-5).mean()),
-            "n_acima_para_tras": float(np.isclose(n_acima, s[f"n_rtt_acima_p95_w{k}"]).mean()),
-            "jitter_max_para_frente": float(np.isclose(jitter_fr, s[f"jitter_p95_max_w{k}"], rtol=1e-4, atol=1e-5).mean()),
-        }
-    return saida
 
 
 # ---------------------------------------------------------------------------

@@ -8,12 +8,9 @@ de cada campo. O significado traz um ``status``:
 * ``inferido``   — deduzido do nome e da distribuição; a construção original
   da coluna não está documentada.
 
-Esquemas:
+Esquema:
 
-* ``rede_v1``       — telemetria por fluxo (``dataset_final.csv``);
-* ``hismall_v1``    — transações brutas do IBM AML HI-Small;
-* ``transacao_v1``  — PROPOSTA de contrato financeiro genérico (a validar);
-* ``vinculo_v1``    — PROPOSTA de tabela que liga transação a fluxo de rede.
+* ``hismall_v1`` — transações brutas do IBM AML HI-Small.
 
 A validação nunca preenche colunas ausentes: coluna obrigatória faltando,
 tipo incompatível, NaN/inf ou valor fora do domínio geram :class:`ErroEsquema`
@@ -27,9 +24,6 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
-
-CLASSES_REDE = ("OK", "RISCO", "FALHA")
-SPLITS = ("treino", "validacao", "teste")
 
 
 class ErroEsquema(ValueError):
@@ -171,99 +165,6 @@ def _validar_coluna(s: pd.Series, c: Coluna) -> List[str]:
 
 
 # ---------------------------------------------------------------------------
-# rede_v1
-# ---------------------------------------------------------------------------
-_SEM_RTT = "sem RTT na medição (ocorre exatamente quando rtt_ausente = 1)"
-_SEM_RTT_JANELA = "nenhuma medição da janela teve RTT"
-
-
-def _janela(k: int) -> Tuple[Coluna, ...]:
-    return (
-        Coluna(f"perda_media_w{k}", "float", "feature",
-               f"Média de perda_pct nas últimas {k} medições do fluxo, incluindo a atual.",
-               "%", "verificado", faixa=(0, 100)),
-        Coluna(f"rtt_p95_max_w{k}", "float", "feature",
-               f"Máximo de razao_rtt_p95 nas últimas {k} medições, incluindo a atual.",
-               "adimensional", "verificado", faixa=(0, 1e6), sentinela=-1,
-               significado_sentinela=_SEM_RTT_JANELA),
-        Coluna(f"jitter_p95_max_w{k}", "float", "feature",
-               f"Máximo de razao_jitter_p95 nas últimas {k} medições, incluindo a atual.",
-               "adimensional", "verificado", faixa=(0, 1e6), sentinela=-1,
-               significado_sentinela=_SEM_RTT_JANELA),
-        Coluna(f"n_rtt_acima_p95_w{k}", "int", "feature",
-               f"Quantidade, entre as últimas {k} medições, com razao_rtt_p95 > 1.",
-               "contagem", "verificado", faixa=(0, k), sentinela=-1,
-               significado_sentinela=_SEM_RTT_JANELA),
-    )
-
-
-ESQUEMA_REDE_V1 = Esquema(
-    nome="rede",
-    versao="v1",
-    descricao=(
-        "Uma linha por medição de um fluxo sonda→âncora. O alvo é o estado da "
-        "PRÓXIMA medição do mesmo fluxo (intervalo mediano de 240 s, irregular)."
-    ),
-    colunas=(
-        Coluna("id_fluxo", "str", "id", "Fluxo = '<probe_id>_<anchor_id>'.", status="verificado"),
-        Coluna("anchor_id", "int", "id", "Âncora de destino das medições.", status="verificado"),
-        Coluna("probe_id", "int", "id", "Sonda de origem das medições.", status="verificado"),
-        Coluna("timestamp", "int", "tempo", "Instante da medição (época Unix, UTC presumido).",
-               "s", "inferido", faixa=(0, 4e9)),
-        Coluna("split", "cat", "controle", "Período temporal: treino, validacao ou teste.",
-               status="verificado", obrigatoria_inferencia=False, dominio=SPLITS),
-        Coluna("classe_atual", "cat", "contexto",
-               "Estado da medição atual. Reproduzido a 99,94% por limiares sobre perda_pct, "
-               "razao_rtt_p95/p99 e razao_jitter_p95; disponível no instante da previsão.",
-               status="verificado", obrigatoria_inferencia=False, dominio=CLASSES_REDE),
-        Coluna("alvo", "cat", "alvo",
-               "Estado da próxima medição do fluxo (coincide com a classe_atual seguinte "
-               "em 99,98% dos pares).", status="verificado", obrigatoria_inferencia=False,
-               dominio=CLASSES_REDE),
-        Coluna("perda_pct", "float", "feature", "Perda de pacotes na medição.", "%",
-               "inferido", faixa=(0, 100)),
-        Coluna("rtt_ausente", "int", "feature", "1 se a medição não obteve RTT (perda total).",
-               "indicador", "verificado", dominio=(0, 1)),
-        Coluna("razao_rtt_p95", "float", "feature",
-               "RTT da medição dividido pelo p95 de referência do fluxo. O período de "
-               "referência do percentil não está documentado.", "adimensional", "inferido",
-               faixa=(0, 1e6), sentinela=-1, significado_sentinela=_SEM_RTT),
-        Coluna("razao_rtt_p99", "float", "feature",
-               "RTT da medição dividido pelo p99 de referência do fluxo.", "adimensional",
-               "inferido", faixa=(0, 1e6), sentinela=-1, significado_sentinela=_SEM_RTT),
-        Coluna("razao_jitter_p95", "float", "feature",
-               "Jitter da medição dividido pelo p95 de referência do jitter do fluxo.",
-               "adimensional", "inferido", faixa=(0, 1e7), sentinela=-1,
-               significado_sentinela=_SEM_RTT),
-        Coluna("amplitude_rtt_rel", "float", "feature",
-               "Amplitude do RTT na medição relativa ao RTT típico.", "adimensional",
-               "inferido", faixa=(0, 1e6), sentinela=-1, significado_sentinela=_SEM_RTT),
-        Coluna("delta_ttl_clip", "int", "feature",
-               "Variação do TTL em relação à medição anterior, recortada. Valores "
-               "negativos são legítimos (não é sentinela).", "saltos", "inferido",
-               faixa=(-64, 64)),
-        Coluna("ttl_reset", "int", "feature", "Indicador de reinício de TTL (constante 0 no "
-               "arquivo atual; removido no treino por variância nula).", "indicador",
-               "inferido", dominio=(0, 1)),
-        *_janela(3),
-        *_janela(6),
-        *_janela(12),
-        Coluna("perdas_consecutivas", "int", "feature",
-               "Medições consecutivas com perda até a atual (máximo observado 99, "
-               "possivelmente recortado).", "contagem", "inferido", faixa=(0, 1e6)),
-    ),
-    observacoes=(
-        "As janelas w3/w6/w12 são contadas em linhas (medições), não em tempo.",
-        "Linhas removidas da série bruta deixam lacunas: o alvo de uma linha antes de "
-        "uma lacuna pode se referir a uma medição que não está no arquivo.",
-    ),
-)
-
-FEATURES_REDE: Tuple[str, ...] = tuple(ESQUEMA_REDE_V1.nomes("feature"))
-# Nunca entram nos preditores da rede.
-PROIBIDAS_REDE = frozenset({"alvo", "split", "id_fluxo", "anchor_id", "probe_id", "timestamp"})
-
-# ---------------------------------------------------------------------------
 # hismall_v1 (transações brutas do IBM AML HI-Small)
 # ---------------------------------------------------------------------------
 COLUNAS_HISMALL = (
@@ -299,60 +200,4 @@ ESQUEMA_HISMALL_V1 = Esquema(
     ),
 )
 
-# ---------------------------------------------------------------------------
-# PROPOSTAS de integração (a validar com quem fornecer os dados)
-# ---------------------------------------------------------------------------
-ROTULOS_FRAUDE = ("fraude_confirmada", "legitima_confirmada", "sem_conclusao")
-
-ESQUEMA_TRANSACAO_V1 = Esquema(
-    nome="transacao",
-    versao="v1",
-    proposta=True,
-    descricao="Contrato financeiro mínimo PROPOSTO para transações vinculáveis à rede.",
-    colunas=(
-        Coluna("id_transacao", "str", "id", "Identificador único e estável da transação."),
-        Coluna("timestamp_transacao", "datahora", "tempo", "Instante da transação, em UTC."),
-        Coluna("timestamp_disponivel", "datahora", "tempo",
-               "Instante em que a transação fica disponível para análise (>= timestamp_transacao)."),
-        Coluna("conta_origem", "str", "id", "Conta de origem."),
-        Coluna("conta_destino", "str", "id", "Conta de destino."),
-        Coluna("valor", "float", "feature", "Valor na moeda informada.", "moeda", faixa=(0, 1e15)),
-        Coluna("moeda", "cat", "feature", "Código da moeda (ISO 4217 recomendado)."),
-        Coluna("formato_pagamento", "cat", "feature", "Meio de pagamento.",
-               obrigatoria_treino=False, obrigatoria_inferencia=False),
-        Coluna("chave_tecnica", "str", "id",
-               "Sessão, dispositivo ou nó que permita o vínculo com a rede (só se existir "
-               "e tiver significado verificável).", obrigatoria_treino=False,
-               obrigatoria_inferencia=False),
-        Coluna("rotulo_fraude", "cat", "alvo", "fraude_confirmada, legitima_confirmada ou "
-               "sem_conclusao. Ausência de confirmação NÃO é legitimidade.",
-               obrigatoria_inferencia=False, dominio=ROTULOS_FRAUDE),
-        Coluna("origem_rotulo", "str", "controle", "Fonte da evidência do rótulo.",
-               obrigatoria_inferencia=False),
-        Coluna("timestamp_confirmacao", "datahora", "controle",
-               "Quando o rótulo ficou disponível (necessário para respeitar o atraso).",
-               obrigatoria_treino=False, obrigatoria_inferencia=False),
-    ),
-)
-
-ESQUEMA_VINCULO_V1 = Esquema(
-    nome="vinculo",
-    versao="v1",
-    proposta=True,
-    descricao=(
-        "Tabela PROPOSTA que liga uma transação (ou sua chave técnica) a um fluxo de rede "
-        "monitorado, com validade no tempo. Proximidade de horário NÃO é vínculo."
-    ),
-    colunas=(
-        Coluna("chave", "str", "id", "id_transacao ou chave_tecnica (ver tipo_chave)."),
-        Coluna("tipo_chave", "cat", "controle", "'id_transacao' ou 'chave_tecnica'.",
-               dominio=("id_transacao", "chave_tecnica")),
-        Coluna("id_fluxo", "str", "id", "Fluxo de rede vinculado (formato rede_v1)."),
-        Coluna("valido_de", "datahora", "tempo", "Início da validade do vínculo (UTC)."),
-        Coluna("valido_ate", "datahora", "tempo", "Fim da validade do vínculo (UTC, exclusivo)."),
-        Coluna("fonte_vinculo", "str", "controle", "Origem documentada da associação."),
-    ),
-)
-
-ESQUEMAS = {e.id: e for e in (ESQUEMA_REDE_V1, ESQUEMA_HISMALL_V1, ESQUEMA_TRANSACAO_V1,
-                              ESQUEMA_VINCULO_V1)}
+ESQUEMAS = {e.id: e for e in (ESQUEMA_HISMALL_V1,)}

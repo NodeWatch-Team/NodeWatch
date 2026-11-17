@@ -162,14 +162,6 @@ def test_separador_ponto_e_virgula(ambiente, tmp_path):
     assert reg["status"] == "invalido" and "ponto e vírgula" in reg["erro"]["problemas"][0]["problema"]
 
 
-def test_medicoes_de_rede_nao_sao_analisaveis_aqui(ambiente, tmp_path):
-    from testes.ml.conftest import gerar_rede
-    caminho = tmp_path / "rede.csv"
-    gerar_rede(n_fluxos=2).drop(columns=["split"]).to_csv(caminho, index=False)
-    reg = ambiente.enviar(caminho)
-    assert reg["status"] == "invalido" and "rede" in reg["erro"]["problemas"][0]["problema"]
-
-
 def test_tipos_datas_e_valores_invalidos_indicam_coluna_linha_e_correcao(ambiente, tmp_path):
     linhas = [
         linha(f"{D} 10:00", 1, "A", 1, "B", 10, rotulo=0),          # linha 2: válida

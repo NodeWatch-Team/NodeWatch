@@ -19,8 +19,7 @@ Validação (antes de qualquer análise)
     preenchidas: ficam fora da análise e são contadas.
 
 Reaproveita a detecção de formato e a leitura de datas de ``src.ml.formatos``.
-Só transações financeiras são analisáveis aqui; a análise de rede está
-temporariamente fora desta interface.
+Só transações financeiras são analisáveis.
 """
 
 from __future__ import annotations
@@ -187,10 +186,6 @@ def identificar(caminho: Path) -> Dict[str, Any]:
     info = detectar_formato(colunas)
     if info.get("dominio") == "lavagem" and info.get("analisavel"):
         return {"formato": info["formato"], "colunas": colunas}
-    if info.get("dominio") == "rede":
-        raise ErroDataset([problema("o arquivo contém medições de rede, não transações financeiras",
-                                    "A análise de rede está temporariamente fora desta interface. Envie um "
-                                    "dataset de transações.", linha=1)])
     if info.get("formato") and not info.get("analisavel"):
         raise ErroDataset([problema(info.get("leitura", "formato reconhecido, mas não analisável"),
                                     "Envie o dataset de transações (não o arquivo de previsões nem o CSV do "

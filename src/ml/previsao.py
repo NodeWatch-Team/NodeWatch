@@ -8,90 +8,19 @@ previsão nunca é apresentada como evento ou fraude confirmada.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 
-from src.ml.avaliacao import psi
-from src.ml.esquemas import CLASSES_REDE
-from src.ml.ingestao import DadosHISmall, ler_hismall, ler_rede
-from src.ml.preparacao import SENTINELAS_REDE, atributos_financeiros, matriz_rede
+from src.ml.ingestao import DadosHISmall, ler_hismall
+from src.ml.preparacao import atributos_financeiros
 
 Caminho = Union[str, Path]
 AVISO_LAVAGEM = (
     "Pontuação de lavagem aprendida no IBM AML HI-Small (sintético). Não é probabilidade "
-    "nem confirmação de fraude; sem sinais de rede (nenhum vínculo disponível)."
+    "nem confirmação de fraude."
 )
-
-
-def _deriva(X: pd.DataFrame, referencias: Dict[str, Any], sentinelas_treino: Dict[str, float]) -> Dict[str, Any]:
-    saida: Dict[str, Any] = {"psi": {}, "taxa_sentinela": {}}
-    for col, ref in referencias.items():
-        if col in X:
-            valores = X[col].to_numpy(dtype=float)
-            sent = SENTINELAS_REDE.get(col)
-            if sent is not None:
-                valores = valores[valores != sent]
-            saida["psi"][col] = psi(ref, valores)
-    for col, taxa_treino in sentinelas_treino.items():
-        if col in X:
-            saida["taxa_sentinela"][col] = {
-                "entrada": float((X[col] == SENTINELAS_REDE[col]).mean()), "treino": taxa_treino,
-            }
-    alto = {c: v for c, v in saida["psi"].items() if v is not None and v >= 0.25}
-    saida["colunas_psi_acima_0_25"] = sorted(alto)
-    saida["leitura"] = ("PSI >= 0,25 indica mudança relevante de distribuição em relação ao treino; "
-                        "o desempenho medido no teste pode não valer para esta entrada.")
-    return saida
-
-
-def tabela_previsoes_rede(cab, df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Previsões ``previsao_rede_v1`` de medições já validadas (``rede_v1``).
-
-    Usada pela CLI (arquivos) e pelo processamento de eventos (medições
-    avulsas ou em lotes pequenos). Devolve ``(saida, X)``.
-    """
-    X = matriz_rede(df, cab.usa_classe_atual)
-    proba = cab.probabilidades(X)
-    classes = np.asarray(cab.classes, dtype=object)
-    score = proba[:, classes.tolist().index("RISCO")] + proba[:, classes.tolist().index("FALHA")]
-    saida = pd.DataFrame({
-        "arquivo_origem": df["arquivo_origem"].to_numpy(),
-        "linha_origem": df["linha_origem"].to_numpy(),
-        "id_fluxo": df["id_fluxo"].to_numpy(),
-        "anchor_id": df["anchor_id"].to_numpy(),
-        "probe_id": df["probe_id"].to_numpy(),
-        "timestamp_previsao": df["timestamp"].to_numpy(),
-        "horizonte": "proxima_medicao",
-        "classe_prevista": classes[np.argmax(proba, axis=1)],
-    })
-    for i, c in enumerate(classes):
-        saida[f"prob_{c}"] = proba[:, i]
-    saida["score_alerta_rede"] = score
-    saida["alerta_rede"] = score >= cab.limiar_alerta
-    saida["limiar_alerta"] = cab.limiar_alerta
-    saida["versao_modelo"] = cab.metadados.get("versao", "")
-    saida["modelo_rede_treinado_ate"] = cab.metadados.get("treinado_ate_utc", "")
-    saida["tipo_saida"] = "previsao"
-    return saida, X
-
-
-def prever_rede(modelo, caminhos: Sequence[Caminho], tarefa: str = "estado_rede") -> Tuple[pd.DataFrame, Dict[str, Any]]:
-    cab = modelo.cabeca(tarefa)
-    exigir = ["classe_atual"] if cab.usa_classe_atual else []
-    df, rel = ler_rede(list(caminhos), modo="inferencia", exigir=exigir)
-    saida, X = tabela_previsoes_rede(cab, df)
-    relatorio = {
-        "tarefa": tarefa,
-        "ingestao": rel,
-        "linhas_previstas": int(len(saida)),
-        "cobertura": float(len(saida) / max(rel["linhas_lidas"], 1)),
-        "rotulos_presentes": bool("alvo" in df),
-        "deriva": _deriva(X, cab.metadados.get("referencia_psi", {}),
-                          cab.metadados.get("taxa_sentinela_treino", {})),
-    }
-    return saida, relatorio
 
 
 def pontuar_lavagem(cab, prep, X: pd.DataFrame, formato: pd.Series) -> Tuple[np.ndarray, np.ndarray]:
@@ -163,9 +92,6 @@ def prever_lavagem(modelo, caminho: Caminho, historico: Optional[Caminho] = None
         "limiar_alerta": cab.limiar_alerta,
         "motivos_verificaveis": np.concatenate(motivos) if motivos else np.empty(0, dtype=object),
         "historico_incompleto": (t["minuto"].to_numpy() - inicio_hist) < 72 * 60,
-        "sinais_utilizados": "financeiro",
-        "cobertura_vinculo": "sem_vinculo",
-        "pontuacao_fraude_financeira": "indisponivel",
         "versao_modelo": cab.metadados.get("versao", ""),
         "tipo_saida": "previsao",
     })

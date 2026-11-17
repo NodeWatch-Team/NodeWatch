@@ -1,10 +1,4 @@
-"""Preparação dos dados: transformadores da rede e atributos financeiros.
-
-Rede
-    :class:`SentinelaParaNaN` troca os ``-1`` documentados por ausente (só nas
-    colunas em que o ``-1`` é sentinela; ``delta_ttl_clip`` negativo é valor
-    legítimo) e cria um indicador por janela sem RTT. Imputação, remoção de
-    constantes, log e escala são ajustados só no treino, dentro do pipeline.
+"""Preparação dos dados: atributos financeiros e pipelines de treino.
 
 Financeiro (HI-Small)
     :func:`atributos_financeiros` calcula, para cada transação consultada,
@@ -17,108 +11,21 @@ Financeiro (HI-Small)
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
-from src.ml.esquemas import CLASSES_REDE, ESQUEMA_REDE_V1, FEATURES_REDE, PROIBIDAS_REDE
-
 # ---------------------------------------------------------------------------
-# Rede
+# Transformação usada pelos candidatos lineares do treino
 # ---------------------------------------------------------------------------
-SENTINELAS_REDE: Dict[str, float] = ESQUEMA_REDE_V1.sentinelas()
-# As razões instantâneas já têm indicador próprio (rtt_ausente); as janelas
-# ganham um indicador por largura.
-INDICADORES_REDE: Dict[str, str] = {f"sem_rtt_w{k}": f"rtt_p95_max_w{k}" for k in (3, 6, 12)}
-
-
 def log_com_sinal(x):
-    """sign(x)·log1p(|x|): reduz caudas longas (ex.: jitter até 10.809×)."""
+    """sign(x)·log1p(|x|): reduz caudas longas (contagens e somas em USD)."""
     return np.sign(x) * np.log1p(np.abs(x))
-
-
-class SentinelaParaNaN(BaseEstimator, TransformerMixin):
-    """Converte sentinelas em NaN e acrescenta indicadores de ausência."""
-
-    def __init__(self, sentinelas: Optional[Dict[str, float]] = None,
-                 indicadores: Optional[Dict[str, str]] = None):
-        self.sentinelas = sentinelas
-        self.indicadores = indicadores
-
-    def fit(self, X, y=None):
-        X = self._df(X)
-        self.feature_names_in_ = np.asarray(X.columns, dtype=object)
-        self.n_features_in_ = X.shape[1]
-        return self
-
-    def _df(self, X) -> pd.DataFrame:
-        if isinstance(X, pd.DataFrame):
-            return X
-        nomes = getattr(self, "feature_names_in_", None)
-        return pd.DataFrame(np.asarray(X), columns=nomes)
-
-    def transform(self, X):
-        X = self._df(X)
-        esperadas = list(self.feature_names_in_)
-        if list(X.columns) != esperadas:
-            raise ValueError(f"Colunas diferentes das do treino: {list(X.columns)} != {esperadas}")
-        saida = X.astype("float64")
-        sent = self.sentinelas or {}
-        for nome, origem in (self.indicadores or {}).items():
-            if origem in saida:
-                saida[nome] = (saida[origem] == sent.get(origem, np.nan)).astype("float64")
-        for col, valor in sent.items():
-            if col in saida:
-                saida[col] = saida[col].mask(saida[col] == valor)
-        return saida
-
-    def get_feature_names_out(self, input_features=None):
-        nomes = list(self.feature_names_in_)
-        nomes += [n for n, o in (self.indicadores or {}).items() if o in nomes]
-        return np.asarray(nomes, dtype=object)
-
-
-def matriz_rede(df: pd.DataFrame, usar_classe_atual: bool = False) -> pd.DataFrame:
-    """Seleciona os preditores da rede, na ordem fixa do esquema.
-
-    ``alvo``, ``split`` e identificadores nunca entram. ``classe_atual`` só
-    entra (em one-hot) na variante comparativa.
-    """
-    colunas = list(FEATURES_REDE)
-    proibidas = PROIBIDAS_REDE.intersection(colunas)
-    if proibidas:  # proteção contra edição indevida do esquema
-        raise ValueError(f"Colunas proibidas entre os preditores: {sorted(proibidas)}")
-    faltam = [c for c in colunas if c not in df.columns]
-    if faltam:
-        raise ValueError(f"Preditores ausentes: {faltam}")
-    X = df[colunas].astype("float64")
-    if usar_classe_atual:
-        if "classe_atual" not in df:
-            raise ValueError("O modelo usa classe_atual, mas a coluna não foi fornecida.")
-        for classe in CLASSES_REDE[1:]:
-            X[f"classe_atual_{classe}"] = (df["classe_atual"] == classe).astype("float64").to_numpy()
-    return X
-
-
-def montar_pipeline_rede(estimador: Any, linear: bool) -> Pipeline:
-    passos: List[Tuple[str, Any]] = [
-        ("sentinelas", SentinelaParaNaN(SENTINELAS_REDE, INDICADORES_REDE)),
-        ("constantes", VarianceThreshold(0.0)),
-    ]
-    if linear:
-        passos += [
-            ("imputacao", SimpleImputer(strategy="median")),
-            ("log", FunctionTransformer(log_com_sinal, feature_names_out="one-to-one")),
-            ("escala", StandardScaler()),
-        ]
-    passos.append(("modelo", estimador))
-    return Pipeline(passos).set_output(transform="pandas")
 
 
 # ---------------------------------------------------------------------------

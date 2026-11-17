@@ -7,8 +7,6 @@ Contratos de entrada (independentes de nome, caminho, datas, contas ou tamanho):
   o 1º é a origem e o 2º o destino); ``Is Laundering`` opcional;
 * ``transacao_hismall_v1``: os mesmos campos com nomes em português
   (``id_transacao,timestamp,banco_origem,...``); ``rotulo`` opcional;
-* ``rede_v1``: medições de rede com os atributos já preparados (módulo
-  ``estado_rede``; o painel do analista não analisa este formato).
 
 Reconhecidos, mas não analisáveis: CSV de previsões já calculadas e o CSV do
 grafo antigo (formato PaySim, ``step,type,amount,nameOrig,nameDest``), cuja CLI
@@ -24,12 +22,11 @@ from typing import Any, Dict, Iterable, List, Optional
 
 import pandas as pd
 
-from src.ml.esquemas import COLUNAS_HISMALL, FEATURES_REDE
+from src.ml.esquemas import COLUNAS_HISMALL
 
 CAMPOS_PT = ("id_transacao", "timestamp", "banco_origem", "conta_origem", "banco_destino", "conta_destino",
              "valor_pago", "moeda_pagamento", "valor_recebido", "moeda_recebimento", "formato")
 CAMPOS_GRAFO = ("step", "type", "amount", "nameOrig", "nameDest")
-OBRIGATORIAS_REDE = ("id_fluxo", "anchor_id", "probe_id", "timestamp", *FEATURES_REDE)
 
 FORMATOS: Dict[str, Dict[str, Any]] = {
     "hismall_v1": {
@@ -50,20 +47,10 @@ FORMATOS: Dict[str, Dict[str, Any]] = {
                    "id_transacao único e estável (repetido = recusado)",
                    "demais regras iguais às do formato hismall_v1"],
     },
-    "rede_v1": {
-        "dominio": "rede", "nome": "Medições de rede com atributos já preparados",
-        "cabecalho": ",".join(OBRIGATORIAS_REDE),
-        "rotulo": "alvo (opcional; OK, RISCO ou FALHA da próxima medição)",
-        "regras": ["os 21 atributos rede_v1 precisam vir prontos (telemetria bruta não é aceita: "
-                   "a referência p95/p99 por fluxo não está documentada)",
-                   "faixas, domínios e sentinelas -1 conforme docs/ml/DICIONARIO_DADOS.md",
-                   "chave id_fluxo + timestamp repetida = recusada"],
-    },
 }
 
 # Colunas que identificam um CSV de PREVISÕES já calculadas (saída de `python -m src.ml.cli prever`).
 COLUNAS_CHAVE_PREVISAO = {
-    "rede": ("classe_prevista", "score_alerta_rede"),
     "lavagem": ("score_lavagem", "alerta_lavagem"),
 }
 
@@ -94,14 +81,9 @@ def detectar_formato(colunas: List[str]) -> Dict[str, Any]:
         return {"formato": "transacao_hismall_v1", "dominio": "lavagem", "analisavel": True,
                 "possiveis": ["Lavagem (score, alertas, motivos verificáveis)"],
                 "rotulos": "rotulo" in cols, "faltando": {}}
-    if set(OBRIGATORIAS_REDE) <= cols:
-        return {"formato": "rede_v1", "dominio": "rede", "analisavel": True,
-                "possiveis": ["Estado da próxima medição de rede (classe, score, alerta, deriva)"],
-                "rotulos": "alvo" in cols, "faltando": {}}
     faltando = {
         "hismall_v1": [c for c in COLUNAS_HISMALL[:-1] if c not in cols],
         "transacao_hismall_v1": [c for c in CAMPOS_PT if c not in cols],
-        "rede_v1": [c for c in OBRIGATORIAS_REDE if c not in cols],
     }
     if set(CAMPOS_GRAFO) <= cols:
         return {"formato": "csv_grafo_nodewatch", "dominio": None, "analisavel": False,

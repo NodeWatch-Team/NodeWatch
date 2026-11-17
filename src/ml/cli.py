@@ -1,11 +1,10 @@
-"""Linha de comando do módulo de ML.
+"""Linha de comando do módulo de ML (modelo de lavagem).
 
 Exemplos (a partir da raiz do projeto, com o .venv ativo)::
 
-    python -m src.ml.cli auditar --fonte rede
-    python -m src.ml.cli treinar --tarefa todas
-    python -m src.ml.cli avaliar --tarefa todas
-    python -m src.ml.cli prever --tarefa estado_rede --entrada novo.csv --saida previsoes.csv
+    python -m src.ml.cli auditar
+    python -m src.ml.cli treinar --tarefa lavagem
+    python -m src.ml.cli avaliar --tarefa lavagem
     python -m src.ml.cli prever --tarefa lavagem --entrada trans.csv --historico HI-Small_Trans.zip --saida p.csv
     python -m src.ml.cli exemplos
     python -m src.ml.cli tarefas
@@ -23,104 +22,62 @@ from typing import List, Optional
 
 from src.ml import auditoria, experimentos
 from src.ml.config import carregar_config, pasta_artefatos
-from src.ml.modelos import FusaoIndisponivel, ModeloUnificado
+from src.ml.modelos import ModeloUnificado
 
-TAREFAS_TREINO = ("estado_rede", "lavagem", "fusao_rede_transacao", "todas")
+# --fonte e --tarefa ficam por compatibilidade com os comandos documentados; só há a tarefa lavagem.
+TAREFAS = ("lavagem",)
 
 
 def _cmd_auditar(cfg, args) -> int:
     pasta = pasta_artefatos(cfg) / "auditoria"
-    if args.fonte in ("rede", "todas"):
-        from src.ml.ingestao import ler_rede
-        df, rel = ler_rede(cfg["rede"]["arquivos"], modo="treino", conflitos=cfg["rede"]["conflitos"])
-        a = auditoria.auditar_rede(df, cfg["rede"]["multiplo_intervalo_consecutivo"])
-        a["ingestao"] = rel
-        print("auditoria de rede:", auditoria.salvar(a, pasta, "auditoria_rede"))
-    if args.fonte in ("financeiro", "todas"):
-        dados, contas, casados, pendentes = experimentos._carregar_financeiro(cfg)
-        a = auditoria.auditar_financeiro(dados, cfg["financeiro"], contas, casados)
-        a["arquivos_pendentes"] = pendentes
-        print("auditoria financeira:", auditoria.salvar(a, pasta, "auditoria_financeiro"))
+    dados, contas, casados, pendentes = experimentos._carregar_financeiro(cfg)
+    a = auditoria.auditar_financeiro(dados, cfg["financeiro"], contas, casados)
+    a["arquivos_pendentes"] = pendentes
+    print("auditoria financeira:", auditoria.salvar(a, pasta, "auditoria_financeiro"))
     return 0
 
 
 def _cmd_treinar(cfg, args) -> int:
-    if args.tarefa in ("estado_rede", "todas"):
-        experimentos.treinar_estado_rede(cfg)
-    if args.tarefa in ("lavagem", "todas"):
-        experimentos.treinar_lavagem(cfg)
-    if args.tarefa in ("fusao_rede_transacao", "todas"):
-        modelo = ModeloUnificado.carregar_ou_novo(pasta_artefatos(cfg))
-        try:
-            modelo.cabecas["fusao_rede_transacao"].treinar()
-        except FusaoIndisponivel as exc:
-            print(exc)
-            if args.tarefa == "fusao_rede_transacao":
-                return 2
+    experimentos.treinar_lavagem(cfg)
     return 0
 
 
 def _cmd_avaliar(cfg, args) -> int:
-    if args.tarefa in ("estado_rede", "todas"):
-        experimentos.avaliar_estado_rede(cfg)
-    if args.tarefa in ("lavagem", "todas"):
-        experimentos.avaliar_lavagem(cfg)
+    experimentos.avaliar_lavagem(cfg)
     return 0
 
 
 def _cmd_prever(cfg, args) -> int:
     modelo = ModeloUnificado.carregar(pasta_artefatos(cfg))
-    if args.tarefa.startswith("estado_rede"):
-        saida, rel = modelo.prever(args.tarefa, args.entrada)
-    elif args.tarefa == "lavagem":
-        if len(args.entrada) != 1:
-            raise SystemExit("A tarefa lavagem aceita um arquivo de entrada por vez.")
-        saida, rel = modelo.prever("lavagem", args.entrada[0], historico=args.historico)
-    else:
-        modelo.cabeca(args.tarefa)
-        return 2
+    saida, rel = modelo.prever("lavagem", args.entrada, historico=args.historico)
     destino = Path(args.saida)
     destino.parent.mkdir(parents=True, exist_ok=True)
     saida.to_csv(destino, index=False)
     destino.with_suffix(".relatorio.json").write_text(
         json.dumps(rel, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     print(f"{len(saida)} previsões em {destino}")
-    deriva = rel.get("deriva", {}).get("colunas_psi_acima_0_25")
-    if deriva:
-        print(f"Atenção: mudança de distribuição (PSI >= 0,25) em {deriva}")
     return 0
 
 
 def _cmd_exemplos(cfg, args) -> int:
     pasta = pasta_artefatos(cfg) / "exemplos"
     modelo = ModeloUnificado.carregar(pasta_artefatos(cfg))
-    tarefas = modelo.tarefas_disponiveis()
-    if tarefas.get("estado_rede") == "treinada":
-        entrada = experimentos.gerar_exemplo_rede(cfg)
-        saida, rel = modelo.prever("estado_rede", [entrada])
-        saida.to_csv(pasta / "previsoes_rede_exemplo.csv", index=False)
-        (pasta / "previsoes_rede_exemplo.relatorio.json").write_text(
-            json.dumps(rel, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-        print(f"rede: {len(saida)} previsões a partir de {entrada.name}")
-    if tarefas.get("lavagem") == "treinada":
-        entrada = experimentos.gerar_exemplo_lavagem(cfg)
-        saida, rel = modelo.prever("lavagem", entrada, historico=cfg["financeiro"]["transacoes"])
-        saida.to_csv(pasta / "previsoes_lavagem_exemplo.csv", index=False)
-        (pasta / "previsoes_lavagem_exemplo.relatorio.json").write_text(
-            json.dumps(rel, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-        print(f"lavagem: {len(saida)} previsões a partir de {entrada.name}")
+    entrada = experimentos.gerar_exemplo_lavagem(cfg)
+    saida, rel = modelo.prever("lavagem", entrada, historico=cfg["financeiro"]["transacoes"])
+    saida.to_csv(pasta / "previsoes_lavagem_exemplo.csv", index=False)
+    (pasta / "previsoes_lavagem_exemplo.relatorio.json").write_text(
+        json.dumps(rel, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    print(f"lavagem: {len(saida)} previsões a partir de {entrada.name}")
     return 0
 
 
 def _cmd_tarefas(cfg, args) -> int:
     modelo = ModeloUnificado.carregar_ou_novo(pasta_artefatos(cfg))
-    for nome, status in modelo.tarefas_disponiveis().items():
+    tarefas = modelo.tarefas_disponiveis()
+    if not tarefas:
+        print("nenhuma tarefa treinada em", pasta_artefatos(cfg))
+    for nome, status in tarefas.items():
         print(f"{nome}: {status}")
-    fusao = modelo.cabecas.get("fusao_rede_transacao")
-    if fusao is not None and fusao.status != "treinada":
-        print("\nfusao_rede_transacao —", fusao.motivo)
-        for r in fusao.requisitos:
-            print("  pendente:", r)
     return 0
 
 
@@ -143,24 +100,23 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--config", help="arquivo TOML (padrão: ml_config.local.toml ou ml_config.exemplo.toml)")
     sub = p.add_subparsers(dest="comando", required=True)
     a = sub.add_parser("auditar", help="audita os dados e grava JSON/MD em artefatos_ml/auditoria")
-    a.add_argument("--fonte", choices=("rede", "financeiro", "todas"), default="todas")
+    a.add_argument("--fonte", choices=("financeiro",), default="financeiro")
     a.set_defaults(func=_cmd_auditar)
     t = sub.add_parser("treinar", help="ajusta no treino e escolhe na validação")
-    t.add_argument("--tarefa", choices=TAREFAS_TREINO, default="todas")
+    t.add_argument("--tarefa", choices=TAREFAS, default="lavagem")
     t.set_defaults(func=_cmd_treinar)
     v = sub.add_parser("avaliar", help="avaliação final no teste com o artefato congelado")
-    v.add_argument("--tarefa", choices=("estado_rede", "lavagem", "todas"), default="todas")
+    v.add_argument("--tarefa", choices=TAREFAS, default="lavagem")
     v.set_defaults(func=_cmd_avaliar)
     pr = sub.add_parser("prever", help="inferência em arquivos novos (sem reajuste)")
-    pr.add_argument("--tarefa", required=True,
-                    choices=("estado_rede", "estado_rede__com_classe_atual", "lavagem", "fusao_rede_transacao"))
-    pr.add_argument("--entrada", nargs="+", required=True)
-    pr.add_argument("--historico", help="(lavagem) transações anteriores para o histórico das contas")
+    pr.add_argument("--tarefa", choices=TAREFAS, default="lavagem")
+    pr.add_argument("--entrada", required=True, help="CSV ou ZIP no formato do HI-Small (rótulo opcional)")
+    pr.add_argument("--historico", help="transações anteriores, para o histórico das contas")
     pr.add_argument("--saida", required=True)
     pr.set_defaults(func=_cmd_prever)
-    e = sub.add_parser("exemplos", help="gera entradas derivadas sem rótulo e suas previsões")
+    e = sub.add_parser("exemplos", help="gera uma entrada derivada sem rótulo e as previsões dela")
     e.set_defaults(func=_cmd_exemplos)
-    ta = sub.add_parser("tarefas", help="lista as cabeças do modelo unificado e seu status")
+    ta = sub.add_parser("tarefas", help="lista as cabeças do modelo e seu status")
     ta.set_defaults(func=_cmd_tarefas)
     r = sub.add_parser("relatorio", help="gera docs/ml/RELATORIO_ML.md a partir dos resultados salvos")
     r.set_defaults(func=_cmd_relatorio)
@@ -174,9 +130,6 @@ def main(argv: Optional[List[str]] = None) -> int:
     cfg = carregar_config(args.config)
     try:
         return args.func(cfg, args)
-    except FusaoIndisponivel as exc:
-        print(exc, file=sys.stderr)
-        return 2
     except FileNotFoundError as exc:
         # Dados de treino ausentes (máquina nova): o modelo distribuído continua instalado e intacto.
         print(f"[ERRO] {exc}", file=sys.stderr)

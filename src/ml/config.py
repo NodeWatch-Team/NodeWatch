@@ -27,18 +27,6 @@ PADRAO: Dict[str, Any] = {
         # Limita processos paralelos: o RandomForest replica dados por processo.
         "n_jobs": 4,
     },
-    "rede": {
-        # Um ou mais CSVs no formato rede_v1.
-        "arquivos": [],
-        # Duplicatas por id_fluxo+timestamp com valores diferentes: "erro" ou "excluir".
-        "conflitos": "erro",
-        # Dois registros do mesmo fluxo são "consecutivos" se o intervalo for no
-        # máximo este múltiplo da mediana dos intervalos do treino.
-        "multiplo_intervalo_consecutivo": 2.0,
-        # Grade de configurações: "completa" (relatório) ou "rapida" (testes).
-        "grade": "completa",
-        "folds_grupos": 5,
-    },
     "financeiro": {
         "transacoes": "",          # HI-Small_Trans.csv ou .zip
         "contas": "",              # HI-Small_accounts.csv (opcional)
@@ -56,10 +44,6 @@ PADRAO: Dict[str, Any] = {
         "fracao_negativos_treino": 0.2,
         "grade": "completa",
         "tamanho_lote_previsao": 250_000,
-    },
-    "integracao": {
-        # Tolerância do merge_asof entre transação e sinal de rede (segundos).
-        "tolerancia_s": 480,
     },
 }
 
@@ -107,7 +91,6 @@ def carregar_config(caminho: Optional[Union[str, Path]] = None) -> Dict[str, Any
 
     cfg["geral"]["pasta_artefatos"] = resolver(cfg["geral"]["pasta_artefatos"])
     cfg["geral"]["pasta_docs"] = resolver(cfg["geral"]["pasta_docs"])
-    cfg["rede"]["arquivos"] = [resolver(a) for a in cfg["rede"]["arquivos"]]
     for chave in ("transacoes", "contas", "padroes"):
         cfg["financeiro"][chave] = resolver(cfg["financeiro"][chave])
     return cfg
