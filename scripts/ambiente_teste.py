@@ -168,15 +168,12 @@ def preparar(pasta: Path, hismall: Path | None = None, linhas_grande: int = 200_
 
 def servir(pasta: Path, porta: int) -> None:
     from src import api_painel
-    from src.sentinel_ai import app, encerrar_eventos
+    from src.sentinel_ai import app
 
     api_painel.configurar(pasta)  # dados, análises, logs e modelo do painel: só desta pasta
     print(f"\n  Ambiente de teste do NodeWatch: http://127.0.0.1:{porta}/")
     print(f"  Pasta isolada: {pasta}  (apague-a para zerar)\n  Para parar: Ctrl+C\n")
-    try:
-        app.run(host="127.0.0.1", port=porta, debug=False, threaded=True)
-    finally:
-        encerrar_eventos()
+    app.run(host="127.0.0.1", port=porta, debug=False, threaded=True)
 
 
 def main(argv: List[str] | None = None) -> int:
