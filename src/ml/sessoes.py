@@ -2,11 +2,11 @@
 
 Abrir a interface cria uma sessão (uma por aba). A aba renova a sessão com um
 **pulso** periódico; sem pulso por ``ttl_s`` segundos, a sessão expira. Uma
-análise, um replay ou o processamento de eventos só avançam enquanto a sessão
-**responsável** por eles estiver ativa; depois disso, param no próximo ponto
-seguro e só continuam por ação explícita de uma sessão ativa.
+análise só avança enquanto a sessão **responsável** por ela estiver ativa;
+depois disso, para no próximo ponto seguro, fica parcial e não é retomada
+sozinha (ver ``src/painel/pipeline.py``).
 
-Prazos (padrões, ver docs/ml/ANALISE_DATASETS.md):
+Prazos (padrões):
 
 * pulso a cada 15 s com a aba visível. Com a aba em segundo plano, os
   navegadores espaçam os temporizadores (o Chrome chega a 1 por minuto
@@ -20,9 +20,9 @@ Prazos (padrões, ver docs/ml/ANALISE_DATASETS.md):
 * minimizar ou trocar de aba não encerra a sessão;
 * encerrar explicitamente (botão) vale na hora.
 
-Várias abas: cada uma tem a sua sessão. Uma aba vê os trabalhos das outras e
-pode pausá-los ou cancelá-los; retomar um trabalho transfere a
-responsabilidade para a sessão de quem retomou.
+Várias abas: cada uma tem a sua sessão. Uma aba vê as análises das outras e
+pode cancelá-las; assumir uma análise em andamento transfere a
+responsabilidade para a sessão de quem assumiu.
 """
 
 from __future__ import annotations
@@ -117,10 +117,9 @@ class GerenciadorSessoes:
 
 
 def padrao() -> GerenciadorSessoes:
-    """Gerenciador único do processo, compartilhado pelas rotas ``/api/painel`` e ``/api/ml``.
+    """Gerenciador único do processo, usado pelas rotas ``/api/painel`` na raiz do projeto.
 
-    Uma sessão aberta numa das interfaces vale na outra. Os testes e o ambiente de teste
-    passam um gerenciador próprio e não usam este.
+    Os testes e o ambiente de teste passam um gerenciador próprio e não usam este.
     """
     global _padrao
     with _trava_padrao:

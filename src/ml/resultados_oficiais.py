@@ -3,8 +3,7 @@
 Nada é treinado nem recalculado aqui: os números vêm dos JSON gerados por
 ``python -m src.ml.cli treinar``/``avaliar`` (``artefatos_ml/resultados``) ou,
 na falta deles, da cópia versionada em ``docs/ml/resultados``. Alimenta a
-legenda do score e a aba de métricas do painel (``src/api_painel.py``) e a
-seção de ML da interface antiga (``src/api_ml.py``, via ``src/ml/exploracao.py``).
+legenda do score e a aba de métricas do painel (``src/api_painel.py``).
 """
 
 from __future__ import annotations

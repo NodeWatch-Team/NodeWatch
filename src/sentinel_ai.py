@@ -34,8 +34,6 @@ if str(_PROJECT_ROOT) not in sys.path:
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
-from src.api_ml import bp as ml_bp  # noqa: E402
-from src.api_eventos import bp as eventos_bp, encerrar as encerrar_eventos  # noqa: E402
 from src.api_painel import bp as painel_bp  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -48,8 +46,6 @@ app = Flask(__name__)
 # Limite global para corpos lidos na memória (pedidos JSON). O envio de datasets do painel (/api/painel/datasets)
 # desliga este limite no próprio pedido: o arquivo vai para o disco em blocos, sem passar inteiro pela memória.
 app.config["MAX_CONTENT_LENGTH"] = 800 * 1000 * 1000
-app.register_blueprint(ml_bp)
-app.register_blueprint(eventos_bp)
 app.register_blueprint(painel_bp)  # painel do analista (/api/painel)
 
 from src.sentinel_ia import PROVIDER  # noqa: E402
@@ -160,7 +156,4 @@ if __name__ == "__main__":
     print()
     print("\n".join(linhas_de_inicio()))
     print("-" * 55)
-    try:
-        app.run(host=HOST, port=PORT, debug=False, threaded=True)
-    finally:
-        encerrar_eventos()  # grava o instantaneo do estado de eventos, se houver
+    app.run(host=HOST, port=PORT, debug=False, threaded=True)

@@ -20,8 +20,7 @@ Datasets gerados (sintéticos, determinísticos: mesma semente, mesmo arquivo):
     para_enviar/sintetico_5k_rotulado.csv
                                          para testar o envio pela tela
 
-Só o painel do analista (``/`` e ``/api/painel``) usa a pasta isolada. A interface antiga (``/legado``) e as
-rotas ``/api/ml`` continuam lendo a pasta do projeto.
+O painel do analista (``/`` e ``/api/painel``) usa só a pasta isolada.
 """
 
 from __future__ import annotations

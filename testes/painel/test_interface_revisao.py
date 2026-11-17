@@ -81,7 +81,7 @@ def test_formulario_de_envio_tem_so_o_arquivo_de_transacoes_e_nao_limita_o_taman
 
 
 def test_envio_de_dataset_ignora_o_limite_global_do_app(tmp_path):
-    # o MAX_CONTENT_LENGTH do app vale para as rotas da interface antiga; o envio de datasets do painel não tem limite
+    # o MAX_CONTENT_LENGTH do app vale para os pedidos lidos na memória (JSON); o envio de datasets não tem limite
     import io
     import time
 
@@ -97,8 +97,7 @@ def test_envio_de_dataset_ignora_o_limite_global_do_app(tmp_path):
         assert len(conteudo) > 1000
         r = cli.post("/api/painel/datasets", data={"arquivo": (io.BytesIO(conteudo), "grande.csv")},
                      content_type="multipart/form-data")
-        legado = cli.post("/api/ml/importar", data={"arquivo": (io.BytesIO(conteudo), "grande.csv")},
-                          content_type="multipart/form-data")
+        json_grande = cli.post("/api/painel/assistente", json={"pergunta": "x" * 5000})
     finally:
         app.config["MAX_CONTENT_LENGTH"] = original
     assert r.status_code == 201, r.get_json()
@@ -109,4 +108,4 @@ def test_envio_de_dataset_ignora_o_limite_global_do_app(tmp_path):
             break
         time.sleep(0.02)
     assert reg["status"] == "valido" and reg["bytes"] == len(conteudo)
-    assert legado.status_code == 413  # a interface antiga, que lê o corpo na memória, mantém o seu limite
+    assert json_grande.status_code == 413  # pedidos JSON, lidos na memória, mantêm o limite

@@ -81,10 +81,9 @@ def detectar_formato(colunas: List[str]) -> Dict[str, Any]:
     cols = set(colunas)
     previsao = detectar_dominio(colunas)
     if previsao:
-        return {"formato": f"previsao_{previsao}_v1", "dominio": None, "analisavel": False,
-                "possiveis": [f"Explorar previsões ({'rede' if previsao == 'rede' else 'financeira'})"],
-                "faltando": {}, "leitura": "É um arquivo de PREVISÕES já calculadas, não de dados novos. "
-                                          "Abra-o em Explorar previsões (Importar CSV)."}
+        return {"formato": f"previsao_{previsao}_v1", "dominio": None, "analisavel": False, "possiveis": [],
+                "faltando": {}, "leitura": "É um arquivo de PREVISÕES já calculadas (saída de "
+                                          "`python -m src.ml.cli prever`), não de transações novas."}
     if colunas[:len(COLUNAS_HISMALL) - 1] == list(COLUNAS_HISMALL[:-1]) and \
             len(colunas) in (len(COLUNAS_HISMALL) - 1, len(COLUNAS_HISMALL)) and \
             (len(colunas) == len(COLUNAS_HISMALL) - 1 or colunas[-1] == COLUNAS_HISMALL[-1]):

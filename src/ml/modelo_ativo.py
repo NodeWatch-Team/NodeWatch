@@ -1,10 +1,9 @@
 """Modelo carregado no processo do servidor.
 
-O painel (``src.api_painel``) e as rotas antigas (``src.api_eventos``) usam o
-mesmo objeto para a raiz do projeto: o artefato de ~39 MB é lido uma única
-vez por processo (:func:`obter`). Outras raízes (testes, ambiente de teste)
-carregam sem cache (:func:`carregar`), para que cada configuração veja o
-estado atual da pasta.
+Na raiz do projeto, o painel (``src.api_painel``) usa um único objeto por
+processo: o artefato de ~39 MB é lido uma vez (:func:`obter`). Outras raízes
+(testes, ambiente de teste) carregam sem cache (:func:`carregar`), para que
+cada configuração veja o estado atual da pasta.
 
 Instalação limpa: se ``artefatos_ml/`` ainda não tem o modelo e ``modelos/``
 traz o manifesto distribuído, o modelo é instalado (com conferência de

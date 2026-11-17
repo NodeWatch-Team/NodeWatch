@@ -182,7 +182,8 @@ class EstadoFinanceiro:
     def receber(self, tx: Dict[str, Any]) -> Optional[Rejeicao]:
         """Coloca uma transação normalizada no minuto aberto dela.
 
-        ``tx`` vem de :func:`src.ml.eventos.normalizar_transacao`.
+        ``tx`` traz ``id_transacao``, ``minuto`` (inteiro, UTC), bancos, contas,
+        valores, moedas e formato, já validados (ver ``src/painel/pipeline.py``).
         """
         ident, m = tx["id_transacao"], tx["minuto"]
         if ident in self.ids_abertos or ident in self.ids_recentes:

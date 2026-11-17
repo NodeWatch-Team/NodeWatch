@@ -5,9 +5,8 @@ Fluxo: enviar ou escolher um dataset → validar → **Analisar** (ação explí
 Abrir a página ou consultar qualquer rota GET não inicia processamento.
 
 **Sessão da interface.** As rotas marcadas com [sessão] processam dados e
-exigem o cabeçalho ``X-NodeWatch-Sessao`` com uma sessão ativa, a mesma de
-``src/ml/sessoes.py`` usada pelas rotas ``/api/ml`` (em produção, o mesmo
-gerenciador). A página abre a sessão, renova-a com pulsos e, sem pulso por
+exigem o cabeçalho ``X-NodeWatch-Sessao`` com uma sessão ativa
+(``src/ml/sessoes.py``; em produção, o gerenciador único do processo). A página abre a sessão, renova-a com pulsos e, sem pulso por
 ``ttl_s`` segundos, a sessão expira: a análise dela para no próximo ponto
 seguro e fica parcial. Nada é retomado sozinho.
 
@@ -75,7 +74,7 @@ def configurar(raiz: Path, modelo: Any = None, config_financeiro: Optional[Dict[
     raiz = Path(raiz)
     if sessoes is None:
         from src.ml import sessoes as ses
-        # Na raiz do projeto, o gerenciador único do processo (o mesmo das rotas /api/ml antigas).
+        # Na raiz do projeto, o gerenciador único do processo.
         sessoes = ses.padrao() if raiz == _RAIZ else ses.GerenciadorSessoes()
     with _trava:
         registro = Registro(raiz / "artefatos_ml" / "painel" / "logs")

@@ -213,11 +213,10 @@ def test_pagina_externa_nao_inicia_analise_nem_le_dados(cliente, tmp_path):
     r = bruto.post("/api/painel/datasets", data={"arquivo": (io.BytesIO(conteudo), "x.csv")}, content_type="multipart/form-data", headers=cab)
     assert r.status_code == 403
     for rota in ("/api/painel/datasets", "/api/painel/analises", "/api/painel/estado", f"/api/painel/datasets/{reg['id']}",
-                 "/api/painel/operacao/logs", "/api/ml/status"):
+                 "/api/painel/operacao/logs", "/api/painel/operacao/metricas"):
         r = bruto.get(rota, headers={"Origin": EXTERNA})
         assert r.status_code == 403 and "Access-Control-Allow-Origin" not in r.headers, rota
     assert bruto.post("/api/painel/sessao", json={}, headers={"Origin": EXTERNA}).status_code == 403   # nem abre sessão
-    assert bruto.post("/api/ml/sessao", json={}, headers={"Origin": EXTERNA}).status_code == 403       # rotas antigas também
     # nada foi criado
     assert cliente.get("/api/painel/analises").get_json()["analises"] == []
     assert [d["nome"] for d in cliente.get("/api/painel/datasets").get_json()["datasets"]] == ["d.csv"]
@@ -227,7 +226,7 @@ def test_pre_verificacao_cors_de_outra_origem_e_recusada_e_nao_ha_curinga(client
     r = cliente.options("/api/painel/analises", headers={"Origin": EXTERNA, "Access-Control-Request-Method": "POST",
                                                          "Access-Control-Request-Headers": "content-type,x-nodewatch-sessao"})
     assert r.status_code == 403 and "Access-Control-Allow-Origin" not in r.headers
-    for rota in ("/api/painel/estado", "/api/painel/datasets", "/api/ml/status", "/"):
+    for rota in ("/api/painel/estado", "/api/painel/datasets", "/api/painel/operacao/metricas", "/"):
         cabs = cliente.get(rota).headers
         assert cabs.get("Access-Control-Allow-Origin") is None, rota   # sem CORS: a página e a API têm a mesma origem
     assert cliente.get("/api/painel/estado").get_json()["acesso"] == {"origens": "somente a própria página (mesma origem)",

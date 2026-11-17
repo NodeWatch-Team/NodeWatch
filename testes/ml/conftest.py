@@ -116,7 +116,7 @@ def nomes_contas(n: int = 120) -> np.ndarray:
 
 
 def transacoes_normalizadas(trans: pd.DataFrame, nomes: np.ndarray, prefixo: str = "") -> list:
-    """Linhas de ``DadosHISmall.trans`` no formato de :func:`src.ml.eventos.normalizar_transacao`."""
+    """Linhas de ``DadosHISmall.trans`` no formato aceito por :meth:`EstadoFinanceiro.receber`."""
     saida = []
     for r in trans.itertuples(index=False):
         t = float(r.minuto * 60)

@@ -1,7 +1,6 @@
 """Relógio do servidor e formatação de instantes (época em segundos, UTC).
 
-Módulo neutro: usado pelas sessões da interface (``src.ml.sessoes``) e pelo
-processamento de eventos (``src.ml.eventos``), sem que um dependa do outro.
+Usado pelas sessões da interface (``src.ml.sessoes``).
 """
 
 from __future__ import annotations

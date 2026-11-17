@@ -110,7 +110,7 @@ def test_padrao_sem_origens_extras_recusa_null_e_externa(cliente):
     if os.environ.get("NODEWATCH_ORIGENS"):
         pytest.skip("NODEWATCH_ORIGENS definida no ambiente deste teste")
     for origem in ("null", EXTERNA):
-        for metodo, rota in (("get", "/api/painel/estado"), ("get", "/api/ml/status"), ("post", "/api/painel/sessao")):
+        for metodo, rota in (("get", "/api/painel/estado"), ("get", "/api/painel/datasets"), ("post", "/api/painel/sessao")):
             r = getattr(cliente, metodo)(rota, headers={"Origin": origem}, json={} if metodo == "post" else None)
             assert r.status_code == 403 and "Access-Control-Allow-Origin" not in r.headers, (origem, rota)
     pre = cliente.options("/api/painel/analises", headers={"Origin": "null", "Access-Control-Request-Method": "POST"})
@@ -128,13 +128,13 @@ def ver(metodo, rota, origem, **kw):
     return [r.status_code, r.headers.get("Access-Control-Allow-Origin")]
 print(json.dumps({
     "extras": sentinel_ai.ORIGENS_EXTRAS,
-    "null_get": ver("get", "/api/ml/status", "null"),
-    "null_pre": ver("options", "/api/ml/sessao", "null", headers={"Access-Control-Request-Method": "POST"}),
-    "externa_get": ver("get", "/api/ml/status", "https://site-externo.example"),
+    "null_get": ver("get", "/api/painel/datasets", "null"),
+    "null_pre": ver("options", "/api/painel/sessao", "null", headers={"Access-Control-Request-Method": "POST"}),
+    "externa_get": ver("get", "/api/painel/datasets", "https://site-externo.example"),
     "externa_post": ver("post", "/api/painel/sessao", "https://site-externo.example", json={}),
     "externa_pre": ver("options", "/api/painel/analises", "https://site-externo.example", headers={"Access-Control-Request-Method": "POST"}),
     "sem_origem": [c.get("/api/painel/estado").status_code, None],   # a própria página / scripts locais
-    "curinga": [k for k, v in c.get("/api/ml/status", headers={"Origin": "null"}).headers.items() if v == "*"],
+    "curinga": [k for k, v in c.get("/api/painel/datasets", headers={"Origin": "null"}).headers.items() if v == "*"],
     "aviso": "iframes sandbox" in "\n".join(sentinel_ai.linhas_de_inicio()),
 }))
 """
@@ -156,7 +156,7 @@ def test_com_null_ligada_so_null_passa_e_externa_continua_recusada():
 def test_curinga_nunca_e_aceito_na_variavel():
     env = dict(os.environ, NODEWATCH_ORIGENS="*")
     codigo = ("import sys, json; sys.path.insert(0, sys.argv[1]); from src import sentinel_ai as s; "
-              "c = s.app.test_client(); r = c.get('/api/ml/status', headers={'Origin': 'https://site-externo.example'}); "
+              "c = s.app.test_client(); r = c.get('/api/painel/datasets', headers={'Origin': 'https://site-externo.example'}); "
               "print(json.dumps([s.ORIGENS_EXTRAS, r.status_code, r.headers.get('Access-Control-Allow-Origin')]))")
     saida = subprocess.run([sys.executable, "-c", codigo, str(RAIZ)], capture_output=True, text=True, env=env, cwd=RAIZ,
                            timeout=120, encoding="utf-8")
@@ -165,7 +165,7 @@ def test_curinga_nunca_e_aceito_na_variavel():
 
 
 DOCS_CORRIGIDOS = ("docs/ml/EVENTOS.md", "docs/ml/ANALISE_DATASETS.md", "docs/ml/README.md", "docs/ui/README-INTERFACE.md",
-                   "docs/COMO_FUNCIONA_O_NODEWATCH.md", "docs/APRESENTACAO_NODEWATCH.md", "scripts/produtor_eventos_exemplo.py")
+                   "docs/COMO_FUNCIONA_O_NODEWATCH.md", "docs/APRESENTACAO_NODEWATCH.md")
 
 
 @pytest.mark.parametrize("arquivo", DOCS_CORRIGIDOS)
