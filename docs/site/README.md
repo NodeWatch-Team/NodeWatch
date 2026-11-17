@@ -52,4 +52,4 @@ e abra `http://127.0.0.1:8000/`.
 
 ## Imagens
 
-`python scripts/site/preparar_imagens.py` (na raiz, precisa de Pillow) regenera `site-assets/img/` a partir de `docs/ui/capturas/` e `interface/NodeWatchlogo_transparente.png`, sem alterar os originais. As capturas são de uma análise do HI-Small de 01/09/2022 a 03/09/2022, dias que estão no treino do modelo; o artigo avisa que elas ilustram a interface e não medem desempenho.
+`python scripts/site/preparar_imagens.py` (na raiz, precisa de Pillow) regenera `site-assets/img/` a partir de `docs/ui/capturas/` e `docs/marca/nodewatch-logo-transparente.png`, sem alterar os originais. As capturas são de uma análise do HI-Small de 01/09/2022 a 03/09/2022, dias que estão no treino do modelo; o artigo avisa que elas ilustram a interface e não medem desempenho.

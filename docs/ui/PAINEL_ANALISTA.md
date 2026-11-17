@@ -38,7 +38,7 @@ Todos os valores (cores, faixas do score, espaçamento em escala de 4 px, tipogr
 
 **Movimento.** Entrada da vista em sequência curta, barras que crescem, marcador do score que desliza, abertura suave de detalhes, diálogos e gavetas, indicador de atividade na execução. Tudo para com `prefers-reduced-motion`; em `forced-colors` os contornos voltam ao padrão do sistema.
 
-A logo é a oficial, `interface/NodeWatchlogo_transparente.png`. Os arquivos servidos são derivados dela só por recorte das margens e redução proporcional: `assets/nodewatch-logo.png` (navegação lateral) e `assets/nodewatch-simbolo.png` (navegação recolhida, topo em tela estreita, carregamento e ícone da aba). Capturas de antes e depois em `docs/ui/capturas/` (tema Carbon em `docs/ui/capturas/carbon/`).
+A logo é a oficial, `docs/marca/nodewatch-logo-transparente.png`. Os arquivos servidos são derivados dela só por recorte das margens e redução proporcional: `assets/nodewatch-logo.png` (navegação lateral) e `assets/nodewatch-simbolo.png` (navegação recolhida, topo em tela estreita, carregamento e ícone da aba). Capturas de antes e depois em `docs/ui/capturas/` (tema Carbon em `docs/ui/capturas/carbon/`).
 
 ## Sessão da interface
 

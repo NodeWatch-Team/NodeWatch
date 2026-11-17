@@ -318,7 +318,7 @@ Reversão: `git switch main` (nada foi para a `main`) ou `git revert <commit>`.
 **Não verificado:**
 - ciclo de 3 saltos com janela e grau distinto em janela (não foram medidos);
 - a variação do resultado do experimento com outras sementes (rodou uma vez só);
-- o conteúdo dos `.docx` e PDFs de `docs/resumos`.
+- o conteúdo dos `.docx` e PDFs de `docs/academico/resumos`.
 
 **Perguntas:**
 1. O vídeo já foi gravado com alguma frase da lista de afirmações falsas?

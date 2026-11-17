@@ -284,19 +284,22 @@ exemplo e como corrigir. Regras completas em [`docs/ui/PAINEL_ANALISTA.md`](docs
 
 ```
 NodeWatch/
+├── iniciar.bat, iniciar.sh  início com um comando (Windows / Linux e macOS)
 ├── src/
 │   ├── servidor.py          servidor Flask: painel em /, API em /api/painel, /health
 │   ├── seguranca_local.py   só aceita pedidos locais e da própria página
 │   ├── sentinel_ia.py       motor do Sentinel AI (provedores e prompts)
-│   ├── painel/              API (api.py), pipeline da análise, datasets, SQLite, score, assistente, desempenho e logs
-│   └── ml/                  atributos, modelo, inferência, instalação do modelo e treino (CLI)
+│   ├── painel/              API (api.py), pipeline da análise, datasets, SQLite, score, sessões, assistente, logs
+│   ├── ml/                  atributos, modelo, inferência e instalação do modelo (usado pelo servidor)
+│   └── treino/              treino e avaliação offline (python -m src.treino.cli)
 ├── interface/               painel do analista (painel.html + assets, React 18 sem build)
-├── modelos/                 modelo distribuído, manifesto com SHA-256 e metadados
+├── modelos/                 modelo distribuído, manifesto com SHA-256, metadados e resultados/ da avaliação
+├── dados/exemplos/          transações inventadas para testar o painel
 ├── testes/                  testes do painel e do módulo de ML
-├── scripts/                 ambiente de teste, imagens do site e pesquisa HI-Large
-├── docs/                    documentação, relatórios de ML e entregas
-├── index.html, site-assets/ site de apresentação (GitHub Pages)
-├── iniciar.bat, iniciar.sh  início com um comando (Windows / Linux e macOS)
+├── scripts/                 inicializador do Windows, ambiente de teste, exemplos e imagens do site
+├── pesquisa/                HI-Large e atributos de grafo (estudos que não entram no modelo distribuído)
+├── docs/                    manual, ML, interface, decisões, marca e material acadêmico
+└── index.html, site-assets/ site de apresentação (GitHub Pages)
 ```
 
 ---

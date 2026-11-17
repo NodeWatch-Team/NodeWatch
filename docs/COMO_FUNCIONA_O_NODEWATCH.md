@@ -342,7 +342,7 @@ O ciclo C001→C002→C003 vale 29.800, mas o volume do SCC é 30.300: o ciclo s
 
 **O que o painel faz com o grafo.** A rede da conta em foco é explorada salto a salto (busca em largura), e a parte "Ordem no tempo" mostra cadeias com horários compatíveis, inclusive o dinheiro voltando à conta em foco.
 
-**O que foi testado e ficou de fora** (detalhes em `docs/DECISAO_GRAFOS_ML.md`):
+**O que foi testado e ficou de fora** (detalhes em `docs/decisoes/0001-grafos-e-ml.md`):
 - **Atributos de ciclo no modelo.** Reciprocidade, profundidade de cadeia e "fecha ciclo" foram acrescentados ao Random Forest com o mesmo split, a mesma semente e os mesmos hiperparâmetros. O AP de teste foi de 0,4657 para 0,4691, a precisão caiu de 0,642 para 0,617 e o recall por tipologia variou de 1 a 4 casos (`pesquisa/atributos_grafo/resultados/experimento_atributos_grafo.json`).
 - **Kosaraju, DFS e centralidade na tela.** Rodando sobre o grafo da conta em foco numa análise do LI-Small, só 1 dos 30 grafos das contas de maior risco tinha algum grupo, e nenhuma lavagem sem alerta estava dentro de grupos (`pesquisa/atributos_grafo/resultados/estudo_relevancia_estrutura.json`). A informação foi descartada para não carregar a tela.
 

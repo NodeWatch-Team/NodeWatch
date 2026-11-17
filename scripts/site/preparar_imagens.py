@@ -4,7 +4,7 @@ Uso, na raiz do repositório (precisa de Pillow: `pip install pillow`):
     python scripts/site/preparar_imagens.py
 
 Entradas (os originais nunca são alterados):
-    interface/NodeWatchlogo_transparente.png   logo oficial (IMG-08)
+    docs/marca/nodewatch-logo-transparente.png   logo oficial (IMG-08)
     docs/ui/capturas/depois_desktop_*.jpg      capturas reais do painel do analista
 
 Saídas em `site-assets/img/`:
@@ -26,7 +26,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter
 
 RAIZ = Path(__file__).resolve().parents[2]
-LOGO = RAIZ / "interface" / "NodeWatchlogo_transparente.png"
+LOGO = RAIZ / "docs" / "marca" / "nodewatch-logo-transparente.png"
 CAPTURAS_ORIGINAIS = RAIZ / "docs" / "ui" / "capturas"
 SAIDA = RAIZ / "site-assets" / "img"
 
