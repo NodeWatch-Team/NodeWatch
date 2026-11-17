@@ -93,17 +93,14 @@ python -m pytest testes/ml
 - `documentar` gera o dicionário de dados e `docs/ml/esquemas/*.json`.
 - `tarefas` mostra o status das cabeças e o que falta para a fusão.
 
-### Explorar no navegador
+### Usar o modelo no painel
 
-`python src/sentinel_ai.py` (com `requirements.txt` e `requirements-ml.txt` instalados) e abra `http://127.0.0.1:5000/legado#ml` (interface antiga). A seção **Machine Learning** dessa interface lê as previsões de `artefatos_ml/exemplos`, `artefatos_ml/previsoes`, `artefatos_ml/teste` e `docs/ml/exemplos`, importa CSVs de previsões e mostra a avaliação oficial de `artefatos_ml/resultados`. Não treina nem altera nada e não precisa da chave do Gemini. Detalhes na seção 7 de [`docs/ui/README-INTERFACE.md`](../ui/README-INTERFACE.md).
+`python src/sentinel_ai.py` (com `requirements.txt` e `requirements-ml.txt` instalados) e abra `http://127.0.0.1:5000/`. O painel do analista valida um dataset de transações e, com a ação **Analisar**, pontua cada transação com o modelo salvo, sem treinar nada. O financeiro usa `src/ml/incremental.py`, que calcula os mesmos 49 atributos do treino a partir de um estado por conta. Fluxo, formatos e limites: [`docs/ui/PAINEL_ANALISTA.md`](../ui/PAINEL_ANALISTA.md).
 
-### Analisar um dataset novo
+A interface antiga (exploração de previsões, Analisar dataset, eventos, replay e laboratório de simulação) foi removida; ela continua no histórico do Git.
 
-`#ml/analisar` valida um arquivo de transações ou de medições e, com a ação **Analisar dataset**, gera previsões com o modelo salvo, em uma análise isolada, com pausa, retomada e cancelamento. Formatos, limites e sessão: [ANALISE_DATASETS.md](ANALISE_DATASETS.md).
+### Testes
 
-### Eventos (previsões novas, sem treino)
-
-A área `#ml/eventos` e a API `/api/ml/eventos` recebem transações, medições `rede_v1` e vínculos como eventos, com registro durável, fila limitada, um trabalhador e instantâneo; só com uma sessão ativa da interface. O financeiro usa `src/ml/incremental.py`, que calcula os mesmos 49 atributos sem reler o histórico. Há replay histórico, um produtor de exemplo (`scripts/produtor_eventos_exemplo.py`) e um laboratório de simulação da integração rede ↔ transação. Contratos, regras e endpoints: [EVENTOS.md](EVENTOS.md). Desempenho e equivalência: [BENCHMARK_EVENTOS.md](BENCHMARK_EVENTOS.md), gerado por `python scripts/benchmark_eventos.py`.
 - `pytest testes/ml` roda os testes do módulo, todos com dados sintéticos. `test_referencia_financeira.py` compara os atributos vetorizados com uma referência por força bruta (`testes/ml/referencia_financeira.py`).
 
 ### O que está versionado em `docs/ml`
@@ -155,15 +152,14 @@ src/ml/modelos.py      grades, cabeças, ModeloUnificado, fusão bloqueada
 src/ml/avaliacao.py    métricas (classes, eventos, alertas, calibração, PR, top-k)
 src/ml/experimentos.py treino/validação/teste e grupos inéditos
 src/ml/previsao.py     inferência sem reajuste, deriva (PSI) e motivos
-src/ml/integracao.py   contrato e junção temporal rede ↔ transação
-src/ml/eventos.py      contrato de eventos (envelope, identidade, validação)
 src/ml/incremental.py  estado financeiro incremental (atributos sem reconstruir o histórico)
-src/ml/registro_eventos.py registro durável de eventos (fsync antes de aceitar)
-src/ml/servico_eventos.py  fila limitada, trabalhador, recuperação, saídas e instantâneo
+src/ml/formatos.py     formatos de entrada e detecção pelo cabeçalho
+src/ml/provisionamento.py  instalação do modelo distribuído (conferência de SHA-256)
+src/ml/modelo_ativo.py modelo carregado uma vez por processo do servidor
+src/ml/resultados_oficiais.py  métricas oficiais e metadados lidos dos resultados gravados
+src/ml/serializacao.py conversão de resultados para JSON
 src/ml/sessoes.py      sessões de uso da interface (autorizam processamento)
-src/ml/analises.py     análise de datasets novos, em jobs isolados
-src/ml/replay.py       replay histórico em ordem cronológica
-src/ml/simulacao.py    laboratório de SIMULAÇÃO da integração rede ↔ transação
+src/ml/tempo.py        relógio do servidor (época UTC)
 src/ml/relatorio.py    relatório e dicionário gerados dos resultados
 src/ml/cli.py          linha de comando
 ```

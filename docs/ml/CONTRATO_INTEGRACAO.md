@@ -87,11 +87,8 @@ O `score_alerta_rede` estima o estado de rede não-OK na próxima medição. Ele
 3. Rótulos de fraude com origem e data de confirmação, ou critério documentado de maturação para os legítimos.
 4. Custos de erro e capacidade de investigação, para escolher limiares.
 
-## 7. Processamento de eventos
+## 7. Processamento de eventos (removido)
 
-O NodeWatch já recebe transações, medições de rede e vínculos como eventos e aplica esta junção a cada minuto financeiro fechado. Detalhes:
-- regras e endpoints: [EVENTOS.md](EVENTOS.md);
-- contrato de coleta para um aplicativo instrumentado: [CONTRATO_COLETA_EVENTOS.md](CONTRATO_COLETA_EVENTOS.md);
-- laboratório de **simulação** que confere as regras de tempo e de vínculo: `src/ml/simulacao.py`.
-
-A fusão continua indisponível: nada disso substitui os dados da seção 6.
+O processamento de eventos que aplicava esta junção (API de eventos, `src/ml/integracao.py` e o laboratório de
+simulação `src/ml/simulacao.py`) foi removido em 17/11/2026, junto com a interface antiga; ele continua no histórico
+do Git. A fusão continua indisponível: nada disso substituía os dados da seção 6.

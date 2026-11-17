@@ -50,7 +50,6 @@ e abra `http://127.0.0.1:8000/`.
 | 333.954 medições, 135 caminhos, macro-F1 0,75 × persistência 0,71 | `docs/ml/RELATORIO_ML.md`, seção 1 |
 | 49 e 21 atributos | `docs/COMO_FUNCIONA_O_NODEWATCH.md` |
 | Faixas 0–300 / 301–700 / 701–1000 e conversão ancorada no limiar 0,0910 | `src/painel/score.py` |
-| 17.981 transações/s | `docs/ml/BENCHMARK_EVENTOS.md` (lote, atributos + score, sem serviço) |
 
 ## Imagens
 

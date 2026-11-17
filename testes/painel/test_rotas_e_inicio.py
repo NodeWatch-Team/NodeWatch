@@ -83,22 +83,36 @@ def test_scripts_de_apresentacao_mostram_o_endereco_certo(script):
 
 
 # -- documentação --------------------------------------------------------------------------
-def test_documentacao_indica_o_painel_em_raiz_e_legado_como_antiga():
+DOCS_ATUAIS = ("README.md", "docs/ui/PAINEL_ANALISTA.md", "docs/SENTINEL_AI.md", "docs/ml/README.md",
+               "Inicializador Rápido/README.md")
+
+
+def test_documentacao_indica_o_painel_em_raiz():
     painel = (RAIZ / "docs" / "ui" / "PAINEL_ANALISTA.md").read_text(encoding="utf-8")
-    assert "| `http://127.0.0.1:5000/` | **Painel do analista** (interface atual)" in painel
-    assert "| `http://127.0.0.1:5000/legado` | **Interface antiga**, só para consulta" in painel
-    assert "O jeito recomendado é `http://127.0.0.1:5000/legado`" not in painel
+    assert "| `http://127.0.0.1:5000/` | **Painel do analista**" in painel
     readme = (RAIZ / "README.md").read_text(encoding="utf-8")
-    assert "| `http://127.0.0.1:5000/` | **Painel do analista** (interface atual)" in readme
-    assert "| `http://127.0.0.1:5000/legado` | **Interface antiga**" in readme
+    assert "| `http://127.0.0.1:5000/` | **Painel do analista**" in readme
     assert "Em `http://127.0.0.1:5000/#ml" not in readme
-    chat = (RAIZ / "docs" / "SENTINEL_AI.md").read_text(encoding="utf-8")
-    assert "Dashboard: `http://127.0.0.1:5000/`" not in chat and "interface antiga: `http://127.0.0.1:5000/legado`" in chat
+
+
+@pytest.mark.parametrize("arquivo", DOCS_ATUAIS)
+def test_documentos_atuais_nao_mandam_para_a_interface_antiga(arquivo):
+    texto = (RAIZ / arquivo).read_text(encoding="utf-8")
+    assert "5000/#" not in texto and "5000/legado" not in texto, arquivo
+    assert "/api/chat" not in texto and "/api/ml/" not in texto, arquivo
+    for removido in ("EVENTOS.md", "ANALISE_DATASETS.md", "BENCHMARK_EVENTOS.md", "README-INTERFACE.md", "evidencias/"):
+        assert removido not in texto, (arquivo, removido)
+
+
+def test_documentos_longos_avisam_que_descrevem_codigo_removido():
+    for arquivo in ("docs/COMO_FUNCIONA_O_NODEWATCH.md", "docs/APRESENTACAO_NODEWATCH.md"):
+        topo = (RAIZ / arquivo).read_text(encoding="utf-8")[:2000]
+        assert "parte deste documento descreve código removido" in topo, arquivo
 
 
 def test_documentacao_trata_null_como_excecao_temporaria_com_o_risco():
     painel = (RAIZ / "docs" / "ui" / "PAINEL_ANALISTA.md").read_text(encoding="utf-8")
-    trecho = painel[painel.index("**Exceção: abrir a interface antiga como arquivo do disco.**"):painel.index("## Fluxo de uso")]
+    trecho = painel[painel.index("**Exceção: liberar uma origem extra.**"):painel.index("## Fluxo de uso")]
     assert "Não é um modo normal de acesso" in trecho and "**temporariamente**" in trecho
     assert "iframe" in trecho and "sandbox" in trecho and "**Para desligar:**" in trecho and "Remove-Item Env:NODEWATCH_ORIGENS" in trecho
     assert "vem **desligada**" in painel
@@ -162,17 +176,3 @@ def test_curinga_nunca_e_aceito_na_variavel():
                            timeout=120, encoding="utf-8")
     assert saida.returncode == 0, saida.stderr[-2000:]
     assert json.loads(saida.stdout.strip().splitlines()[-1]) == [[], 403, None]
-
-
-DOCS_CORRIGIDOS = ("docs/ml/EVENTOS.md", "docs/ml/ANALISE_DATASETS.md", "docs/ml/README.md", "docs/ui/README-INTERFACE.md",
-                   "docs/COMO_FUNCIONA_O_NODEWATCH.md", "docs/APRESENTACAO_NODEWATCH.md")
-
-
-@pytest.mark.parametrize("arquivo", DOCS_CORRIGIDOS)
-def test_documentos_nao_mandam_para_a_raiz_com_hash_antigo(arquivo):
-    caminho = RAIZ / arquivo
-    if not caminho.is_file():
-        pytest.skip(f"{arquivo} não existe nesta cópia")
-    texto = caminho.read_text(encoding="utf-8")
-    assert "5000/#" not in texto, arquivo                       # áreas antigas: /legado#ml…
-    assert "5000/legado#ml" in texto or "5000/`" in texto, arquivo

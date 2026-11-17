@@ -37,7 +37,7 @@ O projeto inclui:
 ### Pre-requisitos
 
 - Python 3.14 (versão testada; mínimo 3.12, exigido pelo `numpy==2.5.4` de `requirements-ml.txt`)
-- Chave de API do Google Gemini ([aistudio.google.com/apikey](https://aistudio.google.com/apikey)), opcional: ativa o Sentinel AI no Assistente de dúvidas do painel (com a sua autorização) e o chat da interface antiga; o painel funciona sem ela
+- Chave de API do Google Gemini ([aistudio.google.com/apikey](https://aistudio.google.com/apikey)), opcional: ativa o Sentinel AI no Assistente de dúvidas do painel (com a sua autorização); o painel funciona sem ela
 
 ### Windows com poucos cliques: [Inicializador Rápido](Inicializador%20R%C3%A1pido/)
 
@@ -66,8 +66,6 @@ Depois acessar o **painel do analista**:
 http://127.0.0.1:5000/
 ```
 
-A interface antiga (grafos de demonstracao, ML antigo e chat Sentinel AI) fica em `http://127.0.0.1:5000/legado`.
-
 O script:
 
 - Verifica se o Python esta instalado;
@@ -93,7 +91,7 @@ Testado em 12/11/2026 numa cópia limpa (sem `.venv`, sem `.env`, sem `artefatos
 | Bibliotecas Python | ❌ | `pip install -r requirements.txt -r requirements-ml.txt` (precisa de internet uma vez) |
 | Dataset IBM AML HI-Small | ❌ | **não é necessário** para usar o painel; só para treinar de novo (Kaggle, licença CDLA-Sharing-1.0) |
 | Exemplos pequenos para testar | ✅ | `docs/exemplos/*.csv` (dados inventados), já listados no painel |
-| Chave do Gemini (`.env`) | ❌ | opcional; ativa o Sentinel AI no Assistente de dúvidas e o chat da interface antiga |
+| Chave do Gemini (`.env`) | ❌ | opcional; ativa o Sentinel AI no Assistente de dúvidas |
 
 ### Pré-requisitos e hardware
 
@@ -195,7 +193,7 @@ pip install -r requirements.txt -r requirements-ml.txt
 python src/sentinel_ai.py
 ```
 
-`requirements-ml.txt` traz scikit-learn, NumPy e pandas, sem os quais o painel não consegue analisar. O `.env` é opcional: a chave só ativa o Sentinel AI (Assistente de dúvidas com o contexto da análise e chat da interface antiga); sem ela o assistente responde no modo local. Para configurá-lo, copie `.env.example` para `.env` e preencha a chave:
+`requirements-ml.txt` traz scikit-learn, NumPy e pandas, sem os quais o painel não consegue analisar. O `.env` é opcional: a chave só ativa o Sentinel AI (Assistente de dúvidas com o contexto da análise); sem ela o assistente responde no modo local. Para configurá-lo, copie `.env.example` para `.env` e preencha a chave:
 
 ```env
 GEMINI_API_KEY=sua_chave_real_aqui
@@ -207,7 +205,7 @@ Acessar o painel do analista:
 http://127.0.0.1:5000/
 ```
 
-Com a chave, o **Assistente de dúvidas** do painel passa a usar o Sentinel AI (com a sua autorização, por aba) para interpretar a análise aberta; o chat Sentinel AI original continua na interface antiga, `http://127.0.0.1:5000/legado`. Para conferir se a chave funciona, abra o Assistente de dúvidas (botão no canto inferior direito) e clique em **Testar conexão**: o selo mostra *Sentinel AI conectado* ou o motivo da falha (chave recusada, limite de uso, sem conexão, serviço indisponível…). O servidor só lê o `.env` ao iniciar: depois de trocar a chave, reinicie. Detalhes, erros e problemas comuns em [docs/SENTINEL_AI.md](docs/SENTINEL_AI.md).
+Com a chave, o **Assistente de dúvidas** do painel passa a usar o Sentinel AI (com a sua autorização, por aba) para interpretar a análise aberta. Para conferir se a chave funciona, abra o Assistente de dúvidas (botão no canto inferior direito) e clique em **Testar conexão**: o selo mostra *Sentinel AI conectado* ou o motivo da falha (chave recusada, limite de uso, sem conexão, serviço indisponível…). O servidor só lê o `.env` ao iniciar: depois de trocar a chave, reinicie. Detalhes, erros e problemas comuns em [docs/SENTINEL_AI.md](docs/SENTINEL_AI.md).
 
 Health check:
 
@@ -390,7 +388,7 @@ NodeWatch/
 |       ├── Grupo1_Sprint4.md 
 |       └── RFC_Grupo1_Automatos_Fraude.md
 |   ├── ui/
-|       └──  README-INTERFACE.md
+|       └── PAINEL_ANALISTA.md
 |   └── SENTINEL_AI.md
 ├── interface/
 |   └── assets/
@@ -485,29 +483,10 @@ Instalacao, comandos e protocolo estao em [`docs/ml/README.md`](docs/ml/README.m
 
 | endereco | o que e |
 |---|---|
-| `http://127.0.0.1:5000/` | **Painel do analista** (interface atual). E o endereco a usar. |
-| `http://127.0.0.1:5000/legado` | **Interface antiga**, so para consulta: grafos de demonstracao, ML antigo (analise de rede, Analisar dataset, Eventos) e chat Sentinel AI. |
+| `http://127.0.0.1:5000/` | **Painel do analista**, a interface do NodeWatch. |
+| `http://127.0.0.1:5000/health` | Situação do servidor e do Sentinel AI. |
 
-Os enderecos antigos com `#ml` ou `#grafos` redirecionam para a interface antiga. As secoes abaixo descrevem essa interface antiga.
-
-### Interface antiga (`/legado`): Grafos e Machine Learning
-
-O painel tem duas secoes na navegacao principal: **Grafos** (demonstracao estatica com as 16 transacoes de exemplo) e **Machine Learning** (previsoes e avaliacoes ja produzidas por `src/ml`, mais a area **Eventos**, que gera previsoes novas com o modelo salvo, sem treinar). A secao de ML funciona sem chave do Gemini.
-
-```bash
-python -m pip install -r requirements.txt -r requirements-ml.txt
-python src/sentinel_ai.py
-```
-
-Abra `http://127.0.0.1:5000/legado` e clique em **Machine Learning** (ou va direto a `http://127.0.0.1:5000/legado#ml`). Ha seis areas: Visao geral, Analise de rede, Analise financeira, Avaliacao dos modelos, Analisar dataset e Eventos. Arquivos aceitos, limites e exportacao estao na secao 7 de [`docs/ui/README-INTERFACE.md`](docs/ui/README-INTERFACE.md).
-
-### Analisar dataset: dados novos com o modelo salvo
-
-Na interface antiga, em `http://127.0.0.1:5000/legado#ml/analisar`, selecione um CSV de transacoes ou de medicoes, valide e clique em **Analisar dataset**. Cada analise tem estado proprio, com pausa, retomada, cancelamento e historico opcional. Nada e treinado, e nada comeca sozinho: o processamento exige uma sessao ativa da interface. Formatos, limites e sessao em [`docs/ml/ANALISE_DATASETS.md`](docs/ml/ANALISE_DATASETS.md).
-
-### Eventos: replay historico, API de ingestao e estado financeiro incremental
-
-Na interface antiga, em `http://127.0.0.1:5000/legado#ml/eventos`, e possivel reproduzir arquivos existentes em ordem cronologica (rotulados como *replay historico*, nunca "ao vivo"), receber eventos pela API `POST /api/ml/eventos`, com aceitacao duravel e recuperacao depois de queda, e gerar previsoes de rede a partir de um CSV. As transacoes sao pontuadas por um estado por conta que calcula os 49 atributos financeiros sem reconstruir o historico; a equivalencia com o calculo em lote e testada. A fusao rede+transacao continua indisponivel: ha um laboratorio de **simulacao** que confere as regras de vinculo, mas a validacao preditiva depende de dados reais relacionados. Detalhes em [`docs/ml/EVENTOS.md`](docs/ml/EVENTOS.md) e numeros em [`docs/ml/BENCHMARK_EVENTOS.md`](docs/ml/BENCHMARK_EVENTOS.md).
+A interface antiga (`/legado`, com grafos de demonstração, a seção de ML antiga, os eventos e o chat) foi removida; ela continua no histórico do Git.
 
 ---
 

@@ -8,6 +8,9 @@ Versão descrita: branch local ml/sessoes-analise-datasets, a partir do commit 9
 Modelos: estado_rede-20261102T083053Z e lavagem-20261102T083253Z (nenhum foi retreinado para este material)
 Data: 06/11/2026
 -->
+
+> **Atenção (17/11/2026): parte deste documento descreve código removido.** A interface antiga (`/legado`), a área *Analisar dataset*, a exploração de previsões, o processamento de eventos (API `/api/ml/eventos`, replay, laboratório de simulação) e o chat `/api/chat` saíram do sistema. O que este texto diz sobre eles vale só como histórico; o fluxo atual é o do painel do analista, em [`docs/ui/PAINEL_ANALISTA.md`](ui/PAINEL_ANALISTA.md). O PDF correspondente é anterior à remoção. Este documento será revisto na reorganização da documentação.
+
 # NodeWatch: como explicar o projeto com segurança
 
 **Como usar.** Leia o resumo, estude primeiro as cinco perguntas marcadas com ★ e ensaie o roteiro com cronômetro. Os arquivos que sustentam cada número estão na seção 5, separados das falas. Lá também está a lista do que ainda precisa de confirmação.

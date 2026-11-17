@@ -6,17 +6,16 @@ Página inicial do NodeWatch (`http://127.0.0.1:5000/`), feita para o uso diári
 python src/sentinel_ai.py
 ```
 
-Na raiz do projeto, com o ambiente virtual ativo. O terminal mostra o endereço do painel na linha `>> Painel do analista (use este): http://127.0.0.1:5000/`; abra-o no navegador. Não precisa de chave de API.
+Na raiz do projeto, com o ambiente virtual ativo. O terminal mostra o endereço do painel na linha `>> Painel do analista: http://127.0.0.1:5000/`; abra-o no navegador. Não precisa de chave de API.
 
 | endereço | o que é |
 |---|---|
-| `http://127.0.0.1:5000/` | **Painel do analista** (interface atual): dataset, análise, filtros, contas, grafo e tabela. É o endereço a usar. |
-| `http://127.0.0.1:5000/legado` | **Interface antiga**, só para consulta: grafos de demonstração, seção de ML antiga (análise de rede, Analisar dataset, Eventos) e chat Sentinel AI. Não é o painel do analista. |
-| `http://127.0.0.1:5000/#ml`, `/#ml/eventos`, `/#grafos` | Endereços antigos: redirecionam para a interface antiga (`/legado#ml`…). |
+| `http://127.0.0.1:5000/` | **Painel do analista**: dataset, análise, filtros, contas, grafo e tabela. |
+| `http://127.0.0.1:5000/health` | situação do servidor e do Sentinel AI |
 
-A interface antiga mostra no topo a faixa **Interface antiga do NodeWatch**, com o link **Abrir o painel do analista**, em todas as suas seções.
+A interface antiga (`/legado`: grafos de demonstração, seção de ML antiga, eventos e chat) foi removida em 17/11/2026; ela continua no histórico do Git. Endereços antigos com `/legado`, `#ml` ou `#grafos` não levam mais a lugar nenhum.
 
-O painel não funciona aberto como arquivo (`interface/painel.html` com dois cliques): nesse caso a página explica como abri-lo pelo servidor. A visualização de análise de rede saiu do fluxo do analista e ficou na interface antiga; o processamento e os componentes de rede não foram alterados.
+O painel não funciona aberto como arquivo (`interface/painel.html` com dois cliques): nesse caso a página explica como abri-lo pelo servidor.
 
 ## Identidade visual e design system
 
@@ -43,7 +42,7 @@ A logo é a oficial, `interface/NodeWatchlogo_transparente.png`. Os arquivos ser
 
 ## Sessão da interface
 
-Enviar, validar e analisar exigem a sessão da página (`src/ml/sessoes.py`, a mesma das rotas `/api/ml`). A página abre a sessão, guarda-a em `sessionStorage` e manda um pulso a cada 15 s e ao voltar a ficar visível.
+Enviar, validar e analisar exigem a sessão da página (`src/ml/sessoes.py`). A página abre a sessão, guarda-a em `sessionStorage` e manda um pulso a cada 15 s e ao voltar a ficar visível.
 
 - **Janela de expiração: 150 s sem pulso.** Minimizar ou trocar de aba não encerra a sessão: o navegador espaça os pulsos para até 1 por minuto, dentro da janela.
 - Sessão expirada ou encerrada: a análise para no próximo ponto seguro (fim do bloco), guarda o que pontuou e fica **parcial**. A validação em curso também para.
@@ -61,9 +60,7 @@ Enviar, validar e analisar exigem a sessão da página (`src/ml/sessoes.py`, a m
 - Pedidos sem `Origin` (curl, scripts locais) continuam aceitos, mas precisam da sessão para processar.
 - `NODEWATCH_ORIGENS` libera origens extras de propósito; vem **desligada**. `*` é ignorado.
 
-**Exceção: abrir a interface antiga como arquivo do disco.** Não é um modo normal de acesso. Para o painel do analista use `http://127.0.0.1:5000/`; para consultar a interface antiga use `http://127.0.0.1:5000/legado`. Nos dois casos não é preciso configurar nada.
-
-Só se for mesmo preciso abrir `interface/index.html` com dois cliques: a página chega ao servidor como origem `null` e é recusada. Para liberar **temporariamente**, inicie o servidor assim:
+**Exceção: liberar uma origem extra.** Não é um modo normal de acesso: o painel é aberto em `http://127.0.0.1:5000/` e não precisa de configuração. Se uma página de outra origem precisar mesmo chamar a API (por exemplo, um arquivo aberto do disco, que chega como origem `null`), libere-a **temporariamente**:
 
 ```powershell
 $env:NODEWATCH_ORIGENS = "null"; python src/sentinel_ai.py
@@ -112,7 +109,7 @@ A **Legenda** (cores e ícones, estados da análise e do dataset, convenções d
 
 ## Datasets
 
-Formatos aceitos (os mesmos de `docs/ml/ANALISE_DATASETS.md`, só transações financeiras):
+Formatos aceitos (definidos em `src/ml/formatos.py`; só transações financeiras):
 
 - `hismall_v1`: cabeçalho original do IBM AML (`Timestamp,From Bank,Account,To Bank,Account,Amount Received,Receiving Currency,Amount Paid,Payment Currency,Payment Format`), com `Is Laundering` opcional.
 - `transacao_hismall_v1`: os mesmos campos em português (`id_transacao,timestamp,banco_origem,…`), com `rotulo` opcional. Colunas extras são guardadas e podem ser exibidas na tabela.
@@ -121,7 +118,7 @@ O formulário de envio tem um único campo, **Transações** (`.csv` ou `.zip` c
 
 **Envio seguro** (`src/painel/datasets.py`):
 
-- sem limite de tamanho imposto pela aplicação, nem na tela, nem na API, nem para o CSV descompactado de um ZIP. A rota `POST /api/painel/datasets` lê o formulário sem o `MAX_CONTENT_LENGTH` do app (que continua valendo para as rotas da interface antiga, que leem o corpo inteiro na memória); o Werkzeug grava a parte do arquivo num temporário em disco e o servidor a copia em blocos de 1 MB. A validação e a leitura da análise seguem em blocos de 200 mil linhas. O teto prático é o espaço em disco (o envio ocupa o dobro do arquivo enquanto é copiado) e, na análise, a memória (ver Processamento);
+- sem limite de tamanho imposto pela aplicação, nem na tela, nem na API, nem para o CSV descompactado de um ZIP. A rota `POST /api/painel/datasets` lê o formulário sem o `MAX_CONTENT_LENGTH` do app (que continua valendo para os pedidos JSON, lidos inteiros na memória); o Werkzeug grava a parte do arquivo num temporário em disco e o servidor a copia em blocos de 1 MB. A validação e a leitura da análise seguem em blocos de 200 mil linhas. O teto prático é o espaço em disco (o envio ocupa o dobro do arquivo enquanto é copiado) e, na análise, a memória (ver Processamento);
 - o nome enviado vira só um rótulo sanitizado; no disco o arquivo se chama `dados.csv` ou `dados.zip`, em pasta com identificador gerado pelo servidor;
 - tudo fica em `artefatos_ml/painel/datasets/`, pasta ignorada pelo git;
 - nenhuma rota aceita caminho. Os datasets "do servidor" são descobertos em pastas fixas (`dados/`, `docs/exemplos/`, `artefatos_ml/exemplos/` e o arquivo de `ml_config.local.toml`) e identificados por um código.
@@ -267,7 +264,7 @@ Abre como gaveta à direita pelo item **Operação** da navegação; Esc ou o fu
 
 ## Assistente de dúvidas (tecnologia Sentinel AI)
 
-Para o usuário, o assistente se chama **Assistente de dúvidas** (botão fixo no canto inferior direito; o nome não muda). Por dentro, ele usa o **Sentinel AI**, o mesmo motor do chat original: o prompt de sistema, os modos de linguagem (simples ou técnica) e os provedores (Gemini por padrão; Anthropic com `SENTINEL_PROVIDER=anthropic`) estão em `src/sentinel_ia.py`, e o chat da interface antiga (`POST /api/chat`) continua usando esse módulo sem mudança.
+Para o usuário, o assistente se chama **Assistente de dúvidas** (botão fixo no canto inferior direito; o nome não muda). Por dentro, ele usa o **Sentinel AI**: o prompt de sistema, os modos de linguagem (simples ou técnica) e os provedores (Gemini por padrão; Anthropic com `SENTINEL_PROVIDER=anthropic`) estão em `src/sentinel_ia.py`.
 
 **Dois modos, um só assistente** (`POST /api/painel/assistente`):
 
@@ -397,7 +394,7 @@ Testes: `testes/painel/test_exibicao.py` (estático e, com Node instalado, execu
 
 ## Limitações
 
-- **Histórico das contas.** O modelo usa o que cada conta fez antes; o painel só conhece o que está no próprio dataset. Nas primeiras 72 horas do período ele tende a gerar menos alertas (a tela avisa). A área antiga "Analisar dataset", em `/legado`, aceita um arquivo de histórico.
+- **Histórico das contas.** O modelo usa o que cada conta fez antes; o painel só conhece o que está no próprio dataset. Nas primeiras 72 horas do período ele tende a gerar menos alertas (a tela avisa).
 - **Memória.** O dataset validado fica em memória durante a análise. Medido: pico de 2,2 GB no processo com 2,08 milhões de linhas.
 - **Uma análise por vez**, sem pausa e retomada: uma análise interrompida (cancelada ou com a sessão expirada) recomeça do zero.
 - **Acessibilidade:** conferida por teclas reais, contraste calculado, árvore de acessibilidade do Chrome e UI Automation do Windows. A fala de um leitor de tela (NVDA, Narrador) não foi ouvida.

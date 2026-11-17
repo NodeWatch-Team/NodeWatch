@@ -8,6 +8,9 @@ Versão documentada: branch ml/sessoes-analise-datasets, a partir do commit 9095
 Modelos: estado_rede-20261102T083053Z e lavagem-20261102T083253Z (nenhum foi retreinado para este manual)
 Data: 06/11/2026
 -->
+
+> **Atenção (17/11/2026): parte deste documento descreve código removido.** A interface antiga (`/legado`), a área *Analisar dataset*, a exploração de previsões, o processamento de eventos (API `/api/ml/eventos`, replay, laboratório de simulação) e o chat `/api/chat` saíram do sistema. O que este texto diz sobre eles vale só como histórico; o fluxo atual é o do painel do analista, em [`docs/ui/PAINEL_ANALISTA.md`](ui/PAINEL_ANALISTA.md). O PDF correspondente é anterior à remoção. Este documento será revisto na reorganização da documentação.
+
 # Como funciona o NodeWatch
 
 **Como ler este manual.** A Parte I é para quem nunca trabalhou com Machine Learning: explica o problema, os dados e como ler um resultado, e traz um tutorial completo. A Parte II traz os detalhes para manter o sistema: fórmulas, formatos, garantias, resultados e arquivos. Os termos são explicados no primeiro uso e reunidos no glossário (seção 17).

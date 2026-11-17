@@ -1,122 +1,59 @@
 # Sentinel AI
 
-Documentacao tecnica do assistente de analise de fraudes integrado ao dashboard.
+Sentinel AI é a tecnologia por trás do **Assistente de dúvidas** do painel do analista. Para o usuário, o nome na
+tela é "Assistente de dúvidas"; "Sentinel AI" é o nome interno do motor (`src/sentinel_ia.py`).
 
 ## Objetivo
 
-O Sentinel AI auxilia o analista a:
+O assistente ajuda o analista a:
 
-- Interpretar ciclos suspeitos detectados pelo algoritmo DFS;
-- Entender metricas, graficos e componentes visuais do dashboard;
-- Navegar pela interface com orientacao contextual;
-- Diferenciar indicios de investigacao de provas definitivas de fraude.
-- Interpretar Componentes Fortemente Conectados (SCC) e seu significado para a investigacao;
-- Explicar centralidade de grau — contas distribuidoras, coletoras e intermediarias;
-- Orientar sobre a exportacao de analises em JSON.
+- entender os resultados de uma análise (indicadores, score de 0 a 1000, alertas, motivos verificáveis, contas de
+  maior risco e o grafo da conta em foco);
+- entender as métricas oficiais do modelo e os limites delas;
+- navegar pelo painel.
 
-O Sentinel AI **nao toma decisoes e nao prova fraude**. A decisao final cabe **sempre** ao analista humano. A IA indica padroes suspeitos para investigacao — nunca afirma categoricamente que uma transacao e fraudulenta.
+Ele **não toma decisões e não prova lavagem**. A decisão final cabe sempre ao analista humano: um alerta é prioridade
+de investigação, não confirmação.
 
 ## Arquitetura
 
 ```
-interface/index.html        src/sentinel_ai.py         Google Gemini API
- (React + chat flutuante)    (Flask backend)            (LLM)
-         |                          |                        |
-         |--- POST /api/chat ------>|                        |
-         |    {messages, context,   |--- generate_content -->|
-         |     languageMode}        |    {system prompt +    |
-         |                          |     context JSON}      |
-         |                          |<-- resposta texto -----|
-         |<-- {role, content} ------|                        |
+interface/painel.html          src/api_painel.py                 src/sentinel_ia.py          Gemini (ou Anthropic)
+ (Assistente de dúvidas)        POST /api/painel/assistente        prompt + contexto            (opcional)
+         |                               |                                |                          |
+         |-- pergunta (+ autorização) -->|-- resposta local (sempre) ---- |                          |
+         |                               |-- contexto verificado -------->|-- generate_content ----->|
+         |                               |   (src/painel/contexto_sentinel.py)                       |
+         |<-- resposta + estado ---------|<-------------------------------|<-- texto ----------------|
 ```
 
-O motor (provedores, system prompt, modos de linguagem) fica em `src/sentinel_ia.py` e atende dois pontos de entrada:
-o chat da interface antiga (`POST /api/chat`, diagrama acima) e o **Assistente de dúvidas** do painel
-(`POST /api/painel/assistente`), que envia o contexto verificado da análise só depois da autorização do usuário
-(ver docs/ui/PAINEL_ANALISTA.md). Sem `GEMINI_API_KEY`, o chat responde 503 e o Assistente de dúvidas usa o modo local.
+1. Sem chave, ou sem a autorização do usuário na tela, o assistente responde no **modo local**
+   (`src/painel/assistente.py`): glossário, ajuda e números lidos dos resultados gravados.
+2. Com chave e autorização, o servidor monta o contexto verificado da análise aberta
+   (`src/painel/contexto_sentinel.py`: manifesto, recorte, transação em foco, métricas oficiais) e o motor chama o
+   provedor configurado (`SENTINEL_PROVIDER`: `gemini`, padrão, ou `anthropic`).
+3. O bloco `PROMPT_PAINEL` de `src/sentinel_ia.py` define as regras do painel: só o contexto enviado vale como fonte;
+   fatos, inferências, hipóteses e limitações ficam separados; nada de explicação inventada para decisões do modelo.
 
-1. O frontend envia a pergunta do usuario + snapshot JSON do estado do dashboard;
-2. O backend (`src/sentinel_ai.py`) monta o system prompt com modo de linguagem e contexto;
-3. O backend chama a API do Gemini (ou Anthropic como alternativa);
-4. A resposta volta para o chat flutuante no dashboard.
-
-## O que o Sentinel AI recebe
-
-A cada mensagem, o backend monta um contexto dinamico com:
-
-- **System prompt tecnico** — define papel, regras e restricoes;
-- **Snapshot do dashboard** — estado atual em JSON (ciclos detectados, estatisticas, transacoes);
-- **Catalogo da interface** — lista de todos os componentes visuais com nomes, aliases e legendas de cores;
-- **Dados dos graficos** — distribuicao por valor, distribuicao por step temporal, top contas por risco;
-- **Dados de SCC** — componentes fortemente conectados detectados pelo Kosaraju, com volume e flags;
-- **Centralidade de grau** — ranking de contas por grau de entrada/saida e score de risco;
-- **Status de exportacao JSON** — indica que o dashboard permite exportar a analise.
-- **Aliases para erros de digitacao** — reconhece variantes como "distruicao", "distruicao de valores", etc.
-
-O Sentinel AI usa essas informacoes para orientar o analista sobre componentes especificos da interface.
-
-## Componentes reconhecidos
-
-O Sentinel AI conhece todos os componentes da interface via catalogo (`SENTINEL_UI_CATALOG`):
-
-| Componente | Tipo | O que o Sentinel AI orienta |
-|---|---|---|
-| **[Grafo Interativo]** | visualizacao | Contas como nos, transacoes como setas. Vermelho = em ciclo, cinza = normal. |
-| **[Ciclos Detectados]** | painel | Selecao e visualizacao dos ciclos encontrados pela DFS. |
-| **[Detalhes do Ciclo]** | painel | Contas envolvidas, valores transferidos, metricas do ciclo selecionado. |
-| **[Distribuicao por Valor]** | grafico | Barras por faixa de valor. Azul = normal (< R$10k), amarelo = alto (>= R$10k). |
-| **[Distribuicao por Step Temporal]** | grafico | Barras por step. Azul = total, vermelho = transacoes com isFraud=1. |
-| **[Top Contas por Risco]** | ranking | 5 contas com maior score. Vermelho >= 80, amarelo 40-79, verde < 40. |
-| **[Barra de Alerta]** | banner | Banner vermelho com resumo de ciclos detectados. |
-| **[Cards de Estatisticas]** | KPIs | Vertices, Arestas, Volume total, Em risco. |
-| **[Tabela de Transacoes]** | tabela | Todas as transacoes com badges EM CICLO (amarelo) e LABELED (vermelho). |
-| **[Log de Execucao]** | log | Historico de processamento do sistema. |
-| **[Componentes Fortemente Conectados]** | painel | Grupos de contas onde o dinheiro pode circular livremente. SCCs com mais de 1 conta sao suspeitos. |
-| **[Centralidade de Grau]** | ranking | Ranking de contas por grau de entrada/saida, grau total e score de risco. |
-| **[Top Contas por Grau]** | ranking | Top 10 contas com maior grau e risco. |
-| **[Exportacao JSON]** | botao | Exporta a analise completa em arquivo JSON. |
-
-Cada componente possui aliases para tolerar erros de digitacao do usuario.
-
-## Legendas de cores
-
-- **Distribuicao por Valor**: azul = valor normal (< R$10k), amarelo = valor alto (>= R$10k). Nao possui barras vermelhas.
-- **Distribuicao por Step Temporal**: azul = total de transacoes, vermelho = transacoes com isFraud=1.
-- **Top Contas por Risco**: vermelho = score >= 80, amarelo = 40-79, verde = < 40.
-- **Grafo Interativo**: vermelho = conta/aresta em ciclo suspeito, cinza = normal.
-- **Tabela de Transacoes**: badge amarelo = EM CICLO, badge vermelho = LABELED (isFraud=1).
+Detalhes da tela e do que é enviado: [docs/ui/PAINEL_ANALISTA.md](ui/PAINEL_ANALISTA.md#assistente-de-dúvidas-tecnologia-sentinel-ai).
 
 ## Modos de linguagem
 
-| Modo | Descricao |
+| Modo | Descrição |
 |---|---|
-| **Leiga** | Linguagem simples, sem jargoes, com analogias. Padrao inicial. |
-| **Tecnica** | Termos como DFS, multigrafo, layering, vertices, arestas. |
+| **Leiga** | Linguagem simples, sem jargões, com analogias. |
+| **Técnica** | Termos técnicos (atributos, limiar, precisão, recall, grafo). |
 
-A preferencia e salva em `localStorage` e persiste entre sessoes.
-
-## Execucao
-
-O projeto roda localmente com Python:
+## Execução
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate   # Linux/macOS
-# .venv\Scripts\Activate.ps1  # Windows
-pip install -r requirements.txt
-cp .env.example .env         # preencher GEMINI_API_KEY
+python -m pip install -r requirements.txt -r requirements-ml.txt
+cp .env.example .env         # opcional: preencher GEMINI_API_KEY
 python src/sentinel_ai.py
 ```
 
-O chat Sentinel AI original fica na interface antiga: `http://127.0.0.1:5000/legado`. No painel do analista (`http://127.0.0.1:5000/`), o mesmo Sentinel AI está por trás do **Assistente de dúvidas**: quando o usuário autoriza, ele recebe o contexto verificado da análise aberta e interpreta os resultados da Machine Learning. Ver [docs/ui/PAINEL_ANALISTA.md](ui/PAINEL_ANALISTA.md#assistente-de-dúvidas-tecnologia-sentinel-ai).
-
-O motor (provedores, prompt de sistema, modos de linguagem) fica em `src/sentinel_ia.py` e é compartilhado pelas duas interfaces; o bloco `PROMPT_PAINEL` acrescenta as regras do painel (fatos, inferências, hipóteses e limitações; sem explicação inventada para decisões do modelo).
-
-Scripts de inicio rapido:
-- Windows: `.\start_presentation.ps1`
-- Linux/macOS: `./start_presentation.sh`
-
-A API key fica no `.env` (nunca commitado). O Flask serve o painel do analista em `/` e a interface antiga, com o chat, em `/legado`. O frontend detecta automaticamente a URL do backend.
+Abra `http://127.0.0.1:5000/` e use o botão do Assistente de dúvidas, no canto inferior direito. No Windows, o
+[Inicializador Rápido](../Inicializador%20R%C3%A1pido/) faz tudo isso e pergunta o token uma vez.
 
 ## Conexao com o Gemini: chave, verificacao e erros
 
@@ -155,7 +92,7 @@ Para testar agora: botão **Testar conexão** no Assistente de dúvidas, ou `POS
 | `resposta_invalida` | resposta sem texto (bloqueio, corte) | sim |
 | `erro_interno` | qualquer outro erro | sim |
 
-**Reserva local.** Se o Sentinel AI falhar, a pergunta **não** é tratada como "fora da base": se o modo local tem resposta (glossário, ajuda, números gravados), ela vem com o aviso do que falhou; se não tem, a resposta diz que o Sentinel AI não respondeu. A pergunta fica guardada (`pergunta_preservada`) e a mensagem ganha o botão **Tentar de novo** quando a categoria permite. O chat da interface antiga (`/api/chat`) usa a mesma classificação e devolve `{"error", "categoria", "tentar_de_novo"}` com status 429, 502, 503, 504 ou 500.
+**Reserva local.** Se o Sentinel AI falhar, a pergunta **não** é tratada como "fora da base": se o modo local tem resposta (glossário, ajuda, números gravados), ela vem com o aviso do que falhou; se não tem, a resposta diz que o Sentinel AI não respondeu. A pergunta fica guardada (`pergunta_preservada`) e a mensagem ganha o botão **Tentar de novo** quando a categoria permite.
 
 **Como testar.**
 
@@ -183,22 +120,16 @@ Os testes usam um provedor falso (nada sai do computador) e cobrem: leitura da c
 - Erros do backend retornam mensagem classificada, sem dados sensiveis; o detalhe tecnico vai para o log com a chave mascarada (`mascarar` em `src/sentinel_ia.py`);
 - O system prompt proibe o Sentinel AI de inventar dados nao presentes no contexto.
 
-## Validacao
+## Validação
 
-O projeto foi validado com:
+- `python src/sentinel_ai.py` sobe o servidor; `/health` informa o provedor, o modelo e se há chave configurada;
+- sem chave, o painel e o assistente funcionam no modo local;
+- com chave, **Testar conexão** mostra *Sentinel AI conectado* ou o motivo da falha;
+- `.env` fora do controle de versão.
 
-- Backend Flask iniciando com `python src/sentinel_ai.py`;
-- `/health` retornando `{"status": "ok", "apiKeyConfigured": true}`;
-- Dashboard (hoje a interface antiga) servido via Flask, atualmente em `/legado`;
-- Sentinel AI respondendo perguntas no chat;
-- `.env` fora do controle de versao.
+## Limitações
 
-## Limitacoes
-
-- **MVP academico** — nao e um sistema de producao;
-- A IA auxilia a analise, mas **nao prova fraude** — a decisao final cabe ao analista humano;
-- SCC e centralidade complementam ciclos, mas nao provam fraude isoladamente;
-- O Gemini depende de chave valida e cota disponivel (limite gratuito: 20 req/dia para gemini-2.5-flash);
-- Os dados sao locais/embutidos no HTML conforme o escopo atual — upload de CSV externo nao implementado;
-- SQL/banco de dados nao foi implementado nesta etapa;
-- A enumeracao de todos os ciclos simples tem pior caso teorico exponencial em |V|; em redes esparsas o custo e dominado pela travessia DFS.
+- **Protótipo acadêmico**, não é um sistema de produção;
+- a IA auxilia a interpretação, mas **não prova lavagem**: a decisão final cabe ao analista humano;
+- o provedor depende de chave válida e de cota disponível (a cota gratuita do `gemini-2.5-flash` é pequena);
+- o modelo de linguagem só vê o contexto enviado; ele não acessa o arquivo do dataset nem o modelo de ML.
