@@ -2,7 +2,8 @@
 
 Nada é treinado nem recalculado aqui: os números vêm dos JSON gerados por
 ``python -m src.treino.cli treinar``/``avaliar`` (``artefatos_ml/resultados``) ou,
-na falta deles, da cópia versionada em ``docs/ml/resultados``. Alimenta a
+na falta deles, da cópia versionada junto do modelo distribuído (``modelos/resultados``
+e ``modelos/metadados_modelo.json``). Alimenta a
 legenda do score e a aba de métricas do painel (``src/painel/api.py``).
 """
 
@@ -28,8 +29,8 @@ def ler_primeiro(raiz: Path, nome: str, pastas: Sequence[str]) -> Tuple[Optional
     return None, None
 
 
-PASTAS_RESULTADOS = ("artefatos_ml/resultados", "docs/ml/resultados")
-PASTAS_METADADOS = ("artefatos_ml", "docs/ml/resultados")
+PASTAS_RESULTADOS = ("artefatos_ml/resultados", "modelos/resultados")
+PASTAS_METADADOS = ("artefatos_ml", "modelos")
 
 
 def modelo_resumo(raiz: Path) -> Dict[str, Any]:

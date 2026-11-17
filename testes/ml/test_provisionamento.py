@@ -196,14 +196,12 @@ def test_distribuicao_nao_leva_caminhos_da_maquina(tmp_path: Path, modelo_minimo
 
 
 def test_painel_nao_libera_analise_so_com_metadados(repo: Path):
-    """Regressão: numa cópia limpa havia metadados versionados (docs/ml/resultados) sem o .joblib,
-    o painel dizia "modelo disponível" e a análise falhava ao começar."""
+    """Regressão: numa cópia limpa há metadados versionados (modelos/metadados_modelo.json) sem o .joblib
+    instalado; o painel não pode dizer "modelo disponível" (a análise falharia ao começar)."""
     from src.painel import api as api_painel
     from src.servidor import app
 
-    docs = repo / "docs" / "ml" / "resultados"
-    docs.mkdir(parents=True)
-    shutil.copyfile(repo / "modelos" / pv.NOME_METADADOS, docs / pv.NOME_METADADOS)
+    assert (repo / "modelos" / pv.NOME_METADADOS).is_file()
     api_painel.configurar(repo)
     app.config["TESTING"] = True
     estado = app.test_client().get("/api/painel/estado").get_json()

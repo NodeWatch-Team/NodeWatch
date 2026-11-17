@@ -132,13 +132,13 @@ def escrever_csv(df: pd.DataFrame, caminho: Path, com_rotulo: bool) -> None:
 # Pasta isolada
 # ---------------------------------------------------------------------------------------------------------------
 def sincronizar_do_projeto(pasta: Path) -> None:
-    """Copia de novo, a cada preparo, o modelo distribuído e a avaliação histórica do projeto.
+    """Copia de novo, a cada preparo, o modelo distribuído e a avaliação dele (pasta modelos/ do projeto).
 
     O painel de teste lê só da pasta isolada. Uma cópia feita uma vez e nunca atualizada deixaria o ambiente com
     o modelo e o manifesto antigos depois de uma troca de modelo em modelos/. O modelo já instalado em
     pasta/artefatos_ml é atualizado depois por garantir_modelo (versões anteriores ficam no manifesto novo).
     """
-    for origem in ("modelos", "docs/ml/resultados"):
+    for origem in ("modelos",):
         destino = pasta / origem
         if destino.exists():
             shutil.rmtree(destino)

@@ -202,7 +202,7 @@ def estado():
     resumo = modelo_resumo(c["raiz"])
     lav = (resumo.get("cabecas") or {}).get("lavagem") if resumo.get("disponivel") else None
     # Disponível = há modelo carregado ou instalado. Os metadados sozinhos (há uma cópia versionada em
-    # docs/ml/resultados) não bastam: numa instalação limpa eles existiam sem o .joblib, a tela liberava
+    # modelos/) não bastam: numa instalação limpa eles existiam sem o .joblib, a tela liberava
     # o Analisar e a análise falhava.
     tem_modelo = c.get("modelo") is not None or (c["raiz"] / "artefatos_ml" / NOME_ARTEFATO).is_file()
     erro = provisionamento.ultimo_erro()
@@ -690,7 +690,7 @@ def _metricas_do_dataset(aid: str) -> Dict[str, Any]:
 
 
 def _historicas(c: Dict[str, Any]) -> Dict[str, Any]:
-    """Métricas do teste oficial do modelo (docs/ml/resultados), usadas no painel operacional e pelo Sentinel AI."""
+    """Métricas do teste oficial do modelo (modelos/resultados), usadas no painel operacional e pelo Sentinel AI."""
     from src.ml.resultados_oficiais import PASTAS_RESULTADOS, avaliacao_oficial
     oficial = avaliacao_oficial(c["raiz"]).get("lavagem", {})
     historicas: Dict[str, Any]

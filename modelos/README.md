@@ -6,6 +6,7 @@ Esta pasta guarda o **modelo treinado** que o painel do analista usa, para que q
 |---|---|
 | `modelo_unificado.joblib` | O `ModeloUnificado` (`src/ml/modelos.py`): cabeça `lavagem` (Random Forest) e preparador `financeiro` (câmbio, categorias, colunas). 3,0 MB |
 | `metadados_modelo.json` | Resumo legível do modelo: hiperparâmetros, colunas, limiar, períodos, critérios de escolha |
+| `resultados/avaliacao_lavagem.json`, `resultados/treino_lavagem.json` | Avaliação no teste congelado e escolha na validação deste modelo; o painel lê daqui as métricas oficiais |
 | `MANIFESTO_MODELO.json` | SHA-256 e tamanho do modelo, SHA-256 das versões distribuídas anteriores, versões das bibliotecas com que foi salvo, origem e licença dos dados, endereço de download |
 
 ## Como ele chega ao `artefatos_ml/`
@@ -33,7 +34,7 @@ Uma cópia de uma **versão distribuída anterior** (SHA-256 listado em `sha256_
 | Bibliotecas | Python 3.14.0, scikit-learn 1.9.1, NumPy 2.5.4, pandas 3.1.0, joblib 1.6.0 |
 | SHA-256 do modelo | ver `MANIFESTO_MODELO.json` |
 
-Os resultados de treino e de avaliação deste modelo estão em `docs/ml/resultados/` e em [`docs/ml/RELATORIO_ML.md`](../docs/ml/RELATORIO_ML.md).
+Os resultados de treino e de avaliação deste modelo estão em `resultados/` (nesta pasta) e em [`docs/ml/RELATORIO_ML.md`](../docs/ml/RELATORIO_ML.md).
 
 **Reempacotamento de 17/11/2026:** o arquivo distribuído até então (SHA-256 `7cbbfd39…`, 38,8 MB) trazia também as cabeças do módulo didático de telemetria de rede (`estado_rede` e `estado_rede__com_classe_atual`) e o lugar reservado da fusão rede-transação. Elas foram retiradas sem treinar nada: a cabeça `lavagem` e o preparador `financeiro` são os mesmos objetos. Conferido antes da troca: probabilidades idênticas (diferença máxima 0,0) numa matriz aleatória de 100 mil linhas e score, alerta e motivos idênticos em todas as transações de análises completas com 5 mil e 200 mil transações sintéticas. O arquivo caiu para 3,0 MB, e o processo do servidor com o modelo carregado, de cerca de 335 MB para cerca de 210 MB.
 

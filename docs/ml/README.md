@@ -97,7 +97,7 @@ A interface antiga (exploração de previsões, Analisar dataset, eventos, repla
 
 | Em `docs/ml` | Origem |
 |---|---|
-| `resultados/*.json` | Cópias de `artefatos_ml/resultados/*.json`, de `artefatos_ml/auditoria/auditoria_*.json` e de `artefatos_ml/metadados_modelo.json`, com os caminhos absolutos trocados pelo nome do arquivo |
+| `resultados/*.json` | Auditoria financeira e estudos (estrutura, atributos de grafo). A avaliação e o treino do modelo distribuído ficam em `modelos/resultados/`. Cópias de `artefatos_ml/`, com os caminhos absolutos trocados pelo nome do arquivo |
 | `exemplos/previsoes_lavagem_amostra.csv` | Cabeçalho e 200 primeiras linhas de `artefatos_ml/exemplos/previsoes_lavagem_exemplo.csv`, gerado a partir das transações de 10/09/2022 sem rótulo, com o histórico anterior a esse dia (`--historico`) |
 | `exemplos/*.relatorio.json` | Relatórios de inferência dessas previsões, com os caminhos absolutos trocados pelo nome |
 | `RELATORIO_ML.md` | Gerado por `relatorio`, que acrescenta `notas_relatorio.md` ao final |

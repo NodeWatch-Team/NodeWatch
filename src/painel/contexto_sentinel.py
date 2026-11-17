@@ -10,7 +10,7 @@ Tudo aqui é **lido** de onde o painel já lê (nada é estimado, resumido por I
 * ``modelo``             o que o modelo salvo informa sobre si: família, parâmetros, limiar, critérios e as
                          **importâncias globais** (redução média de impureza da floresta), que descrevem o
                          modelo inteiro e **não** a decisão sobre uma transação;
-* ``avaliacao_historica`` métricas do teste oficial (docs/ml/resultados), separadas dos números da análise;
+* ``avaliacao_historica`` métricas do teste oficial (modelos/resultados), separadas dos números da análise;
 * ``limites``            o que o contexto não permite afirmar (para o Sentinel AI dizer, e não inventar).
 
 O que vai para fora: este dicionário segue para o provedor de IA configurado (Gemini por padrão) **só**

@@ -162,7 +162,7 @@ Nas vezes seguintes aparece "(já instalado)" e nada é copiado de novo.
 
 ### Modo real × demonstrativo
 
-Não existe modo demonstrativo: o painel sempre usa o **modelo real**, treinado no IBM AML HI-Small e distribuído em `modelos/`. Os arquivos de `docs/exemplos/` são **dados inventados** para testar o fluxo; eles passam pelo mesmo modelo, mas não representam o desempenho medido (que está em `docs/ml/resultados/`).
+Não existe modo demonstrativo: o painel sempre usa o **modelo real**, treinado no IBM AML HI-Small e distribuído em `modelos/`. Os arquivos de `docs/exemplos/` são **dados inventados** para testar o fluxo; eles passam pelo mesmo modelo, mas não representam o desempenho medido (que está em `modelos/resultados/`).
 
 ### Estratégia de distribuição (resumo)
 

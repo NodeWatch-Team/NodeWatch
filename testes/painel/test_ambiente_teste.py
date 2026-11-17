@@ -63,4 +63,4 @@ def test_preparo_copia_de_novo_o_modelo_do_projeto(tmp_path):
     for nome in ("MANIFESTO_MODELO.json", "metadados_modelo.json", "modelo_unificado.joblib"):
         assert (tmp_path / "modelos" / nome).read_bytes() == (RAIZ / "modelos" / nome).read_bytes(), nome
     assert not (tmp_path / "modelos" / "sobra.txt").exists()
-    assert (tmp_path / "docs" / "ml" / "resultados" / "avaliacao_lavagem.json").is_file()
+    assert (tmp_path / "modelos" / "resultados" / "avaliacao_lavagem.json").is_file()
