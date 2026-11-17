@@ -1,7 +1,7 @@
 """Configuração do pytest.
 
 Adiciona a raiz do projeto ao sys.path para que os testes possam
-importar usando o caminho absoluto (ex.: ``from src.core.graph import Graph``)
+importar usando o caminho absoluto (ex.: ``from src.painel import score``)
 sem depender de instalação prévia (``pip install -e .``).
 """
 

@@ -9,7 +9,7 @@ Modelos: estado_rede-20261102T083053Z e lavagem-20261102T083253Z (nenhum foi ret
 Data: 06/11/2026
 -->
 
-> **Atenção (17/11/2026): parte deste documento descreve código removido.** A interface antiga (`/legado`), a área *Analisar dataset*, a exploração de previsões, o processamento de eventos (API `/api/ml/eventos`, replay, laboratório de simulação) e o chat `/api/chat` saíram do sistema. O que este texto diz sobre eles vale só como histórico; o fluxo atual é o do painel do analista, em [`docs/ui/PAINEL_ANALISTA.md`](ui/PAINEL_ANALISTA.md). O PDF correspondente é anterior à remoção. Este documento será revisto na reorganização da documentação.
+> **Atenção (17/11/2026): parte deste documento descreve código removido.** A interface antiga (`/legado`), a área *Analisar dataset*, a exploração de previsões, o processamento de eventos (API `/api/ml/eventos`, replay, laboratório de simulação), o chat `/api/chat` e a CLI de grafos (`src/main.py`, com DFS, SCC, centralidade e exportação JSON, e `docs/melhorias-e-limitacoes.md`) saíram do sistema. O que este texto diz sobre eles vale só como histórico; o fluxo atual é o do painel do analista, em [`docs/ui/PAINEL_ANALISTA.md`](ui/PAINEL_ANALISTA.md). O PDF correspondente é anterior à remoção. Este documento será revisto na reorganização da documentação.
 
 # Como funciona o NodeWatch
 

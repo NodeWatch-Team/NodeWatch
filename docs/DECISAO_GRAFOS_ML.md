@@ -1,5 +1,7 @@
 # NodeWatch: decisão sobre grafos + ML
 
+> **Atualização (17/11/2026).** Na reorganização do repositório, a CLI de grafos (`src/main.py`), os algoritmos de `src/algoritmos/` (DFS de ciclos, SCC de Kosaraju, centralidade, fan-in/fan-out), `src/grafo/`, `src/leitura/`, os scripts de benchmark da fase de grafos e `dados/exemplo_transacoes.csv` foram **removidos**, assim como a interface antiga. O diagnóstico abaixo descreve o código até o commit `1a7a119`, onde ele continua disponível. A conclusão não muda: o modelo usa só a estrutura de 1 salto e o grafo do painel é uma consulta ao SQLite.
+
 Data: 15/11/2026. Decisão final: **D**. A opção A foi implementada, medida e **descartada** (seção 5). Ficam as correções de texto e as evidências.
 O diagnóstico (seções 1 e 2) foi feito só com leitura. O experimento (seção 3) rodou fora do projeto e não gravou nada em `artefatos_ml/` nem em `modelos/`. O modelo oficial não mudou.
 

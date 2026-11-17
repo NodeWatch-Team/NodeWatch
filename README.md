@@ -12,23 +12,20 @@ Entrega **E3 — MVP: Nucleo Funcional com Primeiras Telas** (Grupo 4).
 
 ## Visao geral
 
-MVP academico de deteccao de fraudes em transacoes financeiras usando grafos.
+Protótipo acadêmico de **detecção de lavagem de dinheiro** (AML) em transações financeiras, treinado no IBM AML
+HI-Small (dados sintéticos). Não bloqueia nem aprova nada: ordena as transações por prioridade de investigação, e a
+decisão é sempre do analista.
 
-O sistema modela transacoes financeiras como um **multigrafo direcionado ponderado**:
-
-- **Contas bancarias** sao vertices do grafo;
-- **Transacoes financeiras** sao arestas direcionadas ponderadas (origem -> destino, peso = valor);
-- **DFS (Depth-First Search)** detecta ciclos suspeitos — padrao tipico de lavagem de dinheiro (*layering*), em que o capital retorna a conta de origem apos percorrer intermediarias;
-- **SCC (Componentes Fortemente Conectados)** via algoritmo de Kosaraju identifica grupos de contas onde o capital pode circular livremente;
-- **Centralidade de grau** mede quantas transacoes entram e saem de cada conta, identificando hubs distribuidores, coletores e intermediarios.
-
-O projeto inclui:
-
-- **Dashboard visual interativo** com grafo, estatisticas, SCC, centralidade e tabelas;
-- **Sentinel AI** — assistente de analise integrado ao dashboard, alimentado pelo Google Gemini;
-- **Exportacao JSON** — salva resultados da analise em arquivo JSON;
-- **Execucao com Python** — roda localmente com um unico comando;
-- **Scripts de apresentacao** — inicio rapido com um unico comando.
+- **Machine Learning:** um Random Forest (`modelos/modelo_unificado.joblib`) pontua cada transação com 49 atributos
+  calculados só com o passado de cada conta (contagens e somas em janelas de 6, 24 e 72 h, novidade do par de contas,
+  contrapartes distintas, desvio de valor, formato e moeda). O resultado vira um **score de 0 a 1000**; a partir de
+  701, a transação gera alerta.
+- **Grafos:** contas são vértices e transações são arestas. O modelo recebe medidas de 1 salto (grau distinto de cada
+  conta e se o par é novo), e o painel desenha a rede da conta em foco, salto a salto, com a ordem no tempo das cadeias.
+- **Painel do analista** (`http://127.0.0.1:5000/`): envio e validação do dataset, acompanhamento da análise,
+  visão geral, contas prioritárias, grafo da conta, tabela com filtros, desempenho e logs.
+- **Sentinel AI:** a tecnologia por trás do Assistente de dúvidas do painel; funciona no modo local sem chave e usa o
+  Gemini (ou a Anthropic) com a autorização do analista.
 
 ---
 
@@ -249,73 +246,14 @@ Para obter uma chave: acesse [Google AI Studio](https://aistudio.google.com/apik
 
 ---
 
-## CLI (linha de comando)
-
-Tambem e possivel rodar a deteccao de ciclos via CLI:
-
-```bash
-python src/main.py --input dados/exemplo_transacoes.csv
-```
-
-Opcoes adicionais:
-
-```bash
-# Exibir Componentes Fortemente Conectados (SCC)
-python src/main.py --input dados/exemplo_transacoes.csv --scc
-
-# Exibir centralidade de grau
-python src/main.py --input dados/exemplo_transacoes.csv --centralidade
-
-# Exportar resultado em JSON
-python src/main.py --input dados/exemplo_transacoes.csv --export-json --output minha_analise
-
-# Tudo junto
-python src/main.py --input dados/exemplo_transacoes.csv --scc --centralidade --export-json
-```
-
----
-
 ## Como rodar os testes
 
 ```bash
-pytest testes/ -v
+python -m pytest -q
 ```
 
-Saida esperada:
-
-```
-collected 27 items
-
-testes/test_centralidade.py::test_graus_basicos PASSED
-testes/test_centralidade.py::test_volumes PASSED
-testes/test_centralidade.py::test_risco_acumulado_por_ciclo PASSED
-testes/test_centralidade.py::test_classificacao_hub_type PASSED
-testes/test_centralidade.py::test_ordenacao_por_risk_score PASSED
-testes/test_centralidade.py::test_grafo_vazio_retorna_lista_vazia PASSED
-testes/test_cycle_detection.py::test_caso_base_ciclo_conhecido PASSED
-testes/test_cycle_detection.py::test_grafo_vazio_retorna_lista_vazia PASSED
-testes/test_cycle_detection.py::test_grafo_apenas_com_vertices_isolados PASSED
-testes/test_cycle_detection.py::test_grafo_completo_executa_e_encontra_ciclos PASSED
-testes/test_cycle_detection.py::test_dag_nao_possui_ciclos PASSED
-testes/test_cycle_detection.py::test_self_loop_e_um_ciclo PASSED
-testes/test_cycle_detection.py::test_prioridade_por_tipo_transacao PASSED
-testes/test_exportador.py::test_secoes_obrigatorias_sempre_presentes PASSED
-testes/test_exportador.py::test_secoes_opcionais_incluidas PASSED
-testes/test_exportador.py::test_secoes_opcionais_ausentes PASSED
-testes/test_exportador.py::test_save_analysis_cria_arquivo PASSED
-testes/test_exportador.py::test_sanitize_name PASSED
-testes/test_exportador.py::test_sem_sobrescrita PASSED
-testes/test_exportador.py::test_estatisticas_corretas PASSED
-testes/test_scc.py::test_ciclo_forma_scc_suspeito PASSED
-testes/test_scc.py::test_grafo_vazio_retorna_lista_vazia PASSED
-testes/test_scc.py::test_vertices_isolados_sao_sccs_individuais PASSED
-testes/test_scc.py::test_dag_nao_tem_scc_suspeito PASSED
-testes/test_scc.py::test_volume_interno_calculado_corretamente PASSED
-testes/test_scc.py::test_dois_sccs_independentes PASSED
-testes/test_scc.py::test_ordenacao_suspeitos_primeiro PASSED
-
-27 passed in 0.0Xs
-```
+Saída esperada (17/11/2026): `332 passed`. Os testes usam dados sintéticos e pastas temporárias; nenhum precisa do
+HI-Small nem de chave de API.
 
 ### Ambiente de teste local
 
@@ -335,35 +273,24 @@ Direto pelo Python (`.venv\Scripts\python scripts\ambiente_teste.py`): `--prepar
 | `sintetico_200k_rotulado.csv` | log longo: acima de 8 M px a rolagem fica proporcional |
 | `HI-Small_Trans.zip` (com `--hismall`) | volume real (5 milhões de transações, cerca de 7 min) |
 
-Em `artefatos_teste/para_enviar/` fica `sintetico_5k_rotulado.csv`, para testar o envio pela tela (o envio não tem limite de tamanho nem campo de tipologia). Os dados sintéticos são determinísticos (mesma semente, mesmos arquivos) e têm tentativas de lavagem FAN-OUT, FAN-IN e CYCLE, com rótulo 1; `testes/painel/test_ambiente_teste.py` confere que eles passam na validação e que a análise conclui com o rótulo certo. Só o painel do analista usa a pasta isolada: `/legado` e `/api/ml` continuam lendo a pasta do projeto.
+Em `artefatos_teste/para_enviar/` fica `sintetico_5k_rotulado.csv`, para testar o envio pela tela (o envio não tem limite de tamanho nem campo de tipologia). Os dados sintéticos são determinísticos (mesma semente, mesmos arquivos) e têm tentativas de lavagem FAN-OUT, FAN-IN e CYCLE, com rótulo 1; `testes/painel/test_ambiente_teste.py` confere que eles passam na validação e que a análise conclui com o rótulo certo.
 
 ---
 
-## Algoritmos
-
-| Algoritmo                          | Arquivo                             | Complexidade      | Saida                                           |
-| ---------------------------------- | ----------------------------------- | ----------------- | ----------------------------------------------- |
-| DFS para deteccao de ciclos        | `src/algoritmos/cycle_detection.py` | O(V + E) por DFS  | Lista de CycleResult com prioridade e categoria  |
-| SCC (Kosaraju)                     | `src/algoritmos/scc.py`             | O(V + E)          | Lista de SCCResult com volume e flags            |
-| Centralidade de grau               | `src/algoritmos/centralidade.py`    | O(V + E)          | Lista de AccountCentrality com risk score        |
-| Exportacao JSON                    | `src/leitura/exportador.py`         | O(V + E)          | Arquivo JSON com analise completa                |
-
 ## Formato do CSV de entrada
 
-```csv
-step,type,amount,nameOrig,nameDest,isFraud
-1,TRANSFER,1000.00,C001,C002,0
-1,TRANSFER,1500.00,C002,C003,0
-1,TRANSFER,2000.00,C003,C001,1
-```
+Dois formatos de transações são aceitos (`src/ml/formatos.py`), em CSV UTF-8 separado por vírgula ou num `.zip`
+com um único CSV:
 
-Mapeamento campo -> grafo:
+- `hismall_v1`: cabeçalho original do IBM AML
+  (`Timestamp,From Bank,Account,To Bank,Account,Amount Received,Receiving Currency,Amount Paid,Payment Currency,Payment Format`),
+  com `Is Laundering` opcional;
+- `transacao_hismall_v1`: os mesmos campos em português
+  (`id_transacao,timestamp,banco_origem,conta_origem,banco_destino,conta_destino,valor_pago,moeda_pagamento,valor_recebido,moeda_recebimento,formato`),
+  com `rotulo` opcional.
 
-- `nameOrig` -> vertice de origem
-- `nameDest` -> vertice de destino
-- `amount`   -> peso da aresta
-- `type`     -> tipo da transacao (metadado)
-- `isFraud`  -> rotulo auxiliar (validacao)
+Linhas com data, banco, conta, valor ou moeda inválidos ficam fora da análise e são contadas, com coluna, linha de
+exemplo e como corrigir. Regras completas em [`docs/ui/PAINEL_ANALISTA.md`](docs/ui/PAINEL_ANALISTA.md).
 
 ---
 
@@ -371,60 +298,20 @@ Mapeamento campo -> grafo:
 
 ```
 NodeWatch/
-├── dados/
-|   └── analises/
-|       └── exemplo_transacoes.csv
-├── docs/
-|   ├── entregas/
-|       ├── E1_Grupo4.md
-|       ├── E2_Grupo4.md
-|       ├── E3_Grupo4.md
-|       ├── diagramaE1.png
-|       └── diagramaE2.png
-|   ├── lfa/
-|       ├── Grupo1_Sprint1.md
-|       ├── Grupo1_Sprint2.md 
-|       ├── Grupo1_Sprint3.md 
-|       ├── Grupo1_Sprint4.md 
-|       └── RFC_Grupo1_Automatos_Fraude.md
-|   ├── ui/
-|       └── PAINEL_ANALISTA.md
-|   └── SENTINEL_AI.md
-├── interface/
-|   └── assets/
-|       └── logo.png
-|   ├──  NodeWatchlogo_transparente.png
-|   └──  index.html
 ├── src/
-|   ├── algortimos/
-|       ├── __init__.py
-|       ├── centralidade.py
-|       ├── cycle_detection.py
-|       └── scc.py
-|   ├── grafo/
-|       ├── __init__.py
-|       └── graph.py
-|   ├── leitura/
-|       ├── __init__.py
-|       ├── exportador.py
-|       └── file_reader.py
-|   ├── __init__.py
-|   ├── main.py
-|   └── sentinal_ai.py
-├── testes/
-|   ├── __init__.py
-|   ├── test_centralidade.py
-|   ├── test_cycle_detection.py
-|   ├── test_exportador.py
-|   └── test_scc.py
-├── .env.example
-├── .gitignore
-├── LICENSE
-├── README.md
-├── conftest.py
-├── requirements.txt
-├── start_presentation.ps1
-└── start_presentation.sh 
+│   ├── sentinel_ai.py       servidor Flask: painel em /, API em /api/painel, /health
+│   ├── api_painel.py        rotas do painel do analista
+│   ├── seguranca_local.py   só aceita pedidos locais e da própria página
+│   ├── sentinel_ia.py       motor do Sentinel AI (provedores e prompts)
+│   ├── painel/              pipeline da análise, datasets, SQLite, score, assistente, desempenho e logs
+│   └── ml/                  atributos, modelo, inferência, instalação do modelo e treino (CLI)
+├── interface/               painel do analista (painel.html + assets, React 18 sem build)
+├── modelos/                 modelo distribuído, manifesto com SHA-256 e metadados
+├── testes/                  testes do painel e do módulo de ML
+├── scripts/                 ambiente de teste, imagens do site e pesquisa HI-Large
+├── docs/                    documentação, relatórios de ML e entregas
+├── index.html, site-assets/ site de apresentação (GitHub Pages)
+└── Inicializador Rápido/    início com poucos cliques no Windows
 ```
 
 ---
@@ -441,28 +328,26 @@ NodeWatch/
 
 ## Validacao
 
-O projeto foi validado com:
-
-- Backend Flask iniciando com `python src/sentinel_ai.py`;
-- `/health` retornando `{"status": "ok", "apiKeyConfigured": true}`;
-- Dashboard servido via Flask na rota `/`;
-- Sentinel AI respondendo perguntas no chat;
-- `.env` fora do controle de versao (`git status` limpo).
+- `python -m pytest -q` passa por inteiro (332 testes);
+- `python src/sentinel_ai.py` instala e confere o modelo, sobe o servidor e mostra o endereço do painel;
+- `/health` responde `{"status": "ok", ...}`;
+- uma análise do exemplo `docs/exemplos/transacoes_inventadas.csv` termina com 12 transações válidas e 3 recusadas;
+- `.env` fica fora do controle de versão.
 
 ---
 
 ## Fluxo do programa
- 
-- CSV
-  - └→ Validação (file_reader)
-  - └→ Grafo (graph.py)
-    - ├→ DFS          → Ciclos com prioridade de risco
-    - ├→ Centralidade → Risk score por conta
-    - └→ SCC          → Grupos de contas interligadas
-      - └→ CLI (terminal)
-      - └→ Dashboard (navegador)
-      - └→ JSON (dados/analises/)
-                   
+
+```
+CSV ou ZIP de transações
+  └→ validação em blocos (src/painel/datasets.py)            linhas inválidas ficam fora e são contadas
+  └→ ordenação por data e hora (src/painel/pipeline.py)
+  └→ 49 atributos por transação, só com o passado (src/ml/incremental.py)
+  └→ Random Forest (modelos/modelo_unificado.joblib) → score 0–1000 e alerta (src/painel/score.py)
+  └→ resultados.sqlite + manifesto.json (artefatos_ml/painel/analises/<id>/)
+  └→ painel: visão geral, contas prioritárias, grafo da conta, tabela, desempenho e logs
+```
+
 ---
 
 ## Modulo de ML (`src/ml`)
@@ -492,10 +377,9 @@ A interface antiga (`/legado`, com grafos de demonstração, a seção de ML ant
 
 ## Limitacoes
 
-- MVP academico — nao e um sistema de producao;
-- A IA auxilia a analise, mas **nao prova fraude** — a decisao final cabe ao analista humano;
-- O Gemini depende de chave valida e cota disponivel (limite gratuito de 20 req/dia para gemini-2.5-flash);
-- A secao Grafos usa dados de exemplo embutidos no HTML (demonstracao estatica) — upload de CSV para grafos nao implementado; a secao Machine Learning le e importa CSVs de previsoes (ate 64 MB, so em memoria) e processa eventos com um trabalhador por processo e estado em memoria (API local, sem autenticacao);
-- SQL/banco de dados nao foi implementado nesta etapa;
-- A enumeracao de todos os ciclos simples tem pior caso teorico exponencial em |V|; em redes esparsas o custo e dominado pela travessia DFS;
-- SCC e centralidade complementam a analise de ciclos, mas nao provam fraude isoladamente.
+- Protótipo acadêmico, treinado e avaliado em dados **sintéticos** (IBM AML HI-Small); não é um sistema de produção;
+- o score é uma ordem de prioridade, não probabilidade calibrada nem prova de lavagem: a decisão final cabe ao analista;
+- o painel só conhece o histórico que está no próprio dataset: nas primeiras 72 h do período os atributos de
+  contagem ficam subestimados e o modelo tende a gerar menos alertas (a tela avisa);
+- uma análise por vez, com o dataset validado em memória durante a análise;
+- o Sentinel AI depende de chave válida e de cota disponível no provedor.

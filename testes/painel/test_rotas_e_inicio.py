@@ -100,7 +100,8 @@ def test_documentos_atuais_nao_mandam_para_a_interface_antiga(arquivo):
     texto = (RAIZ / arquivo).read_text(encoding="utf-8")
     assert "5000/#" not in texto and "5000/legado" not in texto, arquivo
     assert "/api/chat" not in texto and "/api/ml/" not in texto, arquivo
-    for removido in ("EVENTOS.md", "ANALISE_DATASETS.md", "BENCHMARK_EVENTOS.md", "README-INTERFACE.md", "evidencias/"):
+    for removido in ("EVENTOS.md", "ANALISE_DATASETS.md", "BENCHMARK_EVENTOS.md", "README-INTERFACE.md", "evidencias/",
+                     "src/main.py", "exemplo_transacoes.csv", "melhorias-e-limitacoes.md", "src/algoritmos"):
         assert removido not in texto, (arquivo, removido)
 
 
