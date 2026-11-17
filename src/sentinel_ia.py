@@ -1,11 +1,11 @@
 """Sentinel AI — motor de IA do NodeWatch (provedores, prompts e modos de linguagem).
 
-Nome interno da tecnologia: **Sentinel AI**. Na interface nova ele aparece como **"Assistente de dúvidas"**
-(src/api_painel.py, rota /api/painel/assistente); na interface antiga, como o chat "Sentinel AI" (/api/chat em
-src/sentinel_ai.py). Os dois usam este mesmo módulo: o mesmo prompt de sistema, os mesmos modos de linguagem
-(leiga e técnica) e os mesmos provedores (Gemini por padrão; Anthropic com SENTINEL_PROVIDER=anthropic).
+Nome interno da tecnologia: **Sentinel AI**. No painel ele aparece como **"Assistente de dúvidas"**
+(src/api_painel.py, rota /api/painel/assistente), com dois modos de linguagem (leiga e técnica) e dois
+provedores (Gemini por padrão; Anthropic com SENTINEL_PROVIDER=anthropic).
 
-Extraído de src/sentinel_ai.py sem mudar o comportamento do chat antigo.
+O prompt de sistema (SYSTEM_PROMPT) ainda traz instruções escritas para a interface antiga, já removida
+(grafo de demonstração, ciclos DFS, catálogo de componentes); PROMPT_PAINEL manda o modelo ignorá-las.
 """
 
 from __future__ import annotations

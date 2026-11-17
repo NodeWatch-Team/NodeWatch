@@ -352,8 +352,8 @@ def datasets_enviar():
     from src.painel.datasets import ErroDataset, problema
     sid = _sessao()
     sessoes = _c()["sessoes"]
-    # Sem limite de tamanho no envio de datasets. O MAX_CONTENT_LENGTH do app protege as rotas da interface antiga,
-    # que leem o corpo inteiro na memória; aqui o formulário é lido sem ele (max_content_length=None). O Werkzeug
+    # Sem limite de tamanho no envio de datasets. O MAX_CONTENT_LENGTH do app protege os pedidos lidos inteiros
+    # na memória (JSON); aqui o formulário é lido sem ele (max_content_length=None). O Werkzeug
     # grava a parte do arquivo num temporário em disco enquanto lê o corpo, e RepositorioDatasets.enviar copia esse
     # temporário em blocos de 1 MB: a memória usada não cresce com o tamanho do arquivo. Campos que não são arquivo
     # continuam limitados por max_form_memory_size e max_form_parts (padrões do Werkzeug).
