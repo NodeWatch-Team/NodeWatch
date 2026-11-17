@@ -40,7 +40,7 @@ import pyarrow.parquet as pq
 from sklearn.metrics import average_precision_score
 
 import comum
-from src.ml.avaliacao import limiar_max_f1, metricas_binarias, recall_por_grupo
+from src.treino.avaliacao import limiar_max_f1, metricas_binarias, recall_por_grupo
 from src.ml.modelos import ModeloUnificado, _copia_uma_thread, recriar_estimador
 from src.ml.preparacao import PreparadorFinanceiro, montar_pipeline_financeiro
 

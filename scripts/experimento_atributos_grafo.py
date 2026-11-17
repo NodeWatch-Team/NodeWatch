@@ -26,7 +26,7 @@ sys.path.insert(0, args.projeto)
 
 from sklearn.metrics import average_precision_score  # noqa: E402
 
-from src.ml.avaliacao import limiar_max_f1, metricas_binarias, recall_por_grupo  # noqa: E402
+from src.treino.avaliacao import limiar_max_f1, metricas_binarias, recall_por_grupo  # noqa: E402
 from src.ml.config import PADRAO  # noqa: E402
 from src.ml.ingestao import casar_padroes, ler_hismall, ler_padroes  # noqa: E402
 from src.ml.modelos import recriar_estimador  # noqa: E402

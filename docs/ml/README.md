@@ -50,30 +50,30 @@ Os dados não estão no repositório; vêm do `.rar` entregue pela professora. C
 Rode da raiz do projeto, com o Python do `.venv`:
 
 ```bash
-python -m src.ml.cli auditar
+python -m src.treino.cli auditar
 ```
 Audita os dados e grava JSON e MD em `artefatos_ml/auditoria`.
 
 ```bash
-python -m src.ml.cli treinar --tarefa lavagem
+python -m src.treino.cli treinar --tarefa lavagem
 ```
 Ajusta cada configuração no treino e escolhe configuração e limiar na validação.
 
 ```bash
-python -m src.ml.cli avaliar --tarefa lavagem
+python -m src.treino.cli avaliar --tarefa lavagem
 ```
 Avalia uma única vez no teste, com o artefato congelado.
 
 ```bash
-python -m src.ml.cli prever --tarefa lavagem --entrada transacoes.csv --historico HI-Small_Trans.zip --saida previsoes_lavagem.csv
+python -m src.treino.cli prever --tarefa lavagem --entrada transacoes.csv --historico HI-Small_Trans.zip --saida previsoes_lavagem.csv
 ```
 O histórico das contas vem de `--historico`. Desse arquivo só entram transações anteriores à primeira transação a pontuar.
 
 ```bash
-python -m src.ml.cli exemplos
-python -m src.ml.cli relatorio
-python -m src.ml.cli documentar
-python -m src.ml.cli tarefas
+python -m src.treino.cli exemplos
+python -m src.treino.cli relatorio
+python -m src.treino.cli documentar
+python -m src.treino.cli tarefas
 python -m pytest testes/ml
 ```
 - `exemplos` gera uma entrada derivada sem rótulo e as previsões dela, em `artefatos_ml/exemplos`.
@@ -124,25 +124,26 @@ As amostras mostram o formato da saída, não uma seleção representativa.
 ## Estrutura
 
 ```
-src/ml/config.py       configuração (TOML + padrões)
-src/ml/esquemas.py     contratos versionados e validação
-src/ml/ingestao.py     leitura do HI-Small, das contas e dos padrões
-src/ml/auditoria.py    verificações de dados refeitas a cada execução
-src/ml/preparacao.py   atributos financeiros point-in-time e pipelines de treino
-src/ml/modelos.py      grade de treino, CabecaClassificacao e ModeloUnificado (o artefato)
-src/ml/avaliacao.py    métricas (precisão, recall, F1, AP, calibração, recall por grupo)
-src/ml/experimentos.py treino/validação/teste
-src/ml/previsao.py     inferência sem reajuste e motivos verificáveis
-src/ml/incremental.py  estado financeiro incremental (atributos sem reconstruir o histórico)
-src/ml/formatos.py     formatos de entrada e detecção pelo cabeçalho
-src/ml/provisionamento.py  instalação do modelo distribuído (conferência de SHA-256)
-src/ml/modelo_ativo.py modelo carregado uma vez por processo do servidor
-src/ml/resultados_oficiais.py  métricas oficiais e metadados lidos dos resultados gravados
-src/ml/serializacao.py conversão de resultados para JSON
-src/ml/sessoes.py      sessões de uso da interface (autorizam processamento)
-src/ml/tempo.py        relógio do servidor (época UTC)
-src/ml/relatorio.py    relatório e dicionário gerados dos resultados
-src/ml/cli.py          linha de comando
+src/ml/            usado pelo servidor para pontuar (e pelo treino)
+  config.py              configuração (TOML + padrões)
+  esquemas.py            contrato do HI-Small e validação
+  formatos.py            formatos de entrada e detecção pelo cabeçalho
+  ingestao.py            leitura do HI-Small, das contas e dos padrões
+  preparacao.py          atributos financeiros point-in-time e pipelines de treino
+  incremental.py         estado por conta: os mesmos 49 atributos, transação a transação
+  modelos.py             CabecaClassificacao e ModeloUnificado (o artefato) e a grade de treino
+  previsao.py            inferência sem reajuste e motivos verificáveis
+  provisionamento.py     instalação do modelo distribuído (conferência de SHA-256)
+  modelo_ativo.py        modelo carregado uma vez por processo do servidor
+  resultados_oficiais.py métricas oficiais e metadados lidos dos resultados gravados
+  serializacao.py        conversão de resultados para JSON
+
+src/treino/        só offline (não roda no servidor)
+  cli.py                 linha de comando: auditar, treinar, avaliar, prever, exemplos, relatorio, documentar
+  experimentos.py        treino/validação/teste
+  auditoria.py           verificações de dados refeitas a cada execução
+  avaliacao.py           métricas (precisão, recall, F1, AP, calibração, recall por grupo)
+  relatorio.py           relatório e dicionário gerados dos resultados
 ```
 
 O artefato `joblib` executa código ao ser carregado. Carregue apenas artefatos gerados por você.

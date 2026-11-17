@@ -6,7 +6,7 @@ cada conta. O modelo distribuído fica em ``modelos/`` e é instalado em
 ``artefatos_ml/`` por :mod:`src.ml.provisionamento`.
 
 Uso pela linha de comando (treino, avaliação, previsão em arquivos):
-``python -m src.ml.cli --help``.
+``python -m src.treino.cli --help``.
 """
 
 VERSAO_MODULO = "0.1.0"

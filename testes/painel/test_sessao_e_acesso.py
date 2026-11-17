@@ -11,7 +11,7 @@ pytest.importorskip("flask")
 
 from src import seguranca_local
 from src.painel import api as api_painel  # noqa: E402
-from src.ml.sessoes import PULSO_S, TTL_S  # noqa: E402
+from src.painel.sessoes import PULSO_S, TTL_S  # noqa: E402
 from testes.painel.conftest import (CENARIO, D, Ambiente, Portao, abrir_cliente, escrever,  # noqa: E402
                                     linha)
 

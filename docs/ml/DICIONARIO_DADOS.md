@@ -1,6 +1,6 @@
 # Dicionário de dados e contratos
 
-Gerado de `src/ml/esquemas.py` (`python -m src.ml.cli documentar`). `verificado` = conferido nos dados pela auditoria; `inferido` = deduzido do nome e da distribuição, sem documentação da construção original.
+Gerado de `src/ml/esquemas.py` (`python -m src.treino.cli documentar`). `verificado` = conferido nos dados pela auditoria; `inferido` = deduzido do nome e da distribuição, sem documentação da construção original.
 
 ## `hismall_v1`
 

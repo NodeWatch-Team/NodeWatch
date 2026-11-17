@@ -32,7 +32,7 @@ import threading
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional
 
-from src.ml.tempo import agora, iso
+from src.painel.tempo import agora, iso
 
 TTL_S = 150.0
 PULSO_S = 15.0

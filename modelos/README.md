@@ -17,7 +17,7 @@ Na primeira execução, `python -m src.ml.provisionamento` (chamado também ao i
 3. copia o modelo e os metadados para `artefatos_ml/` de forma atômica;
 4. carrega o modelo e faz uma previsão de teste.
 
-Um modelo treinado na própria máquina (`python -m src.ml.cli treinar`) fica em `artefatos_ml/` e **nunca é sobrescrito**: o comando só o valida.
+Um modelo treinado na própria máquina (`python -m src.treino.cli treinar`) fica em `artefatos_ml/` e **nunca é sobrescrito**: o comando só o valida.
 
 Uma cópia de uma **versão distribuída anterior** (SHA-256 listado em `sha256_anteriores` no manifesto) não é modelo próprio: ela é trocada pela versão atual na próxima execução, sem ser carregada antes.
 
@@ -52,7 +52,7 @@ Não é preciso para usar o painel. Para reproduzir o treino:
 
 1. Baixe `HI-Small_Trans.csv`, `HI-Small_Patterns.txt` e `HI-Small_accounts.csv` do endereço acima.
 2. `copy ml_config.exemplo.toml ml_config.local.toml` e aponte `[financeiro].transacoes`, `contas` e `padroes` para os arquivos.
-3. `python -m src.ml.cli treinar --tarefa lavagem` e depois `python -m src.ml.cli avaliar --tarefa lavagem`.
+3. `python -m src.treino.cli treinar --tarefa lavagem` e depois `python -m src.treino.cli avaliar --tarefa lavagem`.
 
 O novo modelo vai para `artefatos_ml/` e passa a ser usado. Para distribuí-lo, um mantenedor roda `python -m src.ml.provisionamento --preparar-distribuicao` (copia para esta pasta, sem caminhos da máquina, e regrava o manifesto), roda os testes e faz commit dos três arquivos juntos. O teste `test_manifesto_do_repositorio_confere_com_o_modelo_distribuido` falha se o modelo e o manifesto não corresponderem.
 

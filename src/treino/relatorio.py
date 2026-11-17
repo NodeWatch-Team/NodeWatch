@@ -42,7 +42,7 @@ def _tabela(cabecalho: Sequence[str], linhas: Iterable[Sequence[Any]]) -> str:
 # ---------------------------------------------------------------------------
 def dicionario_markdown() -> str:
     partes = ["# Dicionário de dados e contratos", "",
-              "Gerado de `src/ml/esquemas.py` (`python -m src.ml.cli documentar`). "
+              "Gerado de `src/ml/esquemas.py` (`python -m src.treino.cli documentar`). "
               "`verificado` = conferido nos dados pela auditoria; `inferido` = deduzido do nome e da "
               "distribuição, sem documentação da construção original.", ""]
     for esq in ESQUEMAS.values():
@@ -163,7 +163,7 @@ def gerar_relatorio(pasta_artefatos: Path, pasta_docs: Path) -> Path:
     art = Path(pasta_artefatos)
     meta = _ler(art / "metadados_modelo.json") or {}
     linhas = ["# Relatório de ML — NodeWatch", "",
-              "Gerado por `python -m src.ml.cli relatorio` a partir de `artefatos_ml/`. Todos os números "
+              "Gerado por `python -m src.treino.cli relatorio` a partir de `artefatos_ml/`. Todos os números "
               "abaixo foram calculados na execução registrada; nenhum foi digitado à mão.", ""]
     v = meta.get("metadados", {}).get("versoes", {})
     if v:

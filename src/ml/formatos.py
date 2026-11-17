@@ -49,7 +49,7 @@ FORMATOS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-# Colunas que identificam um CSV de PREVISÕES já calculadas (saída de `python -m src.ml.cli prever`).
+# Colunas que identificam um CSV de PREVISÕES já calculadas (saída de `python -m src.treino.cli prever`).
 COLUNAS_CHAVE_PREVISAO = {
     "lavagem": ("score_lavagem", "alerta_lavagem"),
 }
@@ -70,7 +70,7 @@ def detectar_formato(colunas: List[str]) -> Dict[str, Any]:
     if previsao:
         return {"formato": f"previsao_{previsao}_v1", "dominio": None, "analisavel": False, "possiveis": [],
                 "faltando": {}, "leitura": "É um arquivo de PREVISÕES já calculadas (saída de "
-                                          "`python -m src.ml.cli prever`), não de transações novas."}
+                                          "`python -m src.treino.cli prever`), não de transações novas."}
     if colunas[:len(COLUNAS_HISMALL) - 1] == list(COLUNAS_HISMALL[:-1]) and \
             len(colunas) in (len(COLUNAS_HISMALL) - 1, len(COLUNAS_HISMALL)) and \
             (len(colunas) == len(COLUNAS_HISMALL) - 1 or colunas[-1] == COLUNAS_HISMALL[-1]):

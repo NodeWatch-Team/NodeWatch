@@ -1,15 +1,15 @@
-"""Linha de comando do módulo de ML (modelo de lavagem).
+"""Linha de comando do treino do modelo de lavagem.
 
 Exemplos (a partir da raiz do projeto, com o .venv ativo)::
 
-    python -m src.ml.cli auditar
-    python -m src.ml.cli treinar --tarefa lavagem
-    python -m src.ml.cli avaliar --tarefa lavagem
-    python -m src.ml.cli prever --tarefa lavagem --entrada trans.csv --historico HI-Small_Trans.zip --saida p.csv
-    python -m src.ml.cli exemplos
-    python -m src.ml.cli tarefas
-    python -m src.ml.cli relatorio
-    python -m src.ml.cli documentar
+    python -m src.treino.cli auditar
+    python -m src.treino.cli treinar --tarefa lavagem
+    python -m src.treino.cli avaliar --tarefa lavagem
+    python -m src.treino.cli prever --tarefa lavagem --entrada trans.csv --historico HI-Small_Trans.zip --saida p.csv
+    python -m src.treino.cli exemplos
+    python -m src.treino.cli tarefas
+    python -m src.treino.cli relatorio
+    python -m src.treino.cli documentar
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from src.ml import auditoria, experimentos
+from src.treino import auditoria, experimentos
 from src.ml.config import carregar_config, pasta_artefatos
 from src.ml.modelos import ModeloUnificado
 
@@ -82,20 +82,20 @@ def _cmd_tarefas(cfg, args) -> int:
 
 
 def _cmd_relatorio(cfg, args) -> int:
-    from src.ml.relatorio import gerar_relatorio
+    from src.treino.relatorio import gerar_relatorio
     print("relatório:", gerar_relatorio(pasta_artefatos(cfg), Path(cfg["geral"]["pasta_docs"])))
     return 0
 
 
 def _cmd_documentar(cfg, args) -> int:
-    from src.ml.relatorio import escrever_documentacao
+    from src.treino.relatorio import escrever_documentacao
     for p in escrever_documentacao(Path(cfg["geral"]["pasta_docs"])):
         print(p)
     return 0
 
 
 def construir_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="python -m src.ml.cli", description=__doc__,
+    p = argparse.ArgumentParser(prog="python -m src.treino.cli", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--config", help="arquivo TOML (padrão: ml_config.local.toml ou ml_config.exemplo.toml)")
     sub = p.add_subparsers(dest="comando", required=True)

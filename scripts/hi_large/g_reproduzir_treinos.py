@@ -42,7 +42,7 @@ from sklearn.metrics import average_precision_score
 
 import comum
 import c_treinar_avaliar as c
-from src.ml.avaliacao import limiar_max_f1
+from src.treino.avaliacao import limiar_max_f1
 from src.ml.modelos import ModeloUnificado
 
 SAIDA = comum.TRABALHO / "reproducao_treinos"

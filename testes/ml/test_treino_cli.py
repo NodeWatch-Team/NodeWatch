@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.ml import cli
+from src.treino import cli
 from src.ml.modelos import ModeloUnificado
 from testes.ml.conftest import gerar_transacoes, nomes_contas
 

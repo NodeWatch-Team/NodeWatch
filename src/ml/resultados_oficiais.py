@@ -1,7 +1,7 @@
 """Métricas oficiais e metadados do modelo, lidos dos resultados já gravados.
 
 Nada é treinado nem recalculado aqui: os números vêm dos JSON gerados por
-``python -m src.ml.cli treinar``/``avaliar`` (``artefatos_ml/resultados``) ou,
+``python -m src.treino.cli treinar``/``avaliar`` (``artefatos_ml/resultados``) ou,
 na falta deles, da cópia versionada em ``docs/ml/resultados``. Alimenta a
 legenda do score e a aba de métricas do painel (``src/painel/api.py``).
 """
@@ -35,7 +35,7 @@ PASTAS_METADADOS = ("artefatos_ml", "docs/ml/resultados")
 def modelo_resumo(raiz: Path) -> Dict[str, Any]:
     meta, fonte = ler_primeiro(raiz, "metadados_modelo.json", PASTAS_METADADOS)
     if meta is None:
-        return {"disponivel": False, "motivo": "metadados_modelo.json não encontrado (rode `python -m src.ml.cli treinar`)"}
+        return {"disponivel": False, "motivo": "metadados_modelo.json não encontrado (rode `python -m src.treino.cli treinar`)"}
     cabecas = {}
     for nome, c in (meta.get("cabecas") or {}).items():
         md = c.get("metadados") or {}
@@ -63,7 +63,7 @@ def avaliacao_oficial(raiz: Path) -> Dict[str, Any]:
         treino, f_treino = ler_primeiro(raiz, arq_treino, PASTAS_RESULTADOS)
         if aval is None:
             saida[tarefa] = {"disponivel": False,
-                             "motivo": f"{arq_aval} não encontrado (rode `python -m src.ml.cli avaliar`)"}
+                             "motivo": f"{arq_aval} não encontrado (rode `python -m src.treino.cli avaliar`)"}
             continue
         bloco: Dict[str, Any] = {"disponivel": True, "fontes": [f for f in (f_aval, f_treino) if f],
                                  "versao": aval.get("versao"), "escolhido": aval.get("escolhido")}

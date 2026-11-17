@@ -21,8 +21,8 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import average_precision_score
 
-from src.ml import auditoria
-from src.ml.avaliacao import calibracao_binaria, limiar_max_f1, metricas_binarias, recall_por_grupo
+from src.treino import auditoria
+from src.treino.avaliacao import calibracao_binaria, limiar_max_f1, metricas_binarias, recall_por_grupo
 from src.ml.config import pasta_artefatos
 from src.ml.ingestao import ErroDados, casar_padroes, ler_contas, ler_hismall, ler_padroes
 from src.ml.modelos import CabecaClassificacao, ModeloUnificado, grade_financeira

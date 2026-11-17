@@ -36,7 +36,7 @@ import pyarrow.parquet as pq
 import comum
 from b4_correcao_lote import erro_relativo, modulo_anterior
 from src.ml.config import carregar_config
-from src.ml.experimentos import _carregar_financeiro
+from src.treino.experimentos import _carregar_financeiro
 from src.ml.modelos import ModeloUnificado
 from src.ml.preparacao import amostrar_treino_financeiro, atribuir_split_financeiro, atributos_financeiros
 from testes.ml.referencia_financeira import atributos_referencia

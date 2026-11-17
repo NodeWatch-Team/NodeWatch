@@ -227,14 +227,14 @@ Arquitetura, cada análise, Machine Learning de ponta a ponta, formatos, sessão
 | Servidor | `src/servidor.py` (Flask) | Serve a página, o chat e os blueprints. |
 | API de exploração | `src/api_ml.py`, `src/ml/exploracao.py` | Lê previsões e resultados; importa CSV de previsões só em memória. |
 | API de processamento | `src/api_eventos.py` | Sessões, eventos, replay, análises e previsão sob demanda. |
-| Sessões | `src/ml/sessoes.py` | Quem autoriza processar registros novos. |
+| Sessões | `src/painel/sessoes.py` | Quem autoriza processar registros novos. |
 | Importação e validação | `src/ml/analises.py`, `src/ml/eventos.py`, `src/ml/esquemas.py`, `src/ml/ingestao.py` | Contratos, leitura e recusa com motivo. |
 | Preparação | `src/ml/preparacao.py` (lote), `src/ml/incremental.py` (estado) | Atributos financeiros; matriz de rede. |
 | Grafos | `src/main.py`, `src/grafo/`, `src/algoritmos/`, `src/leitura/` | CLI independente do servidor e do ML. |
 | ML | `src/ml/modelos.py`, `experimentos.py`, `previsao.py`, `avaliacao.py` | Treino, avaliação e inferência. |
 | Eventos | `src/ml/servico_eventos.py`, `registro_eventos.py`, `replay.py`, `simulacao.py` | Registro durável, fila, recuperação, replay, laboratório. |
 | Armazenamento | `artefatos_ml/` (ignorado pelo git) | Modelo, previsões, análises, estado de eventos. Não há banco de dados. |
-| Relatórios | `docs/ml/` e `src/ml/relatorio.py` | Resultados versionados e relatórios gerados. |
+| Relatórios | `docs/ml/` e `src/treino/relatorio.py` | Resultados versionados e relatórios gerados. |
 
 ## 5.2 Caminho dos dados
 
@@ -532,7 +532,7 @@ Existe ainda a variante `estado_rede__com_classe_atual`, só para comparação.
 
 | Etapa | O que muda | Quem faz |
 |---|---|---|
-| **Treino** | Parâmetros do modelo, câmbio, categorias, limiar | Só a CLI: `python -m src.ml.cli treinar` |
+| **Treino** | Parâmetros do modelo, câmbio, categorias, limiar | Só a CLI: `python -m src.treino.cli treinar` |
 | **Inferência** | Nada no modelo: aplica-o a dados novos | CLI `prever`, Analisar dataset, Eventos, `/prever/rede` |
 | **Atualização do histórico** | Só contagens e somas das contas **daquela** análise | `EstadoFinanceiro`, durante a inferência |
 
@@ -609,7 +609,7 @@ Uma análise roda por vez.
 
 ## 11.3 Sessão
 
-Código: `src/ml/sessoes.py` e o gancho `useSessaoML` em `interface/index.html`, no `Dashboard`.
+Código: `src/painel/sessoes.py` e o gancho `useSessaoML` em `interface/index.html`, no `Dashboard`.
 
 | Evento | O que acontece |
 |---|---|
@@ -643,7 +643,7 @@ Não há aviso confiável de fechamento de janela. **Consequência:** uma aba fe
 
 **Diferenças em relação a "só pela interface":**
 
-- A exigência de sessão vale para as **rotas HTTP**. A CLI (`python -m src.ml.cli prever`) e o uso do pacote em Python **não** verificam sessão: são caminhos diretos para quem tem acesso à máquina (verificado agora).
+- A exigência de sessão vale para as **rotas HTTP**. A CLI (`python -m src.treino.cli prever`) e o uso do pacote em Python **não** verificam sessão: são caminhos diretos para quem tem acesso à máquina (verificado agora).
 - A sessão é controle de uso, não autenticação: quem acessa a porta pode abrir uma.
 - O produtor de exemplo usa uma sessão existente e não a renova. Encerrada a sessão, ele para.
 
@@ -1027,12 +1027,12 @@ O treino documentado usou Python 3.14.0, numpy 2.5.4, pandas 3.1.0 e scikit-lear
 | `python src/servidor.py` | Servidor; painel do analista em `http://127.0.0.1:5000/` (interface antiga em `/legado`) |
 | `python src/main.py --input dados/exemplo_transacoes.csv --scc --centralidade` | Grafos |
 | `python src/main.py --input arquivo.csv --export-json --output nome` | Grafos, com JSON |
-| `python -m src.ml.cli auditar --fonte todas` | Audita os dados |
-| `python -m src.ml.cli treinar --tarefa todas` | **Treina** e salva o artefato |
-| `python -m src.ml.cli avaliar --tarefa todas` | Avalia no teste (já reutilizado) |
-| `python -m src.ml.cli prever --tarefa estado_rede --entrada a.csv --saida s.csv` | Inferência de rede, sem sessão |
-| `python -m src.ml.cli prever --tarefa lavagem --entrada a.csv --historico h.zip --saida s.csv` | Inferência de lavagem, em lote, sem sessão |
-| `python -m src.ml.cli tarefas` | Cabeças e pendências da fusão |
+| `python -m src.treino.cli auditar --fonte todas` | Audita os dados |
+| `python -m src.treino.cli treinar --tarefa todas` | **Treina** e salva o artefato |
+| `python -m src.treino.cli avaliar --tarefa todas` | Avalia no teste (já reutilizado) |
+| `python -m src.treino.cli prever --tarefa estado_rede --entrada a.csv --saida s.csv` | Inferência de rede, sem sessão |
+| `python -m src.treino.cli prever --tarefa lavagem --entrada a.csv --historico h.zip --saida s.csv` | Inferência de lavagem, em lote, sem sessão |
+| `python -m src.treino.cli tarefas` | Cabeças e pendências da fusão |
 | `python docs/exemplos/gerar_exemplos_inventados.py` | Refaz os arquivos do tutorial |
 | `python scripts/produtor_eventos_exemplo.py --sessao <id> --tipo rede --limite 500` | Produtor; o id aparece na área Eventos |
 | `python scripts/benchmark_eventos.py` | Benchmark, com o servidor parado |
@@ -1051,7 +1051,7 @@ O treino documentado usou Python 3.14.0, numpy 2.5.4, pandas 3.1.0 e scikit-lear
 4. Veja **Recuperação pendente** e use **Recuperar e iniciar**.
 5. Reenvie os mesmos eventos: voltam em `ja_aceitos`.
 
-**Replay:** em `#ml/eventos`, use Iniciar replay (exige `python -m src.ml.cli exemplos`). **Laboratório:** Executar laboratório de simulação.
+**Replay:** em `#ml/eventos`, use Iniciar replay (exige `python -m src.treino.cli exemplos`). **Laboratório:** Executar laboratório de simulação.
 
 Rotas da API: `docs/ml/EVENTOS.md`, seção 7, e `docs/ml/ANALISE_DATASETS.md`.
 
@@ -1064,7 +1064,7 @@ Rotas da API: `docs/ml/EVENTOS.md`, seção 7, e `docs/ml/ANALISE_DATASETS.md`.
 | `src/main.py`, `src/grafo/graph.py`, `src/leitura/` | CLI, grafo, leitura e exportação de grafos |
 | `src/algoritmos/` | Ciclos, SCC, centralidade, fan-out e fan-in |
 | `src/ml/config.py`, `esquemas.py`, `ingestao.py` | Configuração, contratos, leitura |
-| `src/ml/auditoria.py`, `experimentos.py`, `avaliacao.py`, `relatorio.py` | Auditoria, treino, métricas, relatório |
+| `src/treino/auditoria.py`, `experimentos.py`, `avaliacao.py`, `relatorio.py` | Auditoria, treino, métricas, relatório |
 | `src/ml/preparacao.py`, `incremental.py` | Atributos em lote e por estado |
 | `src/ml/modelos.py`, `previsao.py` | Modelos, cabeças, inferência |
 | `src/ml/analises.py`, `sessoes.py` | Datasets novos; sessões |
@@ -1084,7 +1084,7 @@ Rotas da API: `docs/ml/EVENTOS.md`, seção 7, e `docs/ml/ANALISE_DATASETS.md`.
 |---|---|
 | `python -m pytest testes` | 193 aprovados, 0 falhas |
 | CLI de grafos com o exemplo | Saída da seção 6.5 |
-| `src.ml.cli tarefas`; `prever` de rede | Funcionaram |
+| `src.treino.cli tarefas`; `prever` de rede | Funcionaram |
 | Tutorial e exemplos mínimos, com o modelo real | Saídas das seções 4, 7 e 12 |
 | Interface em Chrome headless, com arquivos fora dos exemplos | `docs/ml/evidencias/demo_*.txt` |
 | Benchmark isolado | `docs/ml/BENCHMARK_EVENTOS.md` |

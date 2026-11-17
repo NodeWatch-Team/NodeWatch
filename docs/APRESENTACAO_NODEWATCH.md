@@ -449,7 +449,7 @@ Esta seção não faz parte das falas. **Repositório de pesquisa** é o clone `
 | Métricas próprias × fórmulas | Repositório de pesquisa: `auditoria/ml_feedback_professora/testes/test_implementacao_propria.py` |
 | Latência, vazão, memória, equivalência incremental | `docs/ml/BENCHMARK_EVENTOS.md` |
 | Novos datasets; efeito do histórico (1 × 203) | `docs/ml/ANALISE_DATASETS.md`; `docs/ml/evidencias/demo_historico.txt` |
-| Sessão e expiração | `src/ml/sessoes.py`; `docs/ml/evidencias/demo_expiracao.txt`; `demo_oculta.txt` |
+| Sessão e expiração | `src/painel/sessoes.py`; `docs/ml/evidencias/demo_expiracao.txt`; `demo_oculta.txt` |
 | Queda e recuperação | `docs/ml/evidencias/demo_queda.txt`; `docs/ml/REVISAO_CONFIABILIDADE_EVENTOS.md` |
 | Vínculo e dados que faltam | `docs/ml/CONTRATO_INTEGRACAO.md`; `docs/ml/EVENTOS.md`, seção 9 |
 | Grafos: 35% e limites do recorte | `docs/melhorias-e-limitacoes.md` |
@@ -457,7 +457,7 @@ Esta seção não faz parte das falas. **Repositório de pesquisa** é o clone `
 
 ## 5.3 O que confirmar antes da apresentação
 
-1. **Publicação do código.** *Analisar dataset*, as sessões e o manual estão só nesta máquina, sem commit, na branch `ml/sessoes-analise-datasets`. A `origin/main` (`9095451`) não tem `src/ml/analises.py` nem `src/ml/sessoes.py`. Decidam se publicam antes, porque a professora pode procurar no GitHub.
+1. **Publicação do código.** *Analisar dataset*, as sessões e o manual estão só nesta máquina, sem commit, na branch `ml/sessoes-analise-datasets`. A `origin/main` (`9095451`) não tem `src/ml/analises.py` nem `src/painel/sessoes.py`. Decidam se publicam antes, porque a professora pode procurar no GitHub.
 2. **O que a professora espera.** Os comentários chegaram por relato, e a auditoria não identificou com certeza qual documento ela leu. Confirmem se ela espera um modelo escrito em NumPy, se a comparação com uma referência se referia a isso e se ela espera a comparação com GPU.
 3. **Origem do `dataset_final.csv`.** O notebook o trata como base do projeto "Preditor de Qualidade de Redes", já rotulada em etapas anteriores. Faltam a procedência da coleta e o período das referências p95/p99. Não digam que é sintético nem que é real sem confirmar.
 4. **Como chamar a auditoria.** O manual diz "auditoria externa", mas ela é externa só ao código do NodeWatch. Foi conduzida pelo grupo com apoio de IA, a partir de `prompts/PROMPT_AUDITORIA_ML_FEEDBACK_PROFESSORA.md`. Digam "auditoria do grupo, em scripts isolados". Confirmem também se a disciplina pede declaração de uso de IA.

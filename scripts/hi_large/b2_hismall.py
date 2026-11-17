@@ -21,7 +21,7 @@ import numpy as np
 
 import comum
 from src.ml.config import carregar_config
-from src.ml.experimentos import _carregar_financeiro
+from src.treino.experimentos import _carregar_financeiro
 from src.ml.modelos import ModeloUnificado
 from src.ml.preparacao import amostrar_treino_financeiro, atribuir_split_financeiro, atributos_financeiros
 

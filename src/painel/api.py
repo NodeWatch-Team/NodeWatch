@@ -6,7 +6,7 @@ Abrir a página ou consultar qualquer rota GET não inicia processamento.
 
 **Sessão da interface.** As rotas marcadas com [sessão] processam dados e
 exigem o cabeçalho ``X-NodeWatch-Sessao`` com uma sessão ativa
-(``src/ml/sessoes.py``; em produção, o gerenciador único do processo). A página abre a sessão, renova-a com pulsos e, sem pulso por
+(``src/painel/sessoes.py``; em produção, o gerenciador único do processo). A página abre a sessão, renova-a com pulsos e, sem pulso por
 ``ttl_s`` segundos, a sessão expira: a análise dela para no próximo ponto
 seguro e fica parcial. Nada é retomado sozinho.
 
@@ -73,7 +73,7 @@ def configurar(raiz: Path, modelo: Any = None, config_financeiro: Optional[Dict[
 
     raiz = Path(raiz)
     if sessoes is None:
-        from src.ml import sessoes as ses
+        from src.painel import sessoes as ses
         # Na raiz do projeto, o gerenciador único do processo.
         sessoes = ses.padrao() if raiz == _RAIZ else ses.GerenciadorSessoes()
     with _trava:
@@ -151,7 +151,7 @@ def _protegido(operacao: Optional[str] = None) -> Callable:
                 return _json({"erro": "Não encontrado.", "acao": "Atualize a lista e selecione de novo."}, 404)
             except FileNotFoundError:
                 return _json({"erro": "Modelo ou resultado não encontrado no servidor.",
-                              "acao": "Confira se o modelo foi treinado (`python -m src.ml.cli treinar`)."}, 503)
+                              "acao": "Confira se o modelo foi treinado (`python -m src.treino.cli treinar`)."}, 503)
 
         envolvida.__name__ = func.__name__
         return envolvida

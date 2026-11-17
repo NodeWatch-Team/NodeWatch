@@ -157,7 +157,7 @@ Nas vezes seguintes aparece "(já instalado)" e nada é copiado de novo.
 | `modelos/modelo_unificado.joblib não confere com o SHA-256 do manifesto` | Arquivo corrompido ou cópia incompleta (por exemplo, ZIP baixado sem o arquivo grande) | `git checkout -- modelos/` ou `python -m src.ml.provisionamento` com internet (baixa e confere) |
 | `Falha ao baixar o modelo de …` | Sem internet, ou o endereço não serve o arquivo | Confira a conexão; sem internet, copie `modelos/modelo_unificado.joblib` de outra cópia do repositório |
 | `O modelo em artefatos_ml/modelo_unificado.joblib não pôde ser carregado` | Modelo local (treinado aqui) corrompido ou de outra versão | Renomeie ou apague esse arquivo e rode `python -m src.ml.provisionamento` para voltar ao distribuído |
-| Análise concluída sem nenhum alerta | Cada análise começa **sem histórico**: contas "sem passado" quase não geram alerta nas primeiras ~72 h do arquivo | Use arquivos que cubram vários dias; para pontuar um dia com o passado, use `python -m src.ml.cli prever --tarefa lavagem --entrada dia.csv --historico dias_anteriores.csv --saida saida.csv` |
+| Análise concluída sem nenhum alerta | Cada análise começa **sem histórico**: contas "sem passado" quase não geram alerta nas primeiras ~72 h do arquivo | Use arquivos que cubram vários dias; para pontuar um dia com o passado, use `python -m src.treino.cli prever --tarefa lavagem --entrada dia.csv --historico dias_anteriores.csv --saida saida.csv` |
 | `A porta 5000 esta ocupada` / `Ja ha um NodeWatch rodando … de OUTRA pasta` | Outro servidor na mesma porta | Feche-o com Ctrl+C na janela dele |
 
 ### Modo real × demonstrativo

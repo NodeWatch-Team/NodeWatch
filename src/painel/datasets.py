@@ -55,7 +55,7 @@ PASTA = Path("artefatos_ml") / "painel" / "datasets"
 PASTAS_SERVIDOR: Tuple[Tuple[str, str], ...] = (
     ("dados", "pasta dados/ do projeto"),
     ("docs/exemplos", "exemplos inventados do repositório"),
-    ("artefatos_ml/exemplos", "exemplos gerados por `python -m src.ml.cli exemplos`"),
+    ("artefatos_ml/exemplos", "exemplos gerados por `python -m src.treino.cli exemplos`"),
 )
 NAO_INFORMADO = "Não informado"
 _VAZIOS = {"", "unknown", "desconhecido", "n/a", "na", "null", "none", "nan", "-"}

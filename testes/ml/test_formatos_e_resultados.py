@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.ml import sessoes
+from src.painel import sessoes
 from src.ml.esquemas import COLUNAS_HISMALL
 from src.ml.formatos import CAMPOS_PT, detectar_formato, ler_tempo
 from src.ml.resultados_oficiais import avaliacao_oficial, modelo_resumo

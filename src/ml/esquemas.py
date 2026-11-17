@@ -3,7 +3,7 @@
 Cada esquema descreve as colunas, tipos, domínios, sentinelas e o significado
 de cada campo. O significado traz um ``status``:
 
-* ``verificado`` — conferido nos dados por ``src.ml.auditoria`` (a auditoria
+* ``verificado`` — conferido nos dados por ``src.treino.auditoria`` (a auditoria
   refaz a conferência a cada execução);
 * ``inferido``   — deduzido do nome e da distribuição; a construção original
   da coluna não está documentada.

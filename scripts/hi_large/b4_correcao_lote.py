@@ -29,7 +29,7 @@ from sklearn.metrics import average_precision_score
 
 import comum
 from src.ml.config import carregar_config
-from src.ml.experimentos import _carregar_financeiro
+from src.treino.experimentos import _carregar_financeiro
 from src.ml.modelos import ModeloUnificado
 from src.ml.preparacao import atribuir_split_financeiro, atributos_financeiros
 from testes.ml.referencia_financeira import atributos_referencia

@@ -1,6 +1,6 @@
 """Relógio do servidor e formatação de instantes (época em segundos, UTC).
 
-Usado pelas sessões da interface (``src.ml.sessoes``).
+Usado pelas sessões da interface (``src.painel.sessoes``).
 """
 
 from __future__ import annotations

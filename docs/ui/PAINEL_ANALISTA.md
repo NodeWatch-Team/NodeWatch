@@ -42,7 +42,7 @@ A logo é a oficial, `interface/NodeWatchlogo_transparente.png`. Os arquivos ser
 
 ## Sessão da interface
 
-Enviar, validar e analisar exigem a sessão da página (`src/ml/sessoes.py`). A página abre a sessão, guarda-a em `sessionStorage` e manda um pulso a cada 15 s e ao voltar a ficar visível.
+Enviar, validar e analisar exigem a sessão da página (`src/painel/sessoes.py`). A página abre a sessão, guarda-a em `sessionStorage` e manda um pulso a cada 15 s e ao voltar a ficar visível.
 
 - **Janela de expiração: 150 s sem pulso.** Minimizar ou trocar de aba não encerra a sessão: o navegador espaça os pulsos para até 1 por minuto, dentro da janela.
 - Sessão expirada ou encerrada: a análise para no próximo ponto seguro (fim do bloco), guarda o que pontuou e fica **parcial**. A validação em curso também para.

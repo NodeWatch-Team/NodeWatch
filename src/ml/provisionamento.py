@@ -212,7 +212,7 @@ def validar(pasta: Path, manifesto: Optional[Dict[str, Any]] = None) -> Dict[str
         modelo = ModeloUnificado.carregar(pasta)
     except Exception as exc:  # joblib/pickle podem levantar vários tipos
         raise ErroModelo(f"O modelo em {pasta.name}/{NOME_MODELO} não pôde ser carregado ({type(exc).__name__}: {exc}).",
-                         f"Se ele foi treinado nesta máquina, treine de novo (python -m src.ml.cli treinar --tarefa lavagem); "
+                         f"Se ele foi treinado nesta máquina, treine de novo (python -m src.treino.cli treinar --tarefa lavagem); "
                          f"para voltar ao modelo distribuído, renomeie ou apague {PASTA_ATIVA}/{NOME_MODELO} "
                          "e rode python -m src.ml.provisionamento.") from None
     cab = modelo.cabecas.get("lavagem")

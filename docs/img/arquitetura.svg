@@ -42,7 +42,7 @@
   <path d="M527,368 L527,396" stroke="#4a5260" stroke-width="1.2" marker-end="url(#s1)" fill="none"/>
 
   <rect x="6" y="332" width="360" height="130" rx="6" fill="#fdf5e6" stroke="#a2650a"/>
-  <text x="16" y="350" font-size="10.5" font-weight="600">Treino (só pela CLI: python -m src.ml.cli)</text>
+  <text x="16" y="350" font-size="10.5" font-weight="600">Treino (só pela CLI: python -m src.treino.cli)</text>
   <text x="16" y="367" font-size="9">ingestao.py, auditoria.py, preparacao.py, experimentos.py, avaliacao.py</text>
   <text x="16" y="382" font-size="9">Saída: modelo_unificado.joblib e resultados JSON.</text>
   <text x="16" y="397" font-size="9">Nenhuma tela nem rota da API treina ou reajusta.</text>

@@ -108,7 +108,7 @@ def _acao_para(exc: BaseException) -> str:
         return str(exc.acao)
     if isinstance(exc, FileNotFoundError):
         return ("Instale o modelo distribuído com o repositório: `python -m src.ml.provisionamento` "
-                "(ou treine um pela CLI: `python -m src.ml.cli treinar --tarefa lavagem`).")
+                "(ou treine um pela CLI: `python -m src.treino.cli treinar --tarefa lavagem`).")
     if isinstance(exc, MemoryError):
         return "Falta memória para este arquivo: divida o dataset por período e analise cada parte."
     if isinstance(exc, ImportError):
