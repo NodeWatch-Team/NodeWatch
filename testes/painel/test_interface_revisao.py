@@ -29,7 +29,7 @@ def test_grades_de_uma_coluna_usam_a_largura_disponivel_e_nao_a_do_conteudo():
     corpos = _regras("main, .secao .corpo")
     assert corpos and "grid-template-columns: minmax(0, 1fr)" in corpos[0]
     seletores = next(sel for sel, _ in re.findall(r"([^{}]+)\{([^{}]*)\}", CSS) if "main, .secao .corpo" in sel)
-    for item in ("main", ".secao .corpo", ".grade", ".etapas", ".contas", ".escala", "dialog .corpo"):
+    for item in ("main", ".secao .corpo", ".grade", ".contas", ".escala", "dialog .corpo"):
         assert item in seletores, item
     assert any("min-width: 0" in c for c in _regras(".grade > *"))
     controles = _regras('input[type="text"]')

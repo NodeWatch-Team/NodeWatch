@@ -328,29 +328,76 @@ def test_ordem_dos_scripts_no_painel():
     assert ordem == sorted(ordem)
 
 
-def test_execucao_em_duas_colunas_iguais_que_empilham_ate_980px():
-    regras = [corpo for sel, corpo in re.findall(r"([^{}]+)\{([^{}]*)\}", CSS) if sel.split("*/")[-1].strip() == ".execucao"]
-    assert any("grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)" in r for r in regras)
-    blocos = re.findall(r"@media \(max-width: 980px\) \{(.*?)\n\}", CSS, flags=re.S)
-    assert any(re.search(r"\.execucao \{ grid-template-columns: minmax\(0, 1fr\)", b) for b in blocos)
-    novas = " ".join(sel + corpo for sel, corpo in re.findall(r"([^{}]+)\{([^{}]*)\}", CSS)
-                     if ".execucao" in sel or ".log-" in sel)
+def _regras(trecho: str) -> list:
+    return [(sel.split("*/")[-1].strip(), corpo) for sel, corpo in re.findall(r"([^{}]+)\{([^{}]*)\}", CSS) if trecho in sel]
+
+
+def test_execucao_em_uma_coluna_com_o_log_na_largura_toda():
+    # a lista lateral de etapas saiu: o acompanhamento e o log ficam um abaixo do outro, o log na largura toda
+    seletores = [sel.split("*/")[-1].strip() for sel, _ in re.findall(r"([^{}]+)\{([^{}]*)\}", CSS)]
+    assert not [s for s in seletores if re.search(r"\.execucao(\.terminada)?( |,|$)|\.execucao-etapas|\.etapas?\b", s)]
+    assert any("container: log / inline-size" in c for sel, c in _regras(".log-analise") if sel == ".log-analise")
+    novas = " ".join(sel + c for sel, c in _regras("")
+                     if ".log-" in sel or ".trilha-etapas" in sel or ".acomp" in sel)
     assert novas and not re.search(r"minmax\(\d+px, 1fr\)", novas)
-    compactas = " ".join(corpo for sel, corpo in re.findall(r"([^{}]+)\{([^{}]*)\}", CSS) if ".execucao .etapa" in sel)
-    assert "ellipsis" not in compactas and "nowrap" not in compactas and "overflow: hidden" not in compactas
-    assert "overflow-wrap: anywhere" in compactas
+    # os nomes das etapas quebram linha em vez de serem cortados; volume e detalhe vão até duas linhas (texto na dica)
+    rotulo = " ".join(c for sel, c in _regras(".trilha-etapas .rotulo-passo"))
+    assert "overflow-wrap: anywhere" in rotulo and "ellipsis" not in rotulo and "nowrap" not in rotulo
+    assert any("-webkit-line-clamp: 2" in c for _, c in _regras(".trilha-etapas .info-passo"))
+    assert "title: e.detalhe" in SECOES
 
 
-def test_etapas_abertas_durante_a_analise_e_recolhidas_depois():
-    # durante a análise: etapas e log lado a lado; depois do fim: caixa recolhida "Etapas executadas" e log na largura toda
-    assert "h(LogAnalise," in SECOES and "className: 'execucao'" in SECOES
-    assert "Etapas executadas" in SECOES
-    execucao = SECOES[SECOES.index("const terminada"):SECOES.index("h(LogAnalise, { m: manifesto, estado })")]
-    assert "terminada ? h('details', { className: 'execucao-etapas' }" in execucao      # fechada: sem open
-    assert ": h('div', { className: 'execucao-etapas' }, h(Progresso" in execucao        # em andamento: aberta
-    assert "manifesto.status !== 'em_andamento'" in execucao
-    regras = [corpo for sel, corpo in re.findall(r"([^{}]+)\{([^{}]*)\}", CSS) if sel.split("*/")[-1].strip() == ".execucao.terminada"]
-    assert any("grid-template-columns: minmax(0, 1fr)" in r for r in regras)
+def test_etapas_aparecem_uma_vez_no_acompanhamento_da_analise():
+    for removido in ("function Progresso", "ResumoEtapas", "CabecaExecucao", "Etapas executadas", "execucao-etapas"):
+        assert removido not in SECOES, removido
+    # uma única lista de etapas (TrilhaEtapas), usada ao vivo e no cartão de conclusão
+    assert SECOES.count("m.etapas.map(") == 1 and SECOES.count("h(TrilhaEtapas, { m })") == 2
+    vivo = SECOES[SECOES.index("function AcompanhamentoVivo"):SECOES.index("const SinalFim")]
+    for texto in ("'Análise em andamento'", "andamentoAnalise(m)", "BarraProgresso", "h(TrilhaEtapas, { m })", "'Decorrido'",
+                  "'Restante'", "'Processadas'", "'Total'", "'Alertas'", "Cancelar análise", "Mantenha esta aba aberta",
+                  "Manter a análise nesta aba", "'aria-live': 'polite'"):
+        assert texto in vivo, texto
+    trilha = SECOES[SECOES.index("function TrilhaEtapas"):SECOES.index("function TabelaProblemas")]
+    for texto in ("e.nome", "duracaoEtapa(e)", "volumeEtapa(e)", "e.detalhe", "'aria-current'", "className: 'enche'"):
+        assert texto in trilha, texto
+    execucao = SECOES[SECOES.index("const processamento"):SECOES.index("const novaAnalise")]
+    assert "h(AcompanhamentoAnalise," in execucao and "h(LogAnalise," in execucao and "className: 'execucao'" not in execucao
+    # na troca de ordem (início e fim da análise) o React recria a nova análise e não move a execução: mover um nó
+    # zera a rolagem do log sem evento de rolagem
+    assert "novaAnalise('nova')" in SECOES and "novaAnalise('nova-depois')" in SECOES
+
+
+def test_tempo_da_etapa_vem_do_manifesto():
+    trilha = SECOES[SECOES.index("function duracaoEtapa"):SECOES.index("function TrilhaEtapas")]
+    assert "e.duracao_s" in trilha and "Date.parse(e.inicio)" in trilha and "Math.random" not in trilha
+
+
+def test_painel_do_log_cabecalho_metricas_e_lista():
+    lista = LOG[LOG.index("function ListaFluxo"):LOG.index("function ResumoPrecisaoRecall")]
+    painel = lista[lista.index("className: 'log-painel'"):lista.index("className: 'log-rolagem'")]
+    for texto in ("log-cabeca", "titulo, status", "notas", "log-nav", "Mais recentes", "Posição", "metricas"):
+        assert texto in painel, texto
+    for texto in ("Ao vivo · seguindo as mais recentes", "Ao vivo · leitura livre a partir do nº", "'Análise ' + (NOME_STATUS"):
+        assert texto in lista, texto
+    # as métricas ficam fora da área rolável: sem área fixa (sticky) dentro do log
+    assert "log-fixo" not in LOG and "log-fixo" not in CSS
+    assert not any("position: sticky" in c for sel, c in _regras(".log-"))
+    assert "className: 'log-metricas-area', role: 'group'" in LOG and "'Métricas de execução'" in LOG
+    # cada linha da entrada tem classe própria (grade de duas colunas no painel largo); a previsão vem logo após o cabeçalho
+    entrada = LOG[LOG.index("const Entrada = React.memo"):LOG.index("const pagina = id")]
+    ordem = [entrada.index(c) for c in ("'log-cab'", "'log-previsao'", "'log-origem'", "'log-destino'", "'log-valor-linha'")]
+    assert ordem == sorted(ordem)
+    largo = CSS[CSS.index("@container log (min-width: 760px)"):]
+    assert "grid-template-areas" in largo.split("}")[0] + largo
+
+
+def test_altura_das_entradas_pela_largura_do_painel_do_log():
+    # a altura fixa da lista virtualizada depende da largura do painel (container), não da janela
+    # cada bloco vai até a próxima regra @ (o bloco largo tem regras aninhadas)
+    blocos = re.findall(r"@container log \((max|min)-width: ([\d.]+)px\) \{(.*?)(?=@container|@media|$)", CSS, flags=re.S)
+    larguras = {(t, float(w)) for t, w, corpo in blocos if "--log-linha" in corpo}
+    assert {("max", 759.98), ("max", 600.0), ("max", 420.0), ("max", 340.0), ("min", 760.0)} <= larguras
+    assert not re.search(r"@media[^{]*\{[^@]*\.log-rolagem \{ --log-linha", CSS)
 
 
 def test_log_sem_temporizadores_soltos_nem_valores_fixos():
