@@ -70,7 +70,7 @@ O script:
 - Instala dependencias;
 - Cria `.env` a partir de `.env.example` se nao existir;
 - Valida se a `GEMINI_API_KEY` esta configurada (rejeita placeholders);
-- Inicia o backend com `python src/sentinel_ai.py`;
+- Inicia o backend com `python src/servidor.py`;
 - Nao exibe a chave no terminal.
 
 ---
@@ -110,7 +110,7 @@ cd NodeWatch
 py -3.14 -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt -r requirements-ml.txt
 .venv\Scripts\python -m src.ml.provisionamento
-.venv\Scripts\python src\sentinel_ai.py
+.venv\Scripts\python src\servidor.py
 ```
 
 **Linux/macOS:**
@@ -121,7 +121,7 @@ cd NodeWatch
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt -r requirements-ml.txt
 .venv/bin/python -m src.ml.provisionamento
-.venv/bin/python src/sentinel_ai.py
+.venv/bin/python src/servidor.py
 ```
 
 O passo `python -m src.ml.provisionamento` é opcional: o servidor faz o mesmo ao iniciar. Rodá-lo antes mostra o resultado com calma. Saída esperada na primeira vez:
@@ -178,7 +178,7 @@ O modelo treinado é versionado em `modelos/` com um manifesto (SHA-256, versõe
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt -r requirements-ml.txt
-python src/sentinel_ai.py
+python src/servidor.py
 ```
 
 ### Passo a passo (Linux/macOS)
@@ -187,7 +187,7 @@ python src/sentinel_ai.py
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt -r requirements-ml.txt
-python src/sentinel_ai.py
+python src/servidor.py
 ```
 
 `requirements-ml.txt` traz scikit-learn, NumPy e pandas, sem os quais o painel não consegue analisar. O `.env` é opcional: a chave só ativa o Sentinel AI (Assistente de dúvidas com o contexto da análise); sem ela o assistente responde no modo local. Para configurá-lo, copie `.env.example` para `.env` e preencha a chave:
@@ -299,11 +299,10 @@ exemplo e como corrigir. Regras completas em [`docs/ui/PAINEL_ANALISTA.md`](docs
 ```
 NodeWatch/
 ├── src/
-│   ├── sentinel_ai.py       servidor Flask: painel em /, API em /api/painel, /health
-│   ├── api_painel.py        rotas do painel do analista
+│   ├── servidor.py          servidor Flask: painel em /, API em /api/painel, /health
 │   ├── seguranca_local.py   só aceita pedidos locais e da própria página
 │   ├── sentinel_ia.py       motor do Sentinel AI (provedores e prompts)
-│   ├── painel/              pipeline da análise, datasets, SQLite, score, assistente, desempenho e logs
+│   ├── painel/              API (api.py), pipeline da análise, datasets, SQLite, score, assistente, desempenho e logs
 │   └── ml/                  atributos, modelo, inferência, instalação do modelo e treino (CLI)
 ├── interface/               painel do analista (painel.html + assets, React 18 sem build)
 ├── modelos/                 modelo distribuído, manifesto com SHA-256 e metadados
@@ -329,7 +328,7 @@ NodeWatch/
 ## Validacao
 
 - `python -m pytest -q` passa por inteiro (332 testes);
-- `python src/sentinel_ai.py` instala e confere o modelo, sobe o servidor e mostra o endereço do painel;
+- `python src/servidor.py` instala e confere o modelo, sobe o servidor e mostra o endereço do painel;
 - `/health` responde `{"status": "ok", ...}`;
 - uma análise do exemplo `docs/exemplos/transacoes_inventadas.csv` termina com 12 transações válidas e 3 recusadas;
 - `.env` fica fora do controle de versão.

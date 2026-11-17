@@ -1,4 +1,4 @@
-# start_presentation.ps1 - Inicio rapido para apresentacao (Python local)
+﻿# start_presentation.ps1 - Inicio rapido para apresentacao (Python local)
 # Uso: .\start_presentation.ps1
 
 $ErrorActionPreference = "Stop"
@@ -100,4 +100,4 @@ Write-Host "  Painel do analista: http://127.0.0.1:5000/" -ForegroundColor White
 Write-Host ""
 
 # 7. Iniciar o backend
-python src/sentinel_ai.py
+python src/servidor.py

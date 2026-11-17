@@ -151,7 +151,7 @@ Isso é **aprendizado supervisionado**: o modelo aprendeu com exemplos cuja resp
 **Passo 1 — Instalar e abrir.** Comandos na seção 16.1. Depois:
 
 ```bash
-python src/sentinel_ai.py
+python src/servidor.py
 ```
 
 Abra `http://127.0.0.1:5000/legado#ml/analisar` (este tutorial usa a área **Analisar dataset** da interface antiga). A faixa "Sessão da interface" deve mostrar **ativa**. Nada começou. O mesmo arquivo também pode ser analisado no painel do analista, em `http://127.0.0.1:5000/`.
@@ -224,7 +224,7 @@ Arquitetura, cada análise, Machine Learning de ponta a ponta, formatos, sessão
 | Componente | Onde | Papel |
 |---|---|---|
 | Interface | `interface/index.html` | Uma página React, sem etapa de compilação. Seções Grafos e Machine Learning. |
-| Servidor | `src/sentinel_ai.py` (Flask) | Serve a página, o chat e os blueprints. |
+| Servidor | `src/servidor.py` (Flask) | Serve a página, o chat e os blueprints. |
 | API de exploração | `src/api_ml.py`, `src/ml/exploracao.py` | Lê previsões e resultados; importa CSV de previsões só em memória. |
 | API de processamento | `src/api_eventos.py` | Sessões, eventos, replay, análises e previsão sob demanda. |
 | Sessões | `src/ml/sessoes.py` | Quem autoriza processar registros novos. |
@@ -255,7 +255,7 @@ Arquitetura, cada análise, Machine Learning de ponta a ponta, formatos, sessão
 | Item | Necessário para |
 |---|---|
 | Nada de internet | Grafos, ML, análises e eventos. React e Babel estão em `interface/assets/vendor`. Se esses arquivos faltarem, a página tenta o `unpkg.com`. As fontes vêm do Google Fonts, mas a página funciona sem elas. |
-| Chave `GEMINI_API_KEY` (ou Anthropic) em `.env` | Só o Sentinel AI: o chat da interface antiga e o Assistente de dúvidas do painel com o contexto da análise (depois da autorização na tela). Sem ela, `/api/chat` responde 503 e o Assistente de dúvidas responde no modo local. `start_presentation.ps1/.sh` exigem a chave; para usar só o ML, rode `python src/sentinel_ai.py`. |
+| Chave `GEMINI_API_KEY` (ou Anthropic) em `.env` | Só o Sentinel AI: o chat da interface antiga e o Assistente de dúvidas do painel com o contexto da análise (depois da autorização na tela). Sem ela, `/api/chat` responde 503 e o Assistente de dúvidas responde no modo local. `start_presentation.ps1/.sh` exigem a chave; para usar só o ML, rode `python src/servidor.py`. |
 | `ml_config.local.toml` | Treinar, avaliar e usar o histórico do HI-Small no replay. Analisar dataset não precisa dele. |
 | `artefatos_ml/modelo_unificado.joblib` | Qualquer previsão. Ignorado pelo git: gere com `treinar`. |
 
@@ -1024,7 +1024,7 @@ O treino documentado usou Python 3.14.0, numpy 2.5.4, pandas 3.1.0 e scikit-lear
 
 | Comando | O que faz |
 |---|---|
-| `python src/sentinel_ai.py` | Servidor; painel do analista em `http://127.0.0.1:5000/` (interface antiga em `/legado`) |
+| `python src/servidor.py` | Servidor; painel do analista em `http://127.0.0.1:5000/` (interface antiga em `/legado`) |
 | `python src/main.py --input dados/exemplo_transacoes.csv --scc --centralidade` | Grafos |
 | `python src/main.py --input arquivo.csv --export-json --output nome` | Grafos, com JSON |
 | `python -m src.ml.cli auditar --fonte todas` | Audita os dados |
@@ -1059,7 +1059,7 @@ Rotas da API: `docs/ml/EVENTOS.md`, seção 7, e `docs/ml/ANALISE_DATASETS.md`.
 
 | Arquivo | Responsabilidade |
 |---|---|
-| `src/sentinel_ai.py` | Servidor, página, chat |
+| `src/servidor.py` | Servidor, página, chat |
 | `src/api_ml.py`, `src/api_eventos.py` | Rotas de exploração; de sessão, eventos, análises e previsão |
 | `src/main.py`, `src/grafo/graph.py`, `src/leitura/` | CLI, grafo, leitura e exportação de grafos |
 | `src/algoritmos/` | Ciclos, SCC, centralidade, fan-out e fan-in |

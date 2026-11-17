@@ -18,7 +18,7 @@ de investigação, não confirmação.
 ## Arquitetura
 
 ```
-interface/painel.html          src/api_painel.py                 src/sentinel_ia.py          Gemini (ou Anthropic)
+interface/painel.html          src/painel/api.py                 src/sentinel_ia.py          Gemini (ou Anthropic)
  (Assistente de dúvidas)        POST /api/painel/assistente        prompt + contexto            (opcional)
          |                               |                                |                          |
          |-- pergunta (+ autorização) -->|-- resposta local (sempre) ---- |                          |
@@ -49,7 +49,7 @@ Detalhes da tela e do que é enviado: [docs/ui/PAINEL_ANALISTA.md](ui/PAINEL_ANA
 ```bash
 python -m pip install -r requirements.txt -r requirements-ml.txt
 cp .env.example .env         # opcional: preencher GEMINI_API_KEY
-python src/sentinel_ai.py
+python src/servidor.py
 ```
 
 Abra `http://127.0.0.1:5000/` e use o botão do Assistente de dúvidas, no canto inferior direito. No Windows, o
@@ -57,7 +57,7 @@ Abra `http://127.0.0.1:5000/` e use o botão do Assistente de dúvidas, no canto
 
 ## Conexao com o Gemini: chave, verificacao e erros
 
-**Como a chave chega ao Sentinel AI.** O inicializador (`Inicializador Rápido/Iniciar_NodeWatch.bat` → `Iniciar_NodeWatch.ps1`) pergunta o token uma vez, com a digitação oculta, e grava só a linha `GEMINI_API_KEY=` do `.env` da pasta principal. O servidor (`src/sentinel_ai.py`) carrega esse `.env` ao iniciar (`load_dotenv`), e o motor (`src/sentinel_ia.py`) lê a variável do ambiente. Uma variável `GEMINI_API_KEY` já definida no Windows tem precedência e o inicializador não pergunta. Trocou a chave? Reinicie o servidor.
+**Como a chave chega ao Sentinel AI.** O inicializador (`Inicializador Rápido/Iniciar_NodeWatch.bat` → `Iniciar_NodeWatch.ps1`) pergunta o token uma vez, com a digitação oculta, e grava só a linha `GEMINI_API_KEY=` do `.env` da pasta principal. O servidor (`src/servidor.py`) carrega esse `.env` ao iniciar (`load_dotenv`), e o motor (`src/sentinel_ia.py`) lê a variável do ambiente. Uma variável `GEMINI_API_KEY` já definida no Windows tem precedência e o inicializador não pergunta. Trocou a chave? Reinicie o servidor.
 
 **Cliente.** Biblioteca `google-genai` (3.x), modelo `GEMINI_MODEL` (padrão `gemini-2.5-flash`), **API `v1beta`** (`GEMINI_API_VERSION`), tempo limite de 60 s e até 4096 tokens de saída.
 
@@ -122,7 +122,7 @@ Os testes usam um provedor falso (nada sai do computador) e cobrem: leitura da c
 
 ## Validação
 
-- `python src/sentinel_ai.py` sobe o servidor; `/health` informa o provedor, o modelo e se há chave configurada;
+- `python src/servidor.py` sobe o servidor; `/health` informa o provedor, o modelo e se há chave configurada;
 - sem chave, o painel e o assistente funcionam no modo local;
 - com chave, **Testar conexão** mostra *Sentinel AI conectado* ou o motivo da falha;
 - `.env` fora do controle de versão.

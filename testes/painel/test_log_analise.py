@@ -18,7 +18,7 @@ import pytest
 
 pytest.importorskip("flask")
 
-from src import api_painel  # noqa: E402
+from src.painel import api as api_painel  # noqa: E402
 from src.painel import armazenamento as arm  # noqa: E402
 from src.painel import pipeline as pl  # noqa: E402
 from testes.painel.conftest import CENARIO, D, Ambiente, Portao, abrir_cliente, escrever, linha  # noqa: E402

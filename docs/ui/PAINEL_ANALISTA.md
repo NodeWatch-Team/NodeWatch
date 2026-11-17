@@ -3,7 +3,7 @@
 Página inicial do NodeWatch (`http://127.0.0.1:5000/`), feita para o uso diário de um analista de prevenção à lavagem de dinheiro: enviar ou escolher um dataset de transações, iniciar a análise, acompanhar o processamento e decidir quais transações e contas merecem investigação.
 
 ```bash
-python src/sentinel_ai.py
+python src/servidor.py
 ```
 
 Na raiz do projeto, com o ambiente virtual ativo. O terminal mostra o endereço do painel na linha `>> Painel do analista: http://127.0.0.1:5000/`; abra-o no navegador. Não precisa de chave de API.
@@ -63,11 +63,11 @@ Enviar, validar e analisar exigem a sessão da página (`src/ml/sessoes.py`). A 
 **Exceção: liberar uma origem extra.** Não é um modo normal de acesso: o painel é aberto em `http://127.0.0.1:5000/` e não precisa de configuração. Se uma página de outra origem precisar mesmo chamar a API (por exemplo, um arquivo aberto do disco, que chega como origem `null`), libere-a **temporariamente**:
 
 ```powershell
-$env:NODEWATCH_ORIGENS = "null"; python src/sentinel_ai.py
+$env:NODEWATCH_ORIGENS = "null"; python src/servidor.py
 ```
 
 ```bash
-NODEWATCH_ORIGENS=null python src/sentinel_ai.py
+NODEWATCH_ORIGENS=null python src/servidor.py
 ```
 
 O terminal confirma com `Origens extras liberadas (NODEWATCH_ORIGENS): null` e mostra um aviso de risco. **Risco:** a origem `null` não é exclusiva dos arquivos do seu computador. Páginas em `iframe` com `sandbox`, de qualquer site aberto no mesmo navegador, também usam `null` e passam a poder chamar a API enquanto a variável estiver ligada.
@@ -289,7 +289,7 @@ Respostas do Sentinel AI aparecem com um traço ciano, o motor usado, a base env
 
 ## API
 
-Todas as rotas em `/api/painel` (`src/api_painel.py`):
+Todas as rotas em `/api/painel` (`src/painel/api.py`):
 
 | rota | uso |
 |---|---|
@@ -336,7 +336,7 @@ Uso normal conferido do começo ao fim, com arquivos pequenos e sem reprocessar 
 
 | fluxo | resultado |
 |---|---|
-| `python src/sentinel_ai.py` | o terminal mostra `>> Painel do analista (use este): http://127.0.0.1:5000/` e a interface antiga em seguida, identificada como antiga |
+| `python src/servidor.py` | o terminal mostra `>> Painel do analista (use este): http://127.0.0.1:5000/` e a interface antiga em seguida, identificada como antiga |
 | `/` | painel do analista, sem erros no console |
 | `/legado`, `/#ml`, `/#ml/eventos`, `/#grafos` | interface antiga, com a faixa de aviso e o link para `/`; o link leva ao painel |
 | Envio de `com_linhas_ruins.csv` (399 linhas) pela tela | validação com 394 válidas e 5 recusadas listadas; análise concluída; valor mínimo 1 deixou 5 fora do recorte; filtros, tabela, detalhes, grafo e painel lateral funcionando |

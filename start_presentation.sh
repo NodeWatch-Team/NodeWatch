@@ -92,4 +92,4 @@ echo "  Painel do analista: http://127.0.0.1:5000/"
 echo ""
 
 # 7. Iniciar o backend
-python src/sentinel_ai.py
+python src/servidor.py

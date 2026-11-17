@@ -198,8 +198,8 @@ def test_distribuicao_nao_leva_caminhos_da_maquina(tmp_path: Path, modelo_minimo
 def test_painel_nao_libera_analise_so_com_metadados(repo: Path):
     """Regressão: numa cópia limpa havia metadados versionados (docs/ml/resultados) sem o .joblib,
     o painel dizia "modelo disponível" e a análise falhava ao começar."""
-    from src import api_painel
-    from src.sentinel_ai import app
+    from src.painel import api as api_painel
+    from src.servidor import app
 
     docs = repo / "docs" / "ml" / "resultados"
     docs.mkdir(parents=True)

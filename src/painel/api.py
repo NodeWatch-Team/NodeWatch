@@ -56,7 +56,7 @@ from typing import Any, Callable, Dict, Optional
 from flask import Blueprint, jsonify, request
 from werkzeug.formparser import parse_form_data
 
-_RAIZ = Path(__file__).resolve().parent.parent
+_RAIZ = Path(__file__).resolve().parents[2]
 CABECALHO_SESSAO = "X-NodeWatch-Sessao"
 VALOR_MINIMO_PADRAO = 1
 bp = Blueprint("painel", __name__, url_prefix="/api/painel")

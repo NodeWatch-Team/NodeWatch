@@ -167,7 +167,7 @@
     if (sessao.id) o.headers = Object.assign({}, o.headers || {}, { 'X-NodeWatch-Sessao': sessao.id });
     try { r = await fetch(API + caminho, o); }
     catch (e) {
-      throw { erro: 'Servidor do NodeWatch indisponível.', acao: 'Confira se o servidor está em execução (python src/sentinel_ai.py) e recarregue a página.', rede: true };
+      throw { erro: 'Servidor do NodeWatch indisponível.', acao: 'Confira se o servidor está em execução (python src/servidor.py) e recarregue a página.', rede: true };
     }
     let corpo = null;
     try { corpo = await r.json(); } catch (e) { /* resposta sem JSON */ }

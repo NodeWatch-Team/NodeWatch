@@ -386,7 +386,7 @@ A ação usa só 15 linhas inventadas. Na cópia isolada usada no teste de 06/11
 
 **Antes da apresentação:**
 
-1. Na máquina que tem o modelo, abra um terminal na pasta do projeto e rode `.venv\Scripts\python.exe src\sentinel_ai.py`. Não use `start_presentation.ps1`, que exige chave do Gemini.
+1. Na máquina que tem o modelo, abra um terminal na pasta do projeto e rode `.venv\Scripts\python.exe src\servidor.py`. Não use `start_presentation.ps1`, que exige chave do Gemini.
 2. Abra `http://127.0.0.1:5000/legado#ml/analisar` (área Analisar dataset da interface antiga, usada nesta demonstração) e confirme que a sessão aparece como **ativa**.
 3. Faça uma vez a sequência abaixo, para o seletor de arquivos abrir na pasta `docs\exemplos`.
 

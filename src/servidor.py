@@ -3,7 +3,7 @@
 Rotas:
     /                 painel do analista (interface/painel.html)
     /assets/<arquivo> arquivos estáticos do painel (interface/assets)
-    /api/painel/*     API do painel (src/api_painel.py)
+    /api/painel/*     API do painel (src/painel/api.py)
     /health           situação do servidor e do Sentinel AI
 
 Ao iniciar, instala e confere o modelo de ML (src/ml/provisionamento.py) e só
@@ -12,7 +12,7 @@ API; a chave (GEMINI_API_KEY ou ANTHROPIC_API_KEY no .env) só ativa o Sentinel
 AI no Assistente de dúvidas, com a autorização do analista na tela.
 
 Uso:
-    python src/sentinel_ai.py
+    python src/servidor.py
 """
 
 from __future__ import annotations
@@ -27,14 +27,14 @@ from dotenv import load_dotenv
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_PROJECT_ROOT / ".env")
 
-# Permite importar src.* tanto via ``python src/sentinel_ai.py`` quanto ``python -m src.sentinel_ai``
+# Permite importar src.* tanto via ``python src/servidor.py`` quanto ``python -m src.servidor``
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
-from src.api_painel import bp as painel_bp  # noqa: E402
+from src.painel.api import bp as painel_bp  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Setup

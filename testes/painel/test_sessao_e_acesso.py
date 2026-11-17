@@ -9,7 +9,8 @@ import pytest
 
 pytest.importorskip("flask")
 
-from src import api_painel, seguranca_local  # noqa: E402
+from src import seguranca_local
+from src.painel import api as api_painel  # noqa: E402
 from src.ml.sessoes import PULSO_S, TTL_S  # noqa: E402
 from testes.painel.conftest import (CENARIO, D, Ambiente, Portao, abrir_cliente, escrever,  # noqa: E402
                                     linha)
@@ -278,11 +279,11 @@ def test_servidor_e_local_por_padrao_e_sem_cors_curinga(monkeypatch):
     import importlib
     import os
 
-    from src import sentinel_ai
+    from src import servidor
     if "SENTINEL_HOST" not in os.environ:
-        assert sentinel_ai.HOST == "127.0.0.1"
+        assert servidor.HOST == "127.0.0.1"
     if not os.environ.get("NODEWATCH_ORIGENS"):
-        assert sentinel_ai.ORIGENS_EXTRAS == []
-    fonte = importlib.util.find_spec("src.sentinel_ai").origin
+        assert servidor.ORIGENS_EXTRAS == []
+    fonte = importlib.util.find_spec("src.servidor").origin
     texto = open(fonte, encoding="utf-8").read()
     assert "\nCORS(app)\n" not in texto and 'origins="*"' not in texto and "origins='*'" not in texto

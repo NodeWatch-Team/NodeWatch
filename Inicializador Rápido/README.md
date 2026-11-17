@@ -21,7 +21,7 @@ A janela abre com o banner **NODEWATCH** e uma lista das oito etapas em `[WAITIN
 | 04 DATA ENGINE | mostra as versões de numpy, pandas, pyarrow e scipy carregadas na etapa 03 |
 | 05 MACHINE LEARNING | `python -m src.ml.provisionamento`: instala e valida o modelo (a saída dele aparece inteira) |
 | 06 SENTINEL AI | token do Gemini (opcional), como descrito abaixo |
-| 07 FRAUD DETECTION | inicia `python src\sentinel_ai.py` (as mensagens do servidor aparecem como sempre) e lê `/api/painel/estado` para confirmar o modelo carregado e o estado do Sentinel AI |
+| 07 FRAUD DETECTION | inicia `python src\servidor.py` (as mensagens do servidor aparecem como sempre) e lê `/api/painel/estado` para confirmar o modelo carregado e o estado do Sentinel AI |
 | 08 SYSTEM READY | abre o painel e mostra **NODEWATCH ONLINE / FRAUD DETECTION SYSTEM READY / SYSTEM STATUS: OPERATIONAL** |
 
 **Identidade visual:** é a mesma da logo.

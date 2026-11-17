@@ -12,8 +12,8 @@ import pytest
 
 pytest.importorskip("flask")
 
-from src import sentinel_ai  # noqa: E402
-from src.sentinel_ai import app, linhas_de_inicio  # noqa: E402
+from src import servidor  # noqa: E402
+from src.servidor import app, linhas_de_inicio  # noqa: E402
 
 RAIZ = Path(__file__).resolve().parents[2]
 EXTERNA = "https://site-externo.example"
@@ -37,7 +37,7 @@ def test_raiz_serve_o_painel_do_analista(cliente):
 
 
 def test_so_o_painel_e_servido(cliente):
-    assert "Painel do analista" in sentinel_ai.index.__doc__
+    assert "Painel do analista" in servidor.index.__doc__
     rotas = {r.rule for r in app.url_map.iter_rules()}
     assert "/legado" not in rotas and "/api/chat" not in rotas          # interface antiga e o chat dela foram removidos
     assert cliente.get("/legado").status_code == 404
@@ -67,7 +67,7 @@ def test_inicio_avisa_do_risco_quando_null_esta_liberada():
 
 
 def test_inicio_usa_as_linhas_testadas_e_o_aviso_da_chave_cita_o_assistente():
-    fonte = (RAIZ / "src" / "sentinel_ai.py").read_text(encoding="utf-8")
+    fonte = (RAIZ / "src" / "servidor.py").read_text(encoding="utf-8")
     principal = fonte[fonte.index('if __name__ == "__main__":'):]
     assert 'print("\\n".join(linhas_de_inicio()))' in principal
     assert "Assistente de duvidas do painel" in principal and "interface antiga" not in principal
@@ -121,7 +121,7 @@ def test_documentacao_trata_null_como_excecao_temporaria_com_o_risco():
 
 # -- origens: padrão e com null ligada ------------------------------------------------------
 def test_padrao_sem_origens_extras_recusa_null_e_externa(cliente):
-    assert sentinel_ai.ORIGENS_EXTRAS == [] or os.environ.get("NODEWATCH_ORIGENS")
+    assert servidor.ORIGENS_EXTRAS == [] or os.environ.get("NODEWATCH_ORIGENS")
     if os.environ.get("NODEWATCH_ORIGENS"):
         pytest.skip("NODEWATCH_ORIGENS definida no ambiente deste teste")
     for origem in ("null", EXTERNA):
@@ -136,13 +136,13 @@ def test_padrao_sem_origens_extras_recusa_null_e_externa(cliente):
 _COM_NULL = r"""
 import json, sys
 sys.path.insert(0, sys.argv[1])
-from src import sentinel_ai
-c = sentinel_ai.app.test_client()
+from src import servidor
+c = servidor.app.test_client()
 def ver(metodo, rota, origem, **kw):
     r = getattr(c, metodo)(rota, headers={"Origin": origem, **kw.pop("headers", {})}, **kw)
     return [r.status_code, r.headers.get("Access-Control-Allow-Origin")]
 print(json.dumps({
-    "extras": sentinel_ai.ORIGENS_EXTRAS,
+    "extras": servidor.ORIGENS_EXTRAS,
     "null_get": ver("get", "/api/painel/datasets", "null"),
     "null_pre": ver("options", "/api/painel/sessao", "null", headers={"Access-Control-Request-Method": "POST"}),
     "externa_get": ver("get", "/api/painel/datasets", "https://site-externo.example"),
@@ -150,7 +150,7 @@ print(json.dumps({
     "externa_pre": ver("options", "/api/painel/analises", "https://site-externo.example", headers={"Access-Control-Request-Method": "POST"}),
     "sem_origem": [c.get("/api/painel/estado").status_code, None],   # a própria página / scripts locais
     "curinga": [k for k, v in c.get("/api/painel/datasets", headers={"Origin": "null"}).headers.items() if v == "*"],
-    "aviso": "iframes sandbox" in "\n".join(sentinel_ai.linhas_de_inicio()),
+    "aviso": "iframes sandbox" in "\n".join(servidor.linhas_de_inicio()),
 }))
 """
 
@@ -170,7 +170,7 @@ def test_com_null_ligada_so_null_passa_e_externa_continua_recusada():
 
 def test_curinga_nunca_e_aceito_na_variavel():
     env = dict(os.environ, NODEWATCH_ORIGENS="*")
-    codigo = ("import sys, json; sys.path.insert(0, sys.argv[1]); from src import sentinel_ai as s; "
+    codigo = ("import sys, json; sys.path.insert(0, sys.argv[1]); from src import servidor as s; "
               "c = s.app.test_client(); r = c.get('/api/painel/datasets', headers={'Origin': 'https://site-externo.example'}); "
               "print(json.dumps([s.ORIGENS_EXTRAS, r.status_code, r.headers.get('Access-Control-Allow-Origin')]))")
     saida = subprocess.run([sys.executable, "-c", codigo, str(RAIZ)], capture_output=True, text=True, env=env, cwd=RAIZ,

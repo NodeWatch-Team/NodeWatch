@@ -177,8 +177,8 @@ def preparar(pasta: Path, hismall: Path | None = None, linhas_grande: int = 200_
 
 
 def servir(pasta: Path, porta: int) -> None:
-    from src import api_painel
-    from src.sentinel_ai import app
+    from src.painel import api as api_painel
+    from src.servidor import app
 
     api_painel.configurar(pasta)  # dados, análises, logs e modelo do painel: só desta pasta
     print(f"\n  Ambiente de teste do NodeWatch: http://127.0.0.1:{porta}/")

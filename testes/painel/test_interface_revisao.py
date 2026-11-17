@@ -85,7 +85,7 @@ def test_envio_de_dataset_ignora_o_limite_global_do_app(tmp_path):
     import io
     import time
 
-    from src.sentinel_ai import app
+    from src.servidor import app
     from testes.painel.conftest import CENARIO, abrir_cliente, escrever
 
     (tmp_path / "artefatos_ml").mkdir()

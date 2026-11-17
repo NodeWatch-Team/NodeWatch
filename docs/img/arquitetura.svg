@@ -15,7 +15,7 @@
   <text x="474" y="106" font-size="8.8" fill="#4a5260">X-NodeWatch-Sessao</text>
 
   <rect x="6" y="120" width="668" height="62" rx="6" fill="#f3f4f6" stroke="#8a919c"/>
-  <text x="16" y="138" font-size="11" font-weight="600">Servidor local · Flask · src/sentinel_ai.py (127.0.0.1:5000)</text>
+  <text x="16" y="138" font-size="11" font-weight="600">Servidor local · Flask · src/servidor.py (127.0.0.1:5000)</text>
   <g font-size="9.5">
     <text x="16" y="158">/api/chat</text><text x="150" y="158">/api/ml · api_ml.py (só leitura)</text><text x="372" y="158">/api/ml/eventos, /analises, /sessao, /prever · api_eventos.py</text>
   </g>

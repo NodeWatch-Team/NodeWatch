@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src import api_painel
+from src.painel import api as api_painel
 from src.painel import armazenamento as arm
 from src.painel import score as sc
 from testes.painel.conftest import CENARIO, D, PADROES, Ambiente, abrir_cliente, escrever, linha

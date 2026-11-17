@@ -10,8 +10,9 @@ import re
 
 import pytest
 
-from src import api_painel, sentinel_ia
-from src.sentinel_ai import app
+from src import sentinel_ia
+from src.painel import api as api_painel
+from src.servidor import app
 from testes.painel.conftest import abrir_cliente
 from testes.painel.test_api_painel import _analisar, _cenario, _enviar
 

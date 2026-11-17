@@ -45,10 +45,11 @@ def test_sem_rotulo_nao_tem_a_coluna(tmp_path):
 
 def test_servir_sobe_o_painel_da_pasta_isolada(tmp_path, monkeypatch):
     # sem abrir porta: app.run e api_painel.configurar são substituídos; o que se confere são os imports e a ordem
-    from src import api_painel, sentinel_ai
+    from src import servidor
+    from src.painel import api as api_painel
     chamadas = []
     monkeypatch.setattr(api_painel, "configurar", lambda pasta: chamadas.append(("configurar", pasta)))
-    monkeypatch.setattr(sentinel_ai.app, "run", lambda **kw: chamadas.append(("run", kw["port"])))
+    monkeypatch.setattr(servidor.app, "run", lambda **kw: chamadas.append(("run", kw["port"])))
     amb.servir(tmp_path, 5999)
     assert chamadas == [("configurar", tmp_path), ("run", 5999)]
 

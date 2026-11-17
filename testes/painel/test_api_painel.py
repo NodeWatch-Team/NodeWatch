@@ -12,8 +12,8 @@ import pytest
 
 pytest.importorskip("flask")
 
-from src import api_painel  # noqa: E402
-from src.sentinel_ai import app  # noqa: E402
+from src.painel import api as api_painel  # noqa: E402
+from src.servidor import app  # noqa: E402
 from testes.painel.conftest import CENARIO, abrir_cliente, escrever  # noqa: E402
 
 INTERFACE = Path(__file__).resolve().parents[2] / "interface"

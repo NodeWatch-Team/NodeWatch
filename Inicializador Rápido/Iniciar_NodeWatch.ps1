@@ -269,7 +269,7 @@ Manifesto
 Etapa 1
 # Raiz do projeto = pasta pai deste script (confirmada pelos arquivos do NodeWatch)
 $raiz = Split-Path -Parent $PSScriptRoot
-$servidor = Join-Path $raiz "src\sentinel_ai.py"
+$servidor = Join-Path $raiz "src\servidor.py"
 $reqBase = Join-Path $raiz "requirements.txt"
 $reqMl = Join-Path $raiz "requirements-ml.txt"
 if (-not ((Test-Path -LiteralPath $servidor) -and (Test-Path -LiteralPath $reqBase) -and (Test-Path -LiteralPath $reqMl))) {
@@ -445,7 +445,7 @@ Progresso 5
 
 # =========================================================================================================
 # 06 SENTINEL AI - token do Gemini (opcional; ativa o Sentinel AI no Assistente de duvidas e no chat antigo)
-#    Variavel lida por src/sentinel_ai.py: GEMINI_API_KEY, carregada do .env na raiz do projeto.
+#    Variavel lida por src/servidor.py: GEMINI_API_KEY, carregada do .env na raiz do projeto.
 #    O valor nunca e exibido, registrado ou passado como argumento; nenhuma chamada e feita ao Gemini.
 # =========================================================================================================
 Etapa 6
@@ -520,12 +520,12 @@ Progresso 6
 # 07 FRAUD DETECTION - inicia o servidor pelo comando oficial, na raiz do projeto, e confirma pela API
 # =========================================================================================================
 Etapa 7
-Info "Iniciando o NodeWatch (python src\sentinel_ai.py)..."
+Info "Iniciando o NodeWatch (python src\servidor.py)..."
 Detalhe "Painel do analista: $URL"
 Detalhe "Para parar: Ctrl+C nesta janela."
 Detalhe "Mensagens do servidor:" 'escuro'
 Write-Host ""
-$proc = Start-Process -FilePath $venvPy -ArgumentList '"src\sentinel_ai.py"' -WorkingDirectory $raiz -NoNewWindow -PassThru -ErrorAction Stop
+$proc = Start-Process -FilePath $venvPy -ArgumentList '"src\servidor.py"' -WorkingDirectory $raiz -NoNewWindow -PassThru -ErrorAction Stop
 try {
     $pronto = $false
     for ($i = 0; $i -lt 180 -and -not $proc.HasExited; $i++) {

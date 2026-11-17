@@ -1,6 +1,6 @@
 """Modelo carregado no processo do servidor.
 
-Na raiz do projeto, o painel (``src.api_painel``) usa um único objeto por
+Na raiz do projeto, o painel (``src.painel.api``) usa um único objeto por
 processo: o artefato de ~39 MB é lido uma vez (:func:`obter`). Outras raízes
 (testes, ambiente de teste) carregam sem cache (:func:`carregar`), para que
 cada configuração veja o estado atual da pasta.

@@ -264,9 +264,9 @@ class ClienteComSessao:
 
 def abrir_cliente(raiz: Path, modelo: Any, bloco: int = 4, **config: Any) -> ClienteComSessao:
     """Configura a API numa pasta temporária e abre uma sessão (o que a página faz ao carregar)."""
-    from src import api_painel
+    from src.painel import api as api_painel
     from src.ml.sessoes import GerenciadorSessoes
-    from src.sentinel_ai import app
+    from src.servidor import app
 
     relogio = Relogio()
     sessoes = GerenciadorSessoes(relogio=relogio)

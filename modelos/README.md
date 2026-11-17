@@ -10,7 +10,7 @@ Esta pasta guarda o **modelo treinado** que o painel do analista usa, para que q
 
 ## Como ele chega ao `artefatos_ml/`
 
-Na primeira execução, `python -m src.ml.provisionamento` (chamado também ao iniciar `python src/sentinel_ai.py` e pelo Inicializador Rápido):
+Na primeira execução, `python -m src.ml.provisionamento` (chamado também ao iniciar `python src/servidor.py` e pelo Inicializador Rápido):
 
 1. confere se scikit-learn, NumPy, pandas e joblib estão instalados e compatíveis com o manifesto (scikit-learn **igual**; os demais na mesma versão principal);
 2. confere o SHA-256 de `modelos/modelo_unificado.joblib`; se o arquivo faltar ou não bater, baixa a versão do manifesto (ou de `NODEWATCH_MODELO_URL`) e confere de novo;

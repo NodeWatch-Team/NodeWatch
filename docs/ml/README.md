@@ -83,7 +83,7 @@ python -m pytest testes/ml
 
 ### Usar o modelo no painel
 
-`python src/sentinel_ai.py` (com `requirements.txt` e `requirements-ml.txt` instalados) e abra `http://127.0.0.1:5000/`. O painel do analista valida um dataset de transações e, com a ação **Analisar**, pontua cada transação com o modelo salvo, sem treinar nada. O financeiro usa `src/ml/incremental.py`, que calcula os mesmos 49 atributos do treino a partir de um estado por conta. Fluxo, formatos e limites: [`docs/ui/PAINEL_ANALISTA.md`](../ui/PAINEL_ANALISTA.md).
+`python src/servidor.py` (com `requirements.txt` e `requirements-ml.txt` instalados) e abra `http://127.0.0.1:5000/`. O painel do analista valida um dataset de transações e, com a ação **Analisar**, pontua cada transação com o modelo salvo, sem treinar nada. O financeiro usa `src/ml/incremental.py`, que calcula os mesmos 49 atributos do treino a partir de um estado por conta. Fluxo, formatos e limites: [`docs/ui/PAINEL_ANALISTA.md`](../ui/PAINEL_ANALISTA.md).
 
 A interface antiga (exploração de previsões, Analisar dataset, eventos, replay e laboratório de simulação) foi removida; ela continua no histórico do Git.
 

@@ -237,7 +237,7 @@
   function AbertoComoArquivo() {
     return h('main', { id: 'conteudo' }, h('section', { className: 'secao' }, h('div', { className: 'corpo' },
       h(window.NW.Aviso, { tom: 'atencao', titulo: 'O painel não abre como arquivo do computador' },
-        h('p', null, 'Ele precisa do servidor local do NodeWatch. Na pasta do projeto, rode ', h('code', { className: 'mono' }, 'python src/sentinel_ai.py'),
+        h('p', null, 'Ele precisa do servidor local do NodeWatch. Na pasta do projeto, rode ', h('code', { className: 'mono' }, 'python src/servidor.py'),
           ' e abra ', h('strong', { className: 'mono' }, 'http://127.0.0.1:5000/'), ' no navegador.')))));
   }
 
