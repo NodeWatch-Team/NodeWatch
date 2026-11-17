@@ -337,7 +337,7 @@
           : h('div', { className: 'execucao-etapas' }, h(Progresso, { m: manifesto, aoCancelar, aoAssumir })),
         /* log da execução: h(LogAnalise, { m: manifesto, estado }) mais o atalho para a gaveta Operação */
         h(LogAnalise, { m: manifesto, estado, aoOperacao }))) : null;
-    const novaAnalise = h(Secao, { key: 'nova', id: 'dataset', icone: 'dataset', titulo: 'Nova análise' },
+    const novaAnalise = chave => h(Secao, { key: chave, id: 'dataset', icone: 'dataset', titulo: 'Nova análise' },
       estado.modelo.disponivel ? null : h(Aviso, { tom: 'erro', titulo: 'Modelo não encontrado no servidor' }, (estado.modelo.motivo || '') + ' Sem o modelo, a análise não pode ser iniciada.'),
       /* Com a análise em andamento, o envio e a escolha de dataset ficam recolhidos. */
       ocupado ? h('details', { key: 'escolha-recolhida', className: 'bloco recolhido' }, h('summary', null, 'Outro dataset (a análise continua)'), escolha) : escolha);
@@ -354,8 +354,11 @@
           h('td', null, a.id === analiseId ? h('span', { className: 'aberta' }, 'aberta') :
             h('button', { type: 'button', className: 'botao pequeno', onClick: () => aoAbrir(a.id), 'aria-label': 'Abrir a análise de ' + a.dataset.nome + ' de ' + f.instante(a.criada_em) }, 'Abrir'))))))) :
         h(Vazio, { compacto: true }, 'Nenhuma análise foi feita ainda.'));
-    /* Ordem: com a análise em andamento, a execução e o Cancelar vêm primeiro; senão, a nova análise e depois a execução aberta. */
-    return h(React.Fragment, null, ocupado ? processamento : novaAnalise, ocupado ? novaAnalise : processamento, recentes);
+    /* Ordem: com a análise em andamento, a execução e o Cancelar vêm primeiro; senão, a nova análise e depois a execução aberta.
+       A nova análise tem uma chave por posição: na troca de ordem, o React recria ESSA seção e não move a execução.
+       Mover um nó no DOM zera a rolagem dele sem evento de rolagem: no fim da análise, o log ficava com o topo zerado
+       e a janela virtual ainda no fim da lista (área em branco). */
+    return h(React.Fragment, null, ocupado ? processamento : novaAnalise('nova'), ocupado ? novaAnalise('nova-depois') : processamento, recentes);
   }
 
   /* ═══ 2. Recorte (filtros) ═══════════════════════════════════════════ */
