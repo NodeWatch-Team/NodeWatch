@@ -55,6 +55,9 @@ from src.ml.esquemas import COLUNAS_HISMALL, ESQUEMA_REDE_V1, FEATURES_REDE, CLA
 from src.ml.incremental import EstadoFinanceiro
 from src.ml.ingestao import _abrir_binario, _normalizar_cabecalho
 from src.ml.previsao import AVISO_LAVAGEM, _deriva, pontuar_lavagem, tabela_previsoes_rede
+from src.ml.formatos import (  # noqa: F401  (reexportados para quem ainda importa daqui)
+    CAMPOS_GRAFO, CAMPOS_PT, FORMATOS, OBRIGATORIAS_REDE, _FMT_HISMALL, detectar_formato, ler_tempo as _tempo,
+)
 
 LIMITE_BYTES = 256_000_000
 LIMITE_HISTORICO_BYTES = 512_000_000
@@ -63,41 +66,6 @@ BLOCO_REDE = 20_000
 LEITURA_EM_BLOCOS = 250_000
 CHECKPOINT_S = 30.0
 PASTA_RESULTADOS = Path("artefatos_ml") / "analises"
-
-CAMPOS_PT = ("id_transacao", "timestamp", "banco_origem", "conta_origem", "banco_destino", "conta_destino",
-             "valor_pago", "moeda_pagamento", "valor_recebido", "moeda_recebimento", "formato")
-CAMPOS_GRAFO = ("step", "type", "amount", "nameOrig", "nameDest")
-OBRIGATORIAS_REDE = ("id_fluxo", "anchor_id", "probe_id", "timestamp", *FEATURES_REDE)
-
-FORMATOS: Dict[str, Dict[str, Any]] = {
-    "hismall_v1": {
-        "dominio": "lavagem", "nome": "Transações no formato original do IBM AML (HI-Small)",
-        "cabecalho": ",".join(COLUNAS_HISMALL[:-1]),
-        "rotulo": "Is Laundering (opcional; 0 ou 1)",
-        "regras": ["Timestamp em AAAA/MM/DD HH:MM (UTC presumido; resolução de minuto)",
-                   "From Bank/To Bank numéricos; a conta é identificada por banco-conta",
-                   "a 1ª coluna Account é a origem e a 2ª, o destino",
-                   "valores numéricos >= 0; moedas e formato não vazios",
-                   "moedas e formatos fora dos do treino são aceitos, mas sinalizados"],
-    },
-    "transacao_hismall_v1": {
-        "dominio": "lavagem", "nome": "Transações com nomes de colunas em português",
-        "cabecalho": ",".join(CAMPOS_PT),
-        "rotulo": "rotulo (opcional; 0 ou 1)",
-        "regras": ["timestamp em ISO 8601, AAAA/MM/DD HH:MM ou época (s); sem fuso = UTC",
-                   "id_transacao único e estável (repetido = recusado)",
-                   "demais regras iguais às do formato hismall_v1"],
-    },
-    "rede_v1": {
-        "dominio": "rede", "nome": "Medições de rede com atributos já preparados",
-        "cabecalho": ",".join(OBRIGATORIAS_REDE),
-        "rotulo": "alvo (opcional; OK, RISCO ou FALHA da próxima medição)",
-        "regras": ["os 21 atributos rede_v1 precisam vir prontos (telemetria bruta não é aceita: "
-                   "a referência p95/p99 por fluxo não está documentada)",
-                   "faixas, domínios e sentinelas -1 conforme docs/ml/DICIONARIO_DADOS.md",
-                   "chave id_fluxo + timestamp repetida = recusada"],
-    },
-}
 
 
 class ErroAnalise(ValueError):
@@ -108,55 +76,12 @@ class ErroAnalise(ValueError):
 
 
 # ---------------------------------------------------------------------------
-# Detecção de formato
+# Cabeçalho (a detecção de formato fica em src/ml/formatos.py)
 # ---------------------------------------------------------------------------
 def ler_cabecalho(caminho: Path) -> List[str]:
     with _abrir_binario(caminho) as fh:
         linha = fh.readline().decode("utf-8-sig", errors="replace")
     return _normalizar_cabecalho(linha)
-
-
-def detectar_formato(colunas: List[str]) -> Dict[str, Any]:
-    """Formato e análises possíveis; o que falta para as demais. Nunca completa colunas."""
-    from src.ml.exploracao import detectar_dominio
-    cols = set(colunas)
-    previsao = detectar_dominio(colunas)
-    if previsao:
-        return {"formato": f"previsao_{previsao}_v1", "dominio": None, "analisavel": False,
-                "possiveis": [f"Explorar previsões ({'rede' if previsao == 'rede' else 'financeira'})"],
-                "faltando": {}, "leitura": "É um arquivo de PREVISÕES já calculadas, não de dados novos. "
-                                          "Abra-o em Explorar previsões (Importar CSV)."}
-    if colunas[:len(COLUNAS_HISMALL) - 1] == list(COLUNAS_HISMALL[:-1]) and \
-            len(colunas) in (len(COLUNAS_HISMALL) - 1, len(COLUNAS_HISMALL)) and \
-            (len(colunas) == len(COLUNAS_HISMALL) - 1 or colunas[-1] == COLUNAS_HISMALL[-1]):
-        return {"formato": "hismall_v1", "dominio": "lavagem", "analisavel": True,
-                "possiveis": ["Lavagem (score, alertas, motivos verificáveis)"],
-                "rotulos": "Is Laundering" in cols, "faltando": {}}
-    if set(CAMPOS_PT) <= cols:
-        return {"formato": "transacao_hismall_v1", "dominio": "lavagem", "analisavel": True,
-                "possiveis": ["Lavagem (score, alertas, motivos verificáveis)"],
-                "rotulos": "rotulo" in cols, "faltando": {}}
-    if set(OBRIGATORIAS_REDE) <= cols:
-        return {"formato": "rede_v1", "dominio": "rede", "analisavel": True,
-                "possiveis": ["Estado da próxima medição de rede (classe, score, alerta, deriva)"],
-                "rotulos": "alvo" in cols, "faltando": {}}
-    faltando = {
-        "hismall_v1": [c for c in COLUNAS_HISMALL[:-1] if c not in cols],
-        "transacao_hismall_v1": [c for c in CAMPOS_PT if c not in cols],
-        "rede_v1": [c for c in OBRIGATORIAS_REDE if c not in cols],
-    }
-    if set(CAMPOS_GRAFO) <= cols:
-        return {"formato": "csv_grafo_nodewatch", "dominio": None, "analisavel": False,
-                "possiveis": ["Análise de grafos (ciclos, SCC, fan-in/out) pela CLI do NodeWatch"],
-                "faltando": {"transacao_hismall_v1": faltando["transacao_hismall_v1"]},
-                "leitura": ("Serve para a análise de grafos, mas não para o modelo financeiro: não tem bancos, "
-                            "moedas, valor recebido nem data absoluta (step é relativo). Esses campos não são "
-                            "inventados.")}
-    melhor = min(faltando, key=lambda k: len(faltando[k]) / len(FORMATOS[k]["cabecalho"].split(",")))
-    return {"formato": None, "dominio": None, "analisavel": False, "possiveis": [], "faltando": faltando,
-            "mais_proximo": melhor,
-            "leitura": f"Nenhum contrato atendido. O mais próximo é {melhor}; faltam: "
-                       f"{', '.join(faltando[melhor][:12])}{' …' if len(faltando[melhor]) > 12 else ''}."}
 
 
 # ---------------------------------------------------------------------------
@@ -173,21 +98,7 @@ class LeituraFinanceira:
     exemplos_recusa: List[Dict[str, Any]]
 
 
-_FMT_HISMALL = "%Y/%m/%d %H:%M"
 _EPOCA = pd.Timestamp(0, tz="UTC")
-
-
-def _tempo(serie: pd.Series, so_hismall: bool) -> pd.Series:
-    t = pd.to_datetime(serie, format=_FMT_HISMALL, errors="coerce", utc=True)
-    if so_hismall:
-        return t
-    faltam = t.isna() & (serie != "")
-    if faltam.any():
-        iso = pd.to_datetime(serie[faltam], format="ISO8601", errors="coerce", utc=True)
-        num = pd.to_numeric(serie[faltam], errors="coerce")
-        epoca = pd.to_datetime(num.where((num >= 0) & (num <= 4e9)), unit="s", utc=True)
-        t.loc[faltam] = iso.fillna(epoca)
-    return t
 
 
 def ler_financeiro(caminho: Path, formato: str, limite_exemplos: int = 20) -> LeituraFinanceira:

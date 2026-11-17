@@ -18,7 +18,7 @@ Validação (antes de qualquer análise)
     exemplo** e **como corrigir**. Linhas com problema não são corrigidas nem
     preenchidas: ficam fora da análise e são contadas.
 
-Reaproveita a detecção de formato e a leitura de datas de ``src.ml.analises``.
+Reaproveita a detecção de formato e a leitura de datas de ``src.ml.formatos``.
 Só transações financeiras são analisáveis aqui; a análise de rede está
 temporariamente fora desta interface.
 """
@@ -40,7 +40,7 @@ from typing import Any, BinaryIO, Callable, Dict, Iterator, List, Optional, Tupl
 import numpy as np
 import pandas as pd
 
-from src.ml.analises import CAMPOS_PT, FORMATOS, _tempo, detectar_formato
+from src.ml.formatos import FORMATOS, detectar_formato, ler_tempo
 from src.ml.esquemas import COLUNAS_HISMALL
 from src.ml.ingestao import _normalizar_cabecalho
 from src.painel.util import agora_iso, gravar_json_atomico, ler_json, minuto_iso
@@ -274,7 +274,7 @@ def ler_validando(caminho: Path, formato: str, colunas: List[str],
                     probs.marcar(m, original[campo], texto, como, linhas, b[campo])
                     ruim[m] = True
 
-                t = _tempo(b["ts"], hismall)
+                t = ler_tempo(b["ts"], hismall)
                 marcar(t.isna().to_numpy(), "ts", "data e hora ausente ou em formato não aceito", f"Use {fmt_data}.")
                 for c in ("banco_o", "banco_d"):
                     marcar(~b[c].str.fullmatch(r"\d{1,18}").to_numpy(), c, f"{PAPEIS[c]} não é um número inteiro",

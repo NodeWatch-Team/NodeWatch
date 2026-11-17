@@ -36,6 +36,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 import numpy as np
 import pandas as pd
 
+from src.ml.formatos import COLUNAS_CHAVE_PREVISAO, detectar_dominio  # noqa: F401
 from src.ml.esquemas import (
     CLASSES_REDE,
     ESQUEMA_HISMALL_V1,
@@ -205,10 +206,7 @@ _TEXTO_LIVRE: Dict[str, Dict[str, Tuple[str, str]]] = {
 }
 
 CONTRATOS: Dict[str, Esquema] = {"rede": ESQUEMA_PREVISAO_REDE, "lavagem": ESQUEMA_PREVISAO_LAVAGEM}
-_COLUNAS_CHAVE = {
-    "rede": ("classe_prevista", "score_alerta_rede"),
-    "lavagem": ("score_lavagem", "alerta_lavagem"),
-}
+_COLUNAS_CHAVE = COLUNAS_CHAVE_PREVISAO
 _COLUNA_ROTULO = {"rede": "alvo", "lavagem": "Is Laundering"}
 _ACAO = {
     "rede": ("Use um CSV gerado por `python -m src.ml.cli prever --tarefa estado_rede`, sem renomear nem "
@@ -217,12 +215,6 @@ _ACAO = {
                 "remover colunas, ou corrija as colunas listadas."),
 }
 _NOME_DOMINIO = {"rede": "previsões de rede (estado_rede)", "lavagem": "previsões de lavagem"}
-
-
-def detectar_dominio(colunas: Iterable[str]) -> Optional[str]:
-    cols = set(colunas)
-    achados = [d for d, chave in _COLUNAS_CHAVE.items() if set(chave) <= cols]
-    return achados[0] if len(achados) == 1 else None
 
 
 def _normalizar_bool(s: pd.Series) -> pd.Series:
