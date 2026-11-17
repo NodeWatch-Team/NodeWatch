@@ -231,18 +231,14 @@
     <section id="ml" class="secao" aria-labelledby="titulo-ml">
       <div class="conteudo">
         <h2 id="titulo-ml">Como o Machine Learning funciona no NodeWatch</h2>
-        <p class="secao-subtitulo">Dois modelos independentes, uma regra de ouro (só o passado) e um score feito para ordenar a fila.</p>
+        <p class="secao-subtitulo">Um modelo, uma regra de ouro (só o passado) e um score feito para ordenar a fila.</p>
 
         <!-- Componente React (site-assets/js/artigo.js). O conteúdo abaixo é a versão estática, substituída quando o React carrega. -->
         <div id="ml-interativo" class="ml-interativo">
           <div class="ml-estatico">
             <article class="cartao">
-              <h3>Modelo 1 · Detecção de lavagem (49 atributos)</h3>
+              <h3>Modelo · Detecção de lavagem (49 atributos)</h3>
               <p>Random Forest treinado no IBM AML HI-Small: 5.078.345 transações, 5.177 positivas em 8 tipologias. Avalia velocidade de repasse, novidade do par de contas, desvio de valor e agregações em janelas deslizantes.</p>
-            </article>
-            <article class="cartao">
-              <h3>Modelo 2 · Estado de rede (21 atributos)</h3>
-              <p>Random Forest separado e independente: 333.954 medições de 135 caminhos (perda, RTT, jitter) classificadas em OK, RISCO ou FALHA. Não participa da detecção de lavagem.</p>
             </article>
             <article class="cartao">
               <h3>Rigor causal</h3>
@@ -341,13 +337,7 @@
                 <th scope="row">IBM AML HI-Small</th>
                 <td>Transações sintéticas geradas por simulador (Altman et al., 2023), 01–18/09/2022</td>
                 <td class="mono">5.078.345 tx · 5.177 lavagem</td>
-                <td>Modelo 1 (lavagem)</td>
-              </tr>
-              <tr>
-                <th scope="row"><code>dataset_final.csv</code></th>
-                <td>Telemetria de rede do material da disciplina, 28/09–05/10/2026; sem vínculo com as transações</td>
-                <td class="mono">333.954 medições · 135 caminhos</td>
-                <td>Modelo 2 (estado de rede)</td>
+                <td>Modelo de lavagem</td>
               </tr>
             </tbody>
           </table>

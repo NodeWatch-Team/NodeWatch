@@ -93,28 +93,6 @@
         "Limite conhecido: positivos sem tipologia conhecida (39% do teste) têm recall de apenas 2%."));
   }
 
-  function AbaRede() {
-    return h("div", null,
-      h("p", { className: "aba-lead" },
-        "Segundo ", h("strong", null, "Random Forest"),
-        ", independente do primeiro. Prevê o estado da próxima medição de cada caminho de rede, com telemetria do material da disciplina. Não participa da detecção de lavagem: não há vínculo verificável entre essas medições e as transações, e a fusão dos dois sinais fica como trabalho futuro."),
-      h(Fatos, { itens: [
-        ["Medições", "333.954"], ["Caminhos", "135"], ["Atributos", "21"], ["Macro-F1", "0,75"]
-      ] }),
-      h("div", { className: "classes-rede" },
-        h("span", { className: "classe classe-ok" }, "OK"),
-        h("span", { className: "classe classe-risco" }, "RISCO"),
-        h("span", { className: "classe classe-falha" }, "FALHA")),
-      h(Grupos, { itens: [
-        { titulo: "Perda de pacotes", texto: "Percentual perdido na medição e perdas consecutivas.", exemplo: "perda_pct · perdas_consecutivas" },
-        { titulo: "RTT", texto: "Tempo de ida e volta comparado ao p95/p99 de referência do caminho.", exemplo: "razao_rtt_p95" },
-        { titulo: "Jitter", texto: "Variação do atraso em relação ao p95 do caminho.", exemplo: "razao_jitter_p95" },
-        { titulo: "Janelas de 3, 6 e 12", texto: "Média de perda e máximos de RTT e jitter nas últimas medições.", exemplo: "perda_media_w12" }
-      ] }),
-      h("p", { className: "aba-nota" },
-        "Referência: repetir o estado atual dá macro-F1 de 0,71. Hoje os dois modelos não se combinam, porque as bases não têm vínculo verificável entre si."));
-  }
-
   function AbaCausal() {
     var EVENTOS = 9;
     var _t = useState(5), t = _t[0], setT = _t[1];
@@ -192,8 +170,7 @@
   }
 
   var ABAS = [
-    { id: "lavagem", rotulo: "Modelo 1 · Lavagem", curto: "49 atributos", Comp: AbaLavagem },
-    { id: "rede", rotulo: "Modelo 2 · Rede", curto: "21 atributos", Comp: AbaRede },
+    { id: "lavagem", rotulo: "Modelo de lavagem", curto: "49 atributos", Comp: AbaLavagem },
     { id: "causal", rotulo: "Rigor causal", curto: "zero vazamento", Comp: AbaCausal },
     { id: "score", rotulo: "Score 0–1000", curto: "simulador", Comp: AbaScore }
   ];

@@ -998,18 +998,6 @@ h1 {
   .barra-nome { font-size: 0.75rem; }
 }
 
-.classes-rede { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
-.classe {
-  font-family: var(--mono);
-  font-weight: 700;
-  font-size: 0.875rem;
-  padding: 6px 14px;
-  border-radius: 999px;
-  border: 1px solid currentColor;
-}
-.classe-ok { color: var(--verde); background: rgba(76, 185, 107, 0.1); }
-.classe-risco { color: var(--ambar); background: rgba(230, 168, 47, 0.1); }
-.classe-falha { color: var(--vermelho); background: rgba(239, 85, 82, 0.1); }
 
 /* Linha do tempo (rigor causal) */
 .linha-tempo { margin-top: 20px; padding: 18px; border: 1px solid var(--borda); border-radius: var(--raio-p); background: rgba(10, 14, 22, 0.55); }
