@@ -399,11 +399,6 @@ NodeWatch/
 |       └── logo.png
 |   ├──  NodeWatchlogo_transparente.png
 |   └──  index.html
-├── scripts/
-|   ├── push_to_github.ps1
-|   ├── push_to_github.sh
-|   ├── rush_local.ps1
-|   └── rush_local.sh
 ├── src/
 |   ├── algortimos/
 |       ├── __init__.py
