@@ -18,11 +18,11 @@
   var LIMIAR = 0.0910; // limiar do modelo de lavagem (máximo F1 na validação)
 
   var FAIXAS = [
-    { id: "basal", nome: "Fluxo basal", de: 0, ate: 300,
+    { id: "basal", nome: "Baixa", de: 0, ate: 300,
       leitura: "Comportamento compatível com o histórico. Sem prioridade de investigação." },
-    { id: "observacao", nome: "Zona de observação", de: 301, ate: 700,
+    { id: "observacao", nome: "Intermediária", de: 301, ate: 700,
       leitura: "Abaixo do limiar, mas perto dele. Vale revisar se outras evidências apontarem para a conta." },
-    { id: "alerta", nome: "Alerta prioritário", de: 701, ate: 1000,
+    { id: "alerta", nome: "Alta (alerta)", de: 701, ate: 1000,
       leitura: "Passou do limiar do modelo: a transação sobe para o topo da fila do analista." }
   ];
 

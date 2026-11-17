@@ -109,7 +109,7 @@
             <p class="rotulo">A solução</p>
             <h2 class="h-bloco">Triagem inteligente, não bloqueio cego</h2>
             <ul class="lista-curta">
-              <li><strong>Teoria dos Grafos</strong>: contas viram vértices e transações viram arestas; o grau de cada conta entra no modelo e o painel mostra para onde o dinheiro seguiu.</li>
+              <li><strong>Teoria dos Grafos</strong>: contas viram vértices e transações viram arestas; o grau distinto de cada conta e a novidade do par entram no modelo, e o painel mostra para onde o dinheiro seguiu.</li>
               <li><strong>Machine Learning</strong>: um Random Forest pontua cada transação com atributos temporais causais.</li>
               <li><strong>Decisão humana</strong>: o score ordena a fila de investigação; o analista decide.</li>
             </ul>
@@ -119,8 +119,8 @@
         <ul class="kpis" aria-label="Indicadores-chave">
           <li class="kpi">
             <span class="kpi-numero">5.078.345</span>
-            <span class="kpi-rotulo">transações analisadas</span>
-            <span class="kpi-nota">base IBM AML HI-Small</span>
+            <span class="kpi-rotulo">transações na base de estudo</span>
+            <span class="kpi-nota">IBM AML HI-Small (sintético)</span>
           </li>
           <li class="kpi">
             <span class="kpi-numero">49</span>
@@ -144,8 +144,8 @@
     <!-- 2 · Etapas do pipeline -->
     <section id="pipeline" class="secao" aria-labelledby="titulo-pipeline">
       <div class="conteudo">
-        <h2 id="titulo-pipeline">Pipeline em 4 etapas</h2>
-        <p class="secao-subtitulo">Do arquivo enviado ao alerta explicado.</p>
+        <h2 id="titulo-pipeline">Do arquivo ao alerta, em 4 passos</h2>
+        <p class="secao-subtitulo">Os passos 1 e 2 são a análise (leitura, ordenação, pontuação, índices e manifesto, todas medidas na tela); os passos 3 e 4 são a investigação sobre os resultados gravados.</p>
 
         <ol class="pipeline">
           <li class="etapa-pipe">
@@ -153,8 +153,8 @@
             <div>
               <h3>Ingestão e validação</h3>
               <ul class="lista-curta">
-                <li>Upload de <code>.csv</code> ou <code>.zip</code> no formato IBM AML.</li>
-                <li>Cada aba do navegador abre uma sessão isolada no servidor.</li>
+                <li>Envio de <code>.csv</code> ou <code>.zip</code> no formato IBM AML ou com colunas em português, sem limite de tamanho.</li>
+                <li>Linhas inválidas ficam fora e são contadas, com a coluna, um exemplo e como corrigir.</li>
                 <li>O modelo só é carregado se o hash <strong>SHA-256</strong> conferir com o manifesto versionado.</li>
               </ul>
             </div>
@@ -165,7 +165,7 @@
               <h3>Atributos e inferência ML</h3>
               <ul class="lista-curta">
                 <li>Extração temporal causal: cada transação só enxerga o passado.</li>
-                <li>Entre os atributos estão medidas de grafo: o grau de entrada e de saída de cada conta e se a aresta entre as duas contas é nova.</li>
+                <li>Entre os atributos estão medidas de grafo de 1 salto: as contrapartes distintas de cada conta e se a aresta entre as duas contas é nova.</li>
                 <li>Random Forest pontua cada transação; o resultado vira um score de 0 a 1000.</li>
               </ul>
             </div>
@@ -175,8 +175,8 @@
             <div>
               <h3>Investigação em grafo</h3>
               <ul class="lista-curta">
-                <li>As transações já pontuadas formam um multigrafo direcionado: contas são vértices (<span class="mono">V</span>), transações são arestas (<span class="mono">E</span>).</li>
-                <li>A rede da conta investigada é explorada salto a salto, com as arestas em alerta destacadas.</li>
+                <li>As transações já pontuadas formam um grafo direcionado: contas são vértices (<span class="mono">V</span>), transações agrupadas por par e moeda são arestas (<span class="mono">E</span>).</li>
+                <li>A rede da conta investigada é explorada salto a salto (até 3), consultando os resultados gravados em SQLite, com as arestas em alerta destacadas.</li>
                 <li>Cadeias com horários compatíveis mostram para onde o dinheiro seguiu, inclusive quando volta à conta.</li>
               </ul>
             </div>
@@ -187,8 +187,8 @@
               <h3>Triagem visual e explicabilidade</h3>
               <ul class="lista-curta">
                 <li>Painel com grafo interativo em SVG (zoom, arrasto, dicas), filtros e tabela detalhada.</li>
-                <li>Telemetria de hardware durante a análise: CPU, RAM e latência.</li>
-                <li><strong>Sentinel AI</strong> responde dúvidas no contexto da análise aberta.</li>
+                <li>Desempenho medido durante a análise: CPU, RAM, vazão e latência por bloco.</li>
+                <li>O <strong>Assistente de dúvidas</strong> (Sentinel AI) responde no contexto da análise aberta, localmente ou com o Gemini, com autorização.</li>
               </ul>
             </div>
           </li>
@@ -246,7 +246,7 @@
             </article>
             <article class="cartao">
               <h3>Score 0–1000</h3>
-              <p>0–300 fluxo basal · 301–700 zona de observação · 701–1000 alerta prioritário. Alerta é prioridade de investigação, não prova de fraude.</p>
+              <p>0–300 baixa · 301–700 intermediária · 701–1000 alta (alerta). Alerta é prioridade de investigação, não prova de lavagem.</p>
             </article>
           </div>
         </div>
@@ -259,24 +259,25 @@
         <h2 id="titulo-referencia">Referência rápida</h2>
         <p class="secao-subtitulo">Algoritmos, métricas, ferramentas e bases, definidos em uma linha cada.</p>
 
-        <h3 class="ref-grupo">Algoritmos de grafo</h3>
+        <h3 class="ref-grupo">Grafos no NodeWatch</h3>
         <div class="cartoes cartoes-3">
           <article class="cartao">
-            <p class="ref-sigla">DFS</p>
-            <h4>Busca em profundidade</h4>
-            <p>Percorre o grafo até voltar a um vértice já visitado no caminho: encontra <strong>ciclos fechados</strong>, quando o dinheiro retorna à conta de origem.</p>
+            <p class="ref-sigla">Grau distinto</p>
+            <h4>Atributo do modelo</h4>
+            <p>Contrapartes distintas acumuladas: quantos destinos diferentes a conta de origem já pagou e quantas origens diferentes a conta de destino já recebeu, mais se o par é <strong>novo</strong>. Calculado conta a conta, só com o passado.</p>
           </article>
           <article class="cartao">
-            <p class="ref-sigla">SCC · Kosaraju</p>
-            <h4>Componentes fortemente conexos</h4>
-            <p>Duas passadas de DFS (no grafo e no transposto) agrupam contas em que todas alcançam todas, em tempo linear <span class="mono">O(V + E)</span>.</p>
+            <p class="ref-sigla">Busca salto a salto</p>
+            <h4>Rede da conta em foco</h4>
+            <p>A partir da conta investigada, segue quem recebeu (jusante) e quem enviou (montante), nível a nível, até <strong>3 saltos</strong>, com até 30 vértices e 60 arestas, consultando o SQLite da análise.</p>
           </article>
           <article class="cartao">
-            <p class="ref-sigla">Grau</p>
-            <h4>Centralidade de grau</h4>
-            <p>Conta arestas de entrada e saída de cada vértice: destaca <strong>concentradoras</strong> (muitas entradas) e <strong>distribuidoras</strong> (muitas saídas). O grau distinto de cada conta é atributo do Random Forest; DFS e Kosaraju rodam na linha de comando.</p>
+            <p class="ref-sigla">Ordem no tempo</p>
+            <h4>Cadeias de repasse</h4>
+            <p>Cada aresta desenhada é marcada como direta, sequência com horários compatíveis, simultânea ou sem ordem confirmada: mostra para onde o dinheiro seguiu, inclusive quando volta à conta.</p>
           </article>
         </div>
+        <p class="nota-ref">Ciclos por DFS, componentes fortemente conexos (Kosaraju) e centralidade foram implementados e medidos em fases anteriores. Como atributos extras, não melhoraram o modelo (AP 0,4657 → 0,4691, precisão −2,5 p.p.) e saíram do sistema: <a href="https://github.com/NodeWatch-Team/NodeWatch/blob/main/docs/decisoes/0001-grafos-e-ml.md" target="_blank" rel="noopener">registro da decisão</a>.</p>
 
         <h3 class="ref-grupo">Algoritmo de Machine Learning</h3>
         <article class="cartao ref-destaque">
@@ -319,11 +320,12 @@
           <div><dt>Pandas</dt><dd>leitura e preparação das tabelas de transações</dd></div>
           <div><dt>NumPy</dt><dd>cálculo vetorizado dos atributos em janelas</dd></div>
           <div><dt>Scikit-Learn</dt><dd>Random Forest, validação e métricas</dd></div>
-          <div><dt>Flask</dt><dd>API do painel do analista</dd></div>
+          <div><dt>Flask</dt><dd>servidor e API do painel do analista</dd></div>
+          <div><dt>SQLite</dt><dd>resultados de cada análise, filtrados e paginados no servidor</dd></div>
           <div><dt>React 18</dt><dd>interface do painel e deste artigo</dd></div>
           <div><dt>SVG</dt><dd>desenho do grafo interativo</dd></div>
           <div><dt>CSS</dt><dd>design system do painel, sem framework</dd></div>
-          <div><dt>Google Gemini API</dt><dd>motor do assistente Sentinel AI</dd></div>
+          <div><dt>Gemini ou Anthropic</dt><dd>opcionais: motor do Sentinel AI (sem chave, o assistente responde no modo local)</dd></div>
         </dl>
 
         <h3 class="ref-grupo">Bases de dados</h3>
@@ -362,8 +364,8 @@
           <li class="cartao pessoa"><span class="pessoa-nome">Ryan dos Santos Veloso</span></li>
         </ul>
         <div class="botoes ficha-botoes">
-          <a class="botao botao-primario" href="https://github.com/1s4ntos/NodeWatch" target="_blank" rel="noopener">Código no GitHub<span class="sr"> (abre em nova aba)</span></a>
-          <a class="botao botao-secundario" href="https://github.com/1s4ntos/NodeWatch/blob/main/docs/ml/RELATORIO_ML.md" target="_blank" rel="noopener">Relatório completo de ML<span class="sr"> (abre em nova aba)</span></a>
+          <a class="botao botao-primario" href="https://github.com/NodeWatch-Team/NodeWatch" target="_blank" rel="noopener">Código no GitHub<span class="sr"> (abre em nova aba)</span></a>
+          <a class="botao botao-secundario" href="https://github.com/NodeWatch-Team/NodeWatch/blob/main/docs/ml/RELATORIO_ML.md" target="_blank" rel="noopener">Relatório completo de ML<span class="sr"> (abre em nova aba)</span></a>
         </div>
       </div>
     </section>

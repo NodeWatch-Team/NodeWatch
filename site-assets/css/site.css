@@ -1123,6 +1123,8 @@ h1 {
   align-self: flex-start;
 }
 .cartoes-3 .cartao .ref-sigla + h4 { margin-top: -4px; }
+.nota-ref { margin-top: 14px; font-size: 0.9375rem; color: var(--texto-2); max-width: 72ch; }
+.nota-ref a { color: inherit; text-decoration: underline; }
 .ref-destaque { margin-top: 16px; }
 .ref-destaque > p { max-width: 80ch; }
 .ref-destaque .lista-curta { margin-top: 14px; }
