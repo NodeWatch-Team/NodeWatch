@@ -80,9 +80,6 @@ logs/
 output/
 *.tmp
 
-# Análises JSON geradas pelo exportador
-dados/analises/*.json
-
 # Módulo de ML: artefatos gerados e caminhos locais.
 # artefatos_ml/ é a pasta de TRABALHO de cada máquina (análises, datasets enviados, caches, modelo instalado).
 # O modelo DISTRIBUÍDO fica em modelos/ (versionado, com MANIFESTO_MODELO.json): não o ignore.

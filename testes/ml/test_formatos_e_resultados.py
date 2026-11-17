@@ -29,7 +29,8 @@ def test_previsoes_grafo_e_rede_sao_reconhecidos_mas_nao_viram_analise_de_transa
     assert prev["formato"] == "previsao_lavagem_v1" and not prev["analisavel"] and prev["possiveis"] == []
     assert "PREVISÕES" in prev["leitura"] and "Explorar" not in prev["leitura"]   # a tela antiga não existe mais
     grafo = detectar_formato(["step", "type", "amount", "nameOrig", "nameDest", "isFraud"])
-    assert grafo["formato"] == "csv_grafo_nodewatch" and not grafo["analisavel"]
+    assert grafo["formato"] == "csv_grafo_nodewatch" and not grafo["analisavel"] and grafo["possiveis"] == []
+    assert "CLI" not in grafo["leitura"]                                          # a CLI de grafos foi removida
     assert "moeda_pagamento" in grafo["faltando"]["transacao_hismall_v1"]
     rede = detectar_formato(["id_fluxo", "anchor_id", "probe_id", "timestamp", *FEATURES_REDE])
     assert rede["formato"] == "rede_v1" and rede["dominio"] == "rede"

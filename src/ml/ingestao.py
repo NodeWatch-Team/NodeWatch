@@ -335,7 +335,7 @@ RE_FIM_PADRAO = re.compile(r"END LAUNDERING ATTEMPT", re.IGNORECASE)
 
 
 def ler_padroes(caminho: Caminho) -> pd.DataFrame:
-    """Lê ``HI-Small_Patterns.txt`` (mesmo formato de ``scripts/analise_por_padrao.py``).
+    """Lê ``HI-Small_Patterns.txt``, o arquivo de padrões que acompanha o IBM AML.
 
     Returns:
         Uma linha por transação listada em uma tentativa, com ``tentativa``

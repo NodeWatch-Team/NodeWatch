@@ -11,11 +11,11 @@ Contratos de entrada (independentes de nome, caminho, datas, contas ou tamanho):
   ``estado_rede``; o painel do analista não analisa este formato).
 
 Reconhecidos, mas não analisáveis: CSV de previsões já calculadas e o CSV do
-grafo antigo (``step,type,amount,nameOrig,nameDest``). Nada é completado nem
-inventado: :func:`detectar_formato` só informa o que falta.
+grafo antigo (formato PaySim, ``step,type,amount,nameOrig,nameDest``), cuja CLI
+foi removida. Nada é completado nem inventado: :func:`detectar_formato` só
+informa o que falta.
 
-Usado pelo painel (``src/painel/datasets.py``) e pela área "Analisar dataset"
-da interface antiga (``src/ml/analises.py``).
+Usado pelo painel (``src/painel/datasets.py``).
 """
 
 from __future__ import annotations
@@ -105,11 +105,11 @@ def detectar_formato(colunas: List[str]) -> Dict[str, Any]:
     }
     if set(CAMPOS_GRAFO) <= cols:
         return {"formato": "csv_grafo_nodewatch", "dominio": None, "analisavel": False,
-                "possiveis": ["Análise de grafos (ciclos, SCC, fan-in/out) pela CLI do NodeWatch"],
+                "possiveis": [],
                 "faltando": {"transacao_hismall_v1": faltando["transacao_hismall_v1"]},
-                "leitura": ("Serve para a análise de grafos, mas não para o modelo financeiro: não tem bancos, "
-                            "moedas, valor recebido nem data absoluta (step é relativo). Esses campos não são "
-                            "inventados.")}
+                "leitura": ("É o CSV do grafo antigo (formato PaySim: step, type, amount, nameOrig, nameDest). Não "
+                            "serve para o modelo financeiro: não tem bancos, moedas, valor recebido nem data "
+                            "absoluta (step é relativo). Esses campos não são inventados.")}
     melhor = min(faltando, key=lambda k: len(faltando[k]) / len(FORMATOS[k]["cabecalho"].split(",")))
     return {"formato": None, "dominio": None, "analisavel": False, "possiveis": [], "faltando": faltando,
             "mais_proximo": melhor,
