@@ -1,6 +1,6 @@
 # Partições do HI-Large por dia
 
-Gerado por `scripts/hi_large/a6_reconferencia.py` a partir dos arquivos em `artefatos_ml/hi_large/particoes/`, que o git ignora. Há uma partição por dia com transações. **Período**: `principal` ou `cauda`, que tem menos de 1% do volume mediano diário (831.092 transações).
+Gerado por `pesquisa/hi_large/scripts/a6_reconferencia.py` a partir dos arquivos em `artefatos_ml/hi_large/particoes/`, que o git ignora. Há uma partição por dia com transações. **Período**: `principal` ou `cauda`, que tem menos de 1% do volume mediano diário (831.092 transações).
 
 | Índice | Data | Arquivo | Bytes | Linhas | Positivos | Período |
 |---|---|---|---|---|---|---|

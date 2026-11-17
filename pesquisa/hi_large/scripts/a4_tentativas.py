@@ -11,7 +11,7 @@ Usa só o arquivo de padrões casado com as transações; nada vira atributo.
 
 Uso::
 
-    python scripts/hi_large/a4_tentativas.py
+    python pesquisa/hi_large/scripts/a4_tentativas.py
 """
 
 from __future__ import annotations

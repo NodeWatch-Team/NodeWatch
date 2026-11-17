@@ -8,7 +8,7 @@
 
 Uso::
 
-    python scripts/hi_large/a3_conferencia.py --dados <pasta do HI-Large>
+    python pesquisa/hi_large/scripts/a3_conferencia.py --dados <pasta do HI-Large>
 """
 
 from __future__ import annotations

@@ -11,8 +11,8 @@ Grava ``b6_conferencia_<sufixo>.json``.
 
 Uso::
 
-    python scripts/hi_large/b6_conferir_final2.py
-    python scripts/hi_large/b6_conferir_final2.py --sufixo final3 --anterior final2 --dia-repro 15 --dias 16-22
+    python pesquisa/hi_large/scripts/b6_conferir_final2.py
+    python pesquisa/hi_large/scripts/b6_conferir_final2.py --sufixo final3 --anterior final2 --dia-repro 15 --dias 16-22
 """
 
 from __future__ import annotations

@@ -19,7 +19,7 @@ o resumo em ``resultados/g_reproducao_treinos.json``.
 
 Uso::
 
-    python scripts/hi_large/g_reproduzir_treinos.py [--execucoes X11 X25]
+    python pesquisa/hi_large/scripts/g_reproduzir_treinos.py [--execucoes X11 X25]
 """
 
 from __future__ import annotations
@@ -88,7 +88,7 @@ def insumos(cols: List[str]) -> Dict[str, Any]:
     arqs += [comum.TRABALHO / f for f in ("hismall_treino_S_lote_antigo.parquet", "hismall_treino_S.parquet",
                                           "padroes_casados.parquet")]
     arqs += [comum.RAIZ / "artefatos_ml" / "modelo_unificado.joblib"]
-    codigo = [comum.RAIZ / "scripts" / "hi_large" / n for n in ("c_treinar_avaliar.py", "comum.py", Path(__file__).name)]
+    codigo = [comum.RAIZ / "pesquisa" / "hi_large" / "scripts" / n for n in ("c_treinar_avaliar.py", "comum.py", Path(__file__).name)]
     codigo += [comum.RAIZ / "src" / "ml" / n for n in ("modelos.py", "preparacao.py", "avaliacao.py")]
     xgb_dir = Path(os.environ.get("NODEWATCH_XGBOOST", ""))
     dll = xgb_dir / "xgboost" / "lib" / "xgboost.dll"

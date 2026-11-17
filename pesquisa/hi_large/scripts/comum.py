@@ -3,7 +3,7 @@
 Os scripts desta pasta não alteram o modelo do sistema. Gravam:
 
 * dados grandes e intermediários em ``artefatos_ml/hi_large/`` (ignorado pelo git);
-* resultados pequenos, em JSON, em ``docs/ml/hi_large/resultados/``.
+* resultados pequenos, em JSON, em ``pesquisa/hi_large/resultados/``.
 
 O diretório com ``HI-Large_Trans.csv``, ``HI-Large_Patterns.txt`` e
 ``HI-Large_accounts.csv`` vem de ``--dados`` ou da variável ``NODEWATCH_HI_LARGE``.
@@ -22,13 +22,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterator, Optional
 
-RAIZ = Path(__file__).resolve().parents[2]
+RAIZ = Path(__file__).resolve().parents[3]
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
 TRABALHO = RAIZ / "artefatos_ml" / "hi_large"
-RESULTADOS = RAIZ / "docs" / "ml" / "hi_large" / "resultados"
-PLANO = RAIZ / "docs" / "ml" / "hi_large" / "PLANO_AVALIACAO.md"
+RESULTADOS = RAIZ / "pesquisa" / "hi_large" / "resultados"
+PLANO = RAIZ / "pesquisa" / "hi_large" / "PLANO_AVALIACAO.md"
 SEMENTE = 42
 THREADS = 4
 ARQUIVOS = {"transacoes": "HI-Large_Trans.csv", "padroes": "HI-Large_Patterns.txt",

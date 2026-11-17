@@ -122,7 +122,7 @@ Contagens do modelo: 389 VP, 231 FP, 567 FN, 2,68 falsos alertas por 10 mil (`:1
 - `docs/img/arquitetura.svg:39`
 - `docs/ml/EVENTOS.md:77`, `:255`, `docs/ml/BENCHMARK_EVENTOS.md:105`, `docs/ml/RELATORIO_ML.md:194`, `:338`, `docs/ml/README.md:106`, `docs/ml/notas_relatorio.md:76`
 - `src/ml/incremental.py:3`, `src/ml/analises.py:30`
-- `modelos/MANIFESTO_MODELO.json` (`"colunas": 49`) e `scripts/hi_large/*`.
+- `modelos/MANIFESTO_MODELO.json` (`"colunas": 49`) e `pesquisa/hi_large/scripts/*`.
 
 ### 1.6 Inventário de datasets e legado
 
@@ -174,7 +174,7 @@ Contagens do modelo: 389 VP, 231 FP, 567 FN, 2,68 falsos alertas por 10 mil (`:1
 
 ### Experimento de decisão (rodado)
 
-Script: `scripts/experimento_atributos_grafo.py`. Resultado: `docs/ml/resultados/experimento_atributos_grafo.json`. Tempo total: 119 s.
+Script: `pesquisa/atributos_grafo/experimento_atributos_grafo.py`. Resultado: `pesquisa/atributos_grafo/resultados/experimento_atributos_grafo.json`. Tempo total: 119 s.
 
 O script usa o mesmo split, a mesma amostragem (semente 42, fração 0,2), os mesmos hiperparâmetros e o mesmo critério de limiar (máximo F1 na validação). Ele importa as funções oficiais (`atributos_financeiros`, `amostrar_treino_financeiro`, `recriar_estimador`, `limiar_max_f1`, `metricas_binarias`).
 
@@ -332,7 +332,7 @@ Reversão: `git switch main` (nada foi para a `main`) ou `git revert <commit>`.
 
 **Por que não serve como integração.** O fluxo era: ML → score → SQLite → grafo da conta → algoritmos → contagem de alertas. O score não entra nos algoritmos e o resultado dos algoritmos não muda o score. Na prática, era só informação a mais na tela.
 
-**Medição** (`docs/ml/resultados/estudo_relevancia_estrutura.json`). A medição usou uma análise do LI-Small salva no painel: 6.924.049 transações, 3.565 de lavagem e 2.592 alertas. O SQLite foi aberto só para leitura. O grafo é montado no momento da consulta, e a pontuação (`pipeline.py`, `src/ml`) não mudou, então o resultado é o mesmo que uma análise nova daria.
+**Medição** (`pesquisa/atributos_grafo/resultados/estudo_relevancia_estrutura.json`). A medição usou uma análise do LI-Small salva no painel: 6.924.049 transações, 3.565 de lavagem e 2.592 alertas. O SQLite foi aberto só para leitura. O grafo é montado no momento da consulta, e a pontuação (`pipeline.py`, `src/ml`) não mudou, então o resultado é o mesmo que uma análise nova daria.
 
 | | 30 contas do topo de risco | 30 contas sorteadas com alerta |
 |---|---|---|
@@ -354,7 +354,7 @@ O bloco foi removido. O painel ficou como estava, e os 473 testes da `main` cont
 
 **O que ficou:**
 - este relatório;
-- o experimento (`scripts/experimento_atributos_grafo.py`, `docs/ml/resultados/experimento_atributos_grafo.json`);
+- o experimento (`pesquisa/atributos_grafo/experimento_atributos_grafo.py`, `pesquisa/atributos_grafo/resultados/experimento_atributos_grafo.json`);
 - a medição acima;
 - as correções do site:
   - a etapa "Investigação em grafo" vem depois do ML;

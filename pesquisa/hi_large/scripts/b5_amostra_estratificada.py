@@ -18,7 +18,7 @@ lote corrigido contra o incremental em TODAS as linhas que divergiam antes.
 
 Uso::
 
-    python scripts/hi_large/b5_amostra_estratificada.py [--ref HEAD]
+    python pesquisa/hi_large/scripts/b5_amostra_estratificada.py [--ref HEAD]
 """
 
 from __future__ import annotations

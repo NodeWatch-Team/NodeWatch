@@ -1,6 +1,6 @@
 """Treino, escolha na validação e avaliação única (teste, reserva) no HI-Large.
 
-Etapas, em ordem (cada uma grava um JSON em ``docs/ml/hi_large/resultados``):
+Etapas, em ordem (cada uma grava um JSON em ``pesquisa/hi_large/resultados``):
 
 ``validacao``  treina a grade nas fontes L e S+L, escolhe pela AP na
                validação do HI-Large, fixa limiares e regras, mede latência e
@@ -17,7 +17,7 @@ um ``pip install --target`` (fora do ``.venv``).
 
 Uso::
 
-    python scripts/hi_large/c_treinar_avaliar.py --etapa validacao
+    python pesquisa/hi_large/scripts/c_treinar_avaliar.py --etapa validacao
 """
 
 from __future__ import annotations
@@ -109,9 +109,9 @@ def carregar_hismall_treino(colunas: List[str]) -> Tuple[pd.DataFrame, pd.DataFr
     return df[colunas].astype(np.float32), df[[c for c in df.columns if c.startswith("_")]]
 
 
-EMENDA = comum.RAIZ / "docs" / "ml" / "hi_large" / "EMENDA_1_PURGA_POR_TENTATIVA.md"
-EMENDA2 = comum.RAIZ / "docs" / "ml" / "hi_large" / "EMENDA_2_LOTE_CORRIGIDO_E_TESTE_FINAL.md"
-EMENDA3 = comum.RAIZ / "docs" / "ml" / "hi_large" / "EMENDA_3_SEGUNDO_TESTE_FINAL.md"
+EMENDA = comum.RAIZ / "pesquisa" / "hi_large" / "EMENDA_1_PURGA_POR_TENTATIVA.md"
+EMENDA2 = comum.RAIZ / "pesquisa" / "hi_large" / "EMENDA_2_LOTE_CORRIGIDO_E_TESTE_FINAL.md"
+EMENDA3 = comum.RAIZ / "pesquisa" / "hi_large" / "EMENDA_3_SEGUNDO_TESTE_FINAL.md"
 
 
 def inicio_periodo(periodo: str) -> int:
@@ -584,7 +584,7 @@ def avaliar_periodo(periodo: str, so_escolhidos: bool, forcar: bool, rf_descriti
         a, b = escolhas["fontes"]["S+L corrigida"], escolhas["fontes"]["L"]
         saida["bootstrap_SL_corrigida_menos_L"] = bootstrap_pareado(y, scores[a][manter], scores[b][manter], grupo)
         saida["protocolo_sha256"]["EMENDA_2"] = hashlib.sha256(
-            (comum.RAIZ / "docs/ml/hi_large/EMENDA_2_LOTE_CORRIGIDO_E_TESTE_FINAL.md").read_bytes()).hexdigest()
+            (comum.RAIZ / "pesquisa/hi_large/EMENDA_2_LOTE_CORRIGIDO_E_TESTE_FINAL.md").read_bytes()).hexdigest()
     tempos["bootstrap"] = time.perf_counter() - t0
     if final3:
         ap_dia_s = saida["modelos"]["S|modelo atual, limiar do artefato"]["ap_por_dia"]

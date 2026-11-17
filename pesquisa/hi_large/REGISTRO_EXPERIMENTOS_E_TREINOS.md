@@ -8,7 +8,7 @@ Trilha de auditoria de tudo o que foi executado na avaliação do HI-Large em 09
 
 **Fontes de evidência, em ordem de preferência:**
 
-1. **Resultados** em `docs/ml/hi_large/resultados/*.json`. O campo `gerado_em_utc` marca o **início** da execução, e a data de modificação do arquivo marca o **fim**.
+1. **Resultados** em `pesquisa/hi_large/resultados/*.json`. O campo `gerado_em_utc` marca o **início** da execução, e a data de modificação do arquivo marca o **fim**.
 2. **Logs** de cada execução, em `artefatos_ml/hi_large/log_*.txt`.
 3. **Arquivos de hash e de controle:** `escolhas*.sha256`, `emenda3_registro.sha256` e `consultas.json`.
 4. **O inventário** em `resultados/e_auditoria.json`, com SHA-256 de resultados, modelos, código e documentos, gerado na auditoria de fechamento.
@@ -73,7 +73,7 @@ As sobreposições de contas, tentativas e padrões entre as divisões estão na
 | Python e bibliotecas | Python 3.14.0, NumPy 2.5.4, pandas 3.1.0, pyarrow 26.0.0, scikit-learn 1.9.1 |
 | XGBoost | **3.4.1, em ambiente temporário, fora do projeto.** Instalado às 05:49 UTC de 09/11 com `pip install --target <scratchpad>/xgb --no-deps xgboost==3.4.1`. Usa o NumPy e o SciPy do `.venv`. Pacote (wheel) `py3-none-win_amd64`; a `xgboost.dll` tem SHA-256 (base64) `3LFck91yaIfKnNa33C0Mu8oKIQwO9CeLuVTU2jxdFn4`, segundo o `RECORD`. **Não é dependência do NodeWatch** e não está em `requirements*.txt` |
 | Semente | 42 em todos os sorteios, modelos e bootstraps (`comum.SEMENTE`) |
-| Código | Branch `ml/sessoes-analise-datasets`, HEAD `9095451` e 42 alterações locais, **sem commit**. Os scripts da avaliação e a correção do lote não estão no git. O SHA-256 de cada arquivo de código (`src/ml/*.py`, `scripts/hi_large/*.py` e os testes) está em `e_auditoria.json` → `inventario.codigo` |
+| Código | Branch `ml/sessoes-analise-datasets`, HEAD `9095451` e 42 alterações locais, **sem commit**. Os scripts da avaliação e a correção do lote não estão no git. O SHA-256 de cada arquivo de código (`src/ml/*.py`, `pesquisa/hi_large/scripts/*.py` e os testes) está em `e_auditoria.json` → `inventario.codigo` |
 | Preparação dos atributos | `src/ml/preparacao.py` (`PreparadorFinanceiro`) e `src/ml/incremental.py` (`EstadoFinanceiro`). Os atributos do HI-Large vêm sempre do **incremental**. Os do HI-Small vêm do **lote**, que foi corrigido às cerca de 08:17 UTC (seção 5) |
 
 **Configuração dos candidatos** (`c_treinar_avaliar.py`, `GRADE` e `criar_xgb`; `src/ml/modelos.py`):
@@ -216,7 +216,7 @@ Antes de 09/11, não há hash registrado. A data do arquivo é a única evidênc
 
 **Por que não foi retreinado.** S é a **referência** de todas as comparações. Retreiná-lo mudaria o termo de comparação no meio da avaliação. Os artefatos confirmam isto:
 
-- nenhum script de `scripts/hi_large/` chama `ModeloUnificado.salvar`;
+- nenhum script de `pesquisa/hi_large/scripts/` chama `ModeloUnificado.salvar`;
 - todas as consultas carregam o artefato com `ModeloUnificado.carregar`;
 - `b4` mediu o efeito da correção sobre o modelo **sem** retreiná-lo: os mesmos 620 alertas.
 
@@ -325,8 +325,8 @@ Os testes de software verificam o código; **não medem desempenho preditivo**.
 
 | Comando | Resultado | Evidência |
 |---|---|---|
-| `python -m pytest -q -p no:cacheprovider --junitxml=docs/ml/hi_large/resultados/pytest_fechamento.xml` | **208 aprovados**, 0 falhas, 0 pulados | `resultados/pytest_fechamento.xml`; hash em `e_auditoria.json` → `inventario.resultados` |
-| `python -m pytest -q -p no:cacheprovider testes/ml/test_hi_large_avaliacao.py --junitxml=docs/ml/hi_large/resultados/pytest_fechamento_hi_large.xml` | **15 aprovados** | `resultados/pytest_fechamento_hi_large.xml`; hash em `e_auditoria.json` |
+| `python -m pytest -q -p no:cacheprovider --junitxml=pesquisa/hi_large/resultados/pytest_fechamento.xml` | **208 aprovados**, 0 falhas, 0 pulados | `resultados/pytest_fechamento.xml`; hash em `e_auditoria.json` → `inventario.resultados` |
+| `python -m pytest -q -p no:cacheprovider testes/ml/test_hi_large_avaliacao.py --junitxml=pesquisa/hi_large/resultados/pytest_fechamento_hi_large.xml` | **15 aprovados** | `resultados/pytest_fechamento_hi_large.xml`; hash em `e_auditoria.json` |
 
 **Execuções anteriores,** registradas só na transcrição e em revisões anteriores do código:
 

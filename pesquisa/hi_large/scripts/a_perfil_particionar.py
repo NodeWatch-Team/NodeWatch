@@ -15,7 +15,7 @@ Nenhum dado bruto vai para o relatório: só contagens e estatísticas.
 
 Uso (da raiz do NodeWatch)::
 
-    python scripts/hi_large/a_perfil_particionar.py --dados <pasta do HI-Large>
+    python pesquisa/hi_large/scripts/a_perfil_particionar.py --dados <pasta do HI-Large>
 """
 
 from __future__ import annotations

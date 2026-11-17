@@ -8,11 +8,11 @@ Não usa os conjuntos guardados pela primeira passada (``positivos.parquet``,
 * contas: todas as chaves ``banco-conta`` das partições contra o cadastro;
 * padrões: as linhas de ``HI-Large_Patterns.txt`` contra os positivos lidos agora.
 
-Grava ``a6_reconferencia.json`` e a tabela ``docs/ml/hi_large/PARTICOES.md``.
+Grava ``a6_reconferencia.json`` e a tabela ``pesquisa/hi_large/PARTICOES.md``.
 
 Uso::
 
-    python scripts/hi_large/a6_reconferencia.py --dados <pasta do HI-Large>
+    python pesquisa/hi_large/scripts/a6_reconferencia.py --dados <pasta do HI-Large>
 """
 
 from __future__ import annotations
@@ -112,10 +112,10 @@ def main() -> None:
     # Tabela legível (só os números usam ponto como separador de milhar)
     def n(x) -> str:
         return f"{x:,}".replace(",", ".")
-    destino = comum.RAIZ / "docs" / "ml" / "hi_large" / "PARTICOES.md"
+    destino = comum.RAIZ / "pesquisa" / "hi_large" / "PARTICOES.md"
     partes = ["# Partições do HI-Large por dia",
               "",
-              "Gerado por `scripts/hi_large/a6_reconferencia.py` a partir dos arquivos em "
+              "Gerado por `pesquisa/hi_large/scripts/a6_reconferencia.py` a partir dos arquivos em "
               "`artefatos_ml/hi_large/particoes/`, que o git ignora. Há uma partição por dia com transações. "
               "**Período**: `principal` ou `cauda`, que tem menos de 1% do volume mediano diário "
               f"({n(int(mediana))} transações).",

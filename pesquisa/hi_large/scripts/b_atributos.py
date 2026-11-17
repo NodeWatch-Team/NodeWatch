@@ -15,8 +15,8 @@ teste e reserva (dias 7 a 12): grava tudo.
 
 Uso::
 
-    python scripts/hi_large/b_atributos.py --preparador S
-    python scripts/hi_large/b_atributos.py --preparador L
+    python pesquisa/hi_large/scripts/b_atributos.py --preparador S
+    python pesquisa/hi_large/scripts/b_atributos.py --preparador L
 """
 
 from __future__ import annotations

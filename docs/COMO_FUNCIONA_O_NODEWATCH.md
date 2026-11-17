@@ -343,8 +343,8 @@ O ciclo C001→C002→C003 vale 29.800, mas o volume do SCC é 30.300: o ciclo s
 **O que o painel faz com o grafo.** A rede da conta em foco é explorada salto a salto (busca em largura), e a parte "Ordem no tempo" mostra cadeias com horários compatíveis, inclusive o dinheiro voltando à conta em foco.
 
 **O que foi testado e ficou de fora** (detalhes em `docs/DECISAO_GRAFOS_ML.md`):
-- **Atributos de ciclo no modelo.** Reciprocidade, profundidade de cadeia e "fecha ciclo" foram acrescentados ao Random Forest com o mesmo split, a mesma semente e os mesmos hiperparâmetros. O AP de teste foi de 0,4657 para 0,4691, a precisão caiu de 0,642 para 0,617 e o recall por tipologia variou de 1 a 4 casos (`docs/ml/resultados/experimento_atributos_grafo.json`).
-- **Kosaraju, DFS e centralidade na tela.** Rodando sobre o grafo da conta em foco numa análise do LI-Small, só 1 dos 30 grafos das contas de maior risco tinha algum grupo, e nenhuma lavagem sem alerta estava dentro de grupos (`docs/ml/resultados/estudo_relevancia_estrutura.json`). A informação foi descartada para não carregar a tela.
+- **Atributos de ciclo no modelo.** Reciprocidade, profundidade de cadeia e "fecha ciclo" foram acrescentados ao Random Forest com o mesmo split, a mesma semente e os mesmos hiperparâmetros. O AP de teste foi de 0,4657 para 0,4691, a precisão caiu de 0,642 para 0,617 e o recall por tipologia variou de 1 a 4 casos (`pesquisa/atributos_grafo/resultados/experimento_atributos_grafo.json`).
+- **Kosaraju, DFS e centralidade na tela.** Rodando sobre o grafo da conta em foco numa análise do LI-Small, só 1 dos 30 grafos das contas de maior risco tinha algum grupo, e nenhuma lavagem sem alerta estava dentro de grupos (`pesquisa/atributos_grafo/resultados/estudo_relevancia_estrutura.json`). A informação foi descartada para não carregar a tela.
 
 Em um recorte de 50 mil transações do HI-Small convertidas por `scripts/converter_ibm_aml.py`, SCC e ciclos mais fan-out/fan-in somados sinalizaram cerca de 35% das lavagens rotuladas. **Evidência existente**, em `docs/melhorias-e-limitacoes.md`. O conversor descarta a moeda.
 
@@ -455,7 +455,7 @@ Perto de 1: a conta repassa o que recebe. O +1 evita divisão por zero.
 | Como | Ordena e indexa tudo a cada chamada | Mantém estado por conta |
 | Custo de 1 transação nova com 5 milhões de histórico | 5,4 a 5,6 s | Frações de milissegundo amortizadas |
 
-**Corrigido em 09/11/2026.** Até então, o lote somava em prefixos acumulados sobre todo o histórico e perdia precisão: até 5,0% em `razao_saida_entrada_24h` no teste do HI-Small e 27% com valores na escala do HI-Large, contra a força bruta. Agora as somas acumuladas recomeçam em cada conta. Lote e incremental coincidem, e os dois ficam abaixo de 1e-6 de erro contra a força bruta. O modelo atual foi treinado com o lote antigo e não foi retreinado: recalculado com o lote corrigido, o teste do HI-Small dá score com diferença máxima de 8·10⁻¹⁷ e **nenhum** dos 620 alertas muda de lado (`docs/ml/hi_large/RELATORIO_HI_LARGE.md`, seção 3.4).
+**Corrigido em 09/11/2026.** Até então, o lote somava em prefixos acumulados sobre todo o histórico e perdia precisão: até 5,0% em `razao_saida_entrada_24h` no teste do HI-Small e 27% com valores na escala do HI-Large, contra a força bruta. Agora as somas acumuladas recomeçam em cada conta. Lote e incremental coincidem, e os dois ficam abaixo de 1e-6 de erro contra a força bruta. O modelo atual foi treinado com o lote antigo e não foi retreinado: recalculado com o lote corrigido, o teste do HI-Small dá score com diferença máxima de 8·10⁻¹⁷ e **nenhum** dos 620 alertas muda de lado (`pesquisa/hi_large/RELATORIO_HI_LARGE.md`, seção 3.4).
 
 ## 8.6 Motivos verificáveis
 

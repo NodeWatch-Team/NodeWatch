@@ -27,7 +27,7 @@ from src.ml.preparacao import PreparadorFinanceiro, atributos_financeiros
 from testes.ml.conftest import gerar_transacoes
 from testes.ml.referencia_financeira import colunas_divergentes
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "hi_large"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "pesquisa" / "hi_large" / "scripts"))
 import a_perfil_particionar as perfil  # noqa: E402
 import b_atributos as atributos  # noqa: E402
 import c_treinar_avaliar as avaliacao  # noqa: E402

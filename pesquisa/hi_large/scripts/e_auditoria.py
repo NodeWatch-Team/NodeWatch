@@ -15,7 +15,7 @@ Grava ``e_auditoria.json`` com:
 
 Uso::
 
-    python scripts/hi_large/e_auditoria.py --dados <pasta do HI-Large>
+    python pesquisa/hi_large/scripts/e_auditoria.py --dados <pasta do HI-Large>
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ import pyarrow.parquet as pq
 
 import comum
 
-DOCS = comum.RAIZ / "docs" / "ml" / "hi_large"
+DOCS = comum.RAIZ / "pesquisa" / "hi_large"
 R = comum.RESULTADOS
 DIA0 = pd.Timestamp("2022-08-01")
 EPOCA_DIA0 = int((DIA0 - pd.Timestamp("1970-01-01")) // pd.Timedelta(minutes=1))
@@ -251,7 +251,7 @@ def artefato() -> Dict[str, Any]:
     p = comum.RAIZ / "artefatos_ml" / "modelo_unificado.joblib"
     meta = json.loads((comum.RAIZ / "artefatos_ml" / "metadados_modelo.json").read_text(encoding="utf-8"))
     escritas = []
-    for s in sorted((comum.RAIZ / "scripts" / "hi_large").glob("*.py")):
+    for s in sorted((comum.RAIZ / "pesquisa" / "hi_large" / "scripts").glob("*.py")):
         t = s.read_text(encoding="utf-8")
         if re.search(r"modelo_unificado\.joblib|ModeloUnificado\.salvar|\.salvar\(comum\.RAIZ", t) and "salvar" in t \
                 and re.search(r"\.salvar\(", t):
@@ -318,7 +318,7 @@ def inventario() -> Dict[str, Any]:
         except Exception:
             r["gerado_em_utc"] = None
     codigo = []
-    for padrao in ("src/ml/*.py", "scripts/hi_large/*.py", "testes/ml/test_hi_large_avaliacao.py",
+    for padrao in ("src/ml/*.py", "pesquisa/hi_large/scripts/*.py", "testes/ml/test_hi_large_avaliacao.py",
                    "testes/ml/referencia_financeira.py", "testes/ml/conftest.py"):
         codigo += [{"arquivo": str(p.relative_to(comum.RAIZ)).replace("\\", "/"), "sha256": sha(p)}
                    for p in sorted(comum.RAIZ.glob(padrao))]

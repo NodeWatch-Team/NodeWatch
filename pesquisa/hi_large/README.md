@@ -13,7 +13,7 @@ Esta pasta guarda a avaliação feita para responder se os arquivos `HI-Large_Tr
 | [`REGISTRO_EXPERIMENTOS_E_TREINOS.md`](REGISTRO_EXPERIMENTOS_E_TREINOS.md) | Trilha de auditoria: cada execução, com horário, tipo (treino, escolha, consulta ou conferência), hashes, desfecho e falhas |
 | `resultados/*.json` | Resultados brutos de cada etapa, com ambiente e tempos |
 
-O código está em `scripts/hi_large/`, e os testes, em `testes/ml/test_hi_large_avaliacao.py`. Nada disso altera o modelo usado pelo sistema (`artefatos_ml/modelo_unificado.joblib`) nem o caminho de treino do NodeWatch.
+O código está em `pesquisa/hi_large/scripts/`, e os testes, em `testes/ml/test_hi_large_avaliacao.py`. Nada disso altera o modelo usado pelo sistema (`artefatos_ml/modelo_unificado.joblib`) nem o caminho de treino do NodeWatch.
 
 ## Como reproduzir
 
@@ -33,15 +33,15 @@ python -m pip install --target <pasta_xgboost> --no-deps xgboost==3.4.1
 Rode da raiz do NodeWatch, nesta ordem. Os tempos medidos estão no relatório, seções 5.5 e 6.5: cerca de 12 min para ler e particionar, 3 min para as duplicatas, 11 min por passada de atributos de 12 dias e cerca de 25 min para treinar a grade de cada fonte.
 
 ```bash
-python scripts/hi_large/a_perfil_particionar.py --dados <pasta com os 3 arquivos do HI-Large>
+python pesquisa/hi_large/scripts/a_perfil_particionar.py --dados <pasta com os 3 arquivos do HI-Large>
 ```
 
 ```bash
-python scripts/hi_large/a2_complementos.py --dados <mesma pasta>
+python pesquisa/hi_large/scripts/a2_complementos.py --dados <mesma pasta>
 ```
 
 ```bash
-python scripts/hi_large/a4_tentativas.py
+python pesquisa/hi_large/scripts/a4_tentativas.py
 ```
 
 Para outra versão do IBM AML com os mesmos três arquivos, como o HI-Medium, acrescente `--prefixo HI-Medium` nos scripts que recebem `--dados`. A janela de modelagem (12 dias a partir de 01/08/2022) está fixa nos scripts `b` e `c`.
@@ -49,31 +49,31 @@ Para outra versão do IBM AML com os mesmos três arquivos, como o HI-Medium, ac
 Opcional: ajustar só o preparador do HI-Large e compará-lo ao atual (câmbio, moedas e formatos), sem calcular atributos.
 
 ```bash
-python scripts/hi_large/b_atributos.py --preparador L --so-ajustar
+python pesquisa/hi_large/scripts/b_atributos.py --preparador L --so-ajustar
 ```
 
 ```bash
-python scripts/hi_large/b_atributos.py --preparador S
+python pesquisa/hi_large/scripts/b_atributos.py --preparador S
 ```
 
 ```bash
-python scripts/hi_large/b_atributos.py --preparador L
+python pesquisa/hi_large/scripts/b_atributos.py --preparador L
 ```
 
 ```bash
-python scripts/hi_large/b2_hismall.py
+python pesquisa/hi_large/scripts/b2_hismall.py
 ```
 
 ```bash
-python scripts/hi_large/a3_conferencia.py --dados <mesma pasta>
+python pesquisa/hi_large/scripts/a3_conferencia.py --dados <mesma pasta>
 ```
 
 ```bash
-python scripts/hi_large/b3_equivalencia.py
+python pesquisa/hi_large/scripts/b3_equivalencia.py
 ```
 
 ```bash
-python scripts/hi_large/b4_correcao_lote.py
+python pesquisa/hi_large/scripts/b4_correcao_lote.py
 ```
 
 `a3_conferencia.py` confere hashes, partições e atributos gravados. `b3_equivalencia.py` compara, em dados reais, o estado incremental, o lote e a força bruta. `b4_correcao_lote.py` compara o lote anterior com o corrigido no teste do HI-Small: atributos, força bruta, scores, alertas e tempo. O padrão é `--ref HEAD`; depois que a correção for commitada, use `--ref 9095451`.
@@ -81,19 +81,19 @@ python scripts/hi_large/b4_correcao_lote.py
 Antes das quatro etapas de avaliação, defina a variável `NODEWATCH_XGBOOST` com a pasta do XGBoost. Sem ela, o XGBoost fica fora da grade e o resultado registra isso.
 
 ```bash
-python scripts/hi_large/c_treinar_avaliar.py --etapa validacao
+python pesquisa/hi_large/scripts/c_treinar_avaliar.py --etapa validacao
 ```
 
 ```bash
-python scripts/hi_large/c_treinar_avaliar.py --etapa teste
+python pesquisa/hi_large/scripts/c_treinar_avaliar.py --etapa teste
 ```
 
 ```bash
-python scripts/hi_large/c_treinar_avaliar.py --etapa reserva
+python pesquisa/hi_large/scripts/c_treinar_avaliar.py --etapa reserva
 ```
 
 ```bash
-python scripts/hi_large/c_treinar_avaliar.py --etapa hismall
+python pesquisa/hi_large/scripts/c_treinar_avaliar.py --etapa hismall
 ```
 
 Cada etapa grava um JSON em `resultados/`. Os dados intermediários ficam em `artefatos_ml/hi_large/`, que o git ignora:
@@ -111,31 +111,31 @@ O teste e a reserva **recusam uma segunda consulta**. `--forcar` permite repetir
 Os atributos do HI-Large não passam pelo lote e não precisam ser refeitos. Refazem-se só os que vinham do lote antigo e a fonte S+L, e calcula-se o teste final novo:
 
 ```bash
-python scripts/hi_large/b2_hismall.py
+python pesquisa/hi_large/scripts/b2_hismall.py
 ```
 
 ```bash
-python scripts/hi_large/b_atributos.py --preparador S --dias 16 --gravar-a-partir 11 --sufixo final2
+python pesquisa/hi_large/scripts/b_atributos.py --preparador S --dias 16 --gravar-a-partir 11 --sufixo final2
 ```
 
 ```bash
-python scripts/hi_large/b_atributos.py --preparador L --dias 16 --gravar-a-partir 11 --sufixo final2
+python pesquisa/hi_large/scripts/b_atributos.py --preparador L --dias 16 --gravar-a-partir 11 --sufixo final2
 ```
 
 ```bash
-python scripts/hi_large/c_treinar_avaliar.py --etapa validacao --emenda2
+python pesquisa/hi_large/scripts/c_treinar_avaliar.py --etapa validacao --emenda2
 ```
 
 ```bash
-python scripts/hi_large/c_treinar_avaliar.py --etapa final2
+python pesquisa/hi_large/scripts/c_treinar_avaliar.py --etapa final2
 ```
 
 ```bash
-python scripts/hi_large/c_treinar_avaliar.py --etapa hismall
+python pesquisa/hi_large/scripts/c_treinar_avaliar.py --etapa hismall
 ```
 
 ```bash
-python scripts/hi_large/b6_conferir_final2.py
+python pesquisa/hi_large/scripts/b6_conferir_final2.py
 ```
 
 `b6` confere que a passada refeita reproduz o dia 12/08 e que os dias 13 a 16 têm todas as linhas e todos os positivos. Grava `b6_conferencia_final2.json`.
@@ -143,7 +143,7 @@ python scripts/hi_large/b6_conferir_final2.py
 Descritivo, fora da Emenda 2 e decidido depois da consulta: as florestas com os parâmetros do artefato, treinadas só no HI-Large e nas duas bases, no mesmo teste final. A etapa usa o mesmo contador de consultas. No registro desta avaliação, ela foi repetida com `--forcar` porque a primeira tentativa falhou antes de gravar.
 
 ```bash
-python scripts/hi_large/c_treinar_avaliar.py --etapa final2_rf
+python pesquisa/hi_large/scripts/c_treinar_avaliar.py --etapa final2_rf
 ```
 
 ### Emenda 3: segundo teste final (17 a 23/08)
@@ -151,19 +151,19 @@ python scripts/hi_large/c_treinar_avaliar.py --etapa final2_rf
 Nada é retreinado. Os atributos são refeitos do dia 1, gravando de 16/08 em diante. O dia 16/08 serve só para conferir que reproduz o arquivo de `final2`.
 
 ```bash
-python scripts/hi_large/b_atributos.py --preparador S --dias 23 --gravar-a-partir 15 --sufixo final3
+python pesquisa/hi_large/scripts/b_atributos.py --preparador S --dias 23 --gravar-a-partir 15 --sufixo final3
 ```
 
 ```bash
-python scripts/hi_large/b_atributos.py --preparador L --dias 23 --gravar-a-partir 15 --sufixo final3
+python pesquisa/hi_large/scripts/b_atributos.py --preparador L --dias 23 --gravar-a-partir 15 --sufixo final3
 ```
 
 ```bash
-python scripts/hi_large/b6_conferir_final2.py --sufixo final3 --anterior final2 --dia-repro 15 --dias 16-22
+python pesquisa/hi_large/scripts/b6_conferir_final2.py --sufixo final3 --anterior final2 --dia-repro 15 --dias 16-22
 ```
 
 ```bash
-python scripts/hi_large/c_treinar_avaliar.py --etapa final3
+python pesquisa/hi_large/scripts/c_treinar_avaliar.py --etapa final3
 ```
 
 A etapa `final3` recusa a consulta se o artefato atual mudou depois da Emenda 3 ou se `b6_conferencia_final3.json` não mostrar o dia 16/08 idêntico e os dias 17 a 23 completos. Também confere o hash de cada modelo e calcula o critério da emenda em `criterio_emenda3`.
@@ -171,11 +171,11 @@ A etapa `final3` recusa a consulta se o artefato atual mudou depois da Emenda 3 
 Conferências da correção e dos dados:
 
 ```bash
-python scripts/hi_large/b5_amostra_estratificada.py
+python pesquisa/hi_large/scripts/b5_amostra_estratificada.py
 ```
 
 ```bash
-python scripts/hi_large/a6_reconferencia.py --dados <mesma pasta>
+python pesquisa/hi_large/scripts/a6_reconferencia.py --dados <mesma pasta>
 ```
 
 `b5` confere o lote anterior, o lote corrigido e o incremental contra a força bruta, em quatro estratos de 100 linhas: maior divergência antiga, maior acumulado da conta, borda de janela e sorteio. Depois que a correção for commitada, use `--ref 9095451`. `a6` relê as partições sem usar os resultados da primeira passada.
@@ -185,7 +185,7 @@ python scripts/hi_large/a6_reconferencia.py --dados <mesma pasta>
 Refaz, numa pasta isolada (`artefatos_ml/hi_large/reproducao_treinos/`), as duas grades treinadas na avaliação: X11 (rodada 1, fontes L e S+L com o HI-Small do lote antigo) e X25 (Emenda 2, S+L corrigida). Usa as mesmas entradas gravadas, a mesma semente e o mesmo XGBoost (`NODEWATCH_XGBOOST`). Compara cada arquivo com o original pelo SHA-256, pela configuração aprendida e pelas previsões na validação purgada de 07 e 08/08, que só confere a reprodução. Não lê os dias 13 a 23/08 e confere, antes e depois, os hashes de `modelos/`, das escolhas, do preparador, do contador de consultas, do artefato de produção e dos resultados.
 
 ```bash
-python scripts/hi_large/g_reproduzir_treinos.py --execucoes X11 X25
+python pesquisa/hi_large/scripts/g_reproduzir_treinos.py --execucoes X11 X25
 ```
 
 ### Auditoria de fechamento
@@ -193,21 +193,21 @@ python scripts/hi_large/g_reproduzir_treinos.py --execucoes X11 X25
 Só lê: não pontua modelos nem consulta períodos.
 
 ```bash
-python scripts/hi_large/e_auditoria.py --dados <mesma pasta>
+python pesquisa/hi_large/scripts/e_auditoria.py --dados <mesma pasta>
 ```
 
 Depois de editar os documentos, refaça só a consistência e o inventário:
 
 ```bash
-python scripts/hi_large/e_auditoria.py --so-documentos
+python pesquisa/hi_large/scripts/e_auditoria.py --so-documentos
 ```
 
 ### Testes
 
 ```bash
-python -m pytest -q -p no:cacheprovider --junitxml=docs/ml/hi_large/resultados/pytest_fechamento.xml
+python -m pytest -q -p no:cacheprovider --junitxml=pesquisa/hi_large/resultados/pytest_fechamento.xml
 ```
 
 ```bash
-python -m pytest -q -p no:cacheprovider testes/ml/test_hi_large_avaliacao.py --junitxml=docs/ml/hi_large/resultados/pytest_fechamento_hi_large.xml
+python -m pytest -q -p no:cacheprovider testes/ml/test_hi_large_avaliacao.py --junitxml=pesquisa/hi_large/resultados/pytest_fechamento_hi_large.xml
 ```

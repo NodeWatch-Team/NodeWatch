@@ -712,7 +712,7 @@ O resultado dela é **uma pista, não uma confirmação**:
 | Correção das somas por conta no lote (`src/ml/preparacao.py`) | **Integrada** | Defeito confirmado por força bruta; sem efeito nos alertas do modelo atual; cerca de 4% mais tempo (seção 3.4) |
 | Novo leitor para arquivos grandes em `src/ml` | **Não integrado** | Só serviria para treinar com o HI-Large, o que não foi sustentado. Para avaliar, os scripts bastam e reaproveitam o `EstadoFinanceiro` e o `PreparadorFinanceiro` do módulo, sem lógica própria de atributos |
 | XGBoost como dependência | **Não adicionado** | Fica fora do `.venv`, só para avaliação |
-| Ferramentas de avaliação (`scripts/hi_large/`) | **Adicionadas** | Perfil em fluxo, partição por dia, conferências, atributos incrementais, treino, avaliação purgada e bootstrap. Aceitam outros arquivos IBM AML com `--prefixo`; a janela de modelagem está fixada a partir de 01/08/2022 |
+| Ferramentas de avaliação (`pesquisa/hi_large/scripts/`) | **Adicionadas** | Perfil em fluxo, partição por dia, conferências, atributos incrementais, treino, avaliação purgada e bootstrap. Aceitam outros arquivos IBM AML com `--prefixo`; a janela de modelagem está fixada a partir de 01/08/2022 |
 | Testes (`testes/ml/test_hi_large_avaliacao.py`) | **Adicionados**: 14, todos aprovados | Ver abaixo |
 | Documentação | **Adicionada** | Plano, três emendas, este relatório, o registro de experimentos (`REGISTRO_EXPERIMENTOS_E_TREINOS.md`), README, `PARTICOES.md` e link em `docs/ml/README.md` |
 
@@ -746,7 +746,7 @@ Os testes usam dados sintéticos pequenos, criados no próprio teste. Não leem 
   - `docs/COMO_FUNCIONA_O_NODEWATCH.md` (seções 8.5 e 15.7) e o PDF dele, regerado.
 - Link e conclusão desta avaliação em `docs/ml/README.md`.
 
-**Nas rodadas 2 e 3,** dentro de `scripts/hi_large/`:
+**Nas rodadas 2 e 3,** dentro de `pesquisa/hi_large/scripts/`:
 
 - `b_atributos.py` ganhou `--dias`, `--gravar-a-partir` e `--sufixo`, e os dias da Emenda 3.
 - `c_treinar_avaliar.py` ganhou `--emenda2` e as etapas `final2`, `final2_rf` e `final3`.
@@ -844,7 +844,7 @@ O artefato do modelo não foi alterado.
 
 A auditoria foi feita depois de todas as consultas e **não iniciou nenhuma consulta nova**:
 
-- **Script:** `scripts/hi_large/e_auditoria.py`, com resultado em `resultados/e_auditoria.json`.
+- **Script:** `pesquisa/hi_large/scripts/e_auditoria.py`, com resultado em `resultados/e_auditoria.json`.
 - **Leitura:** ele lê as partições, os rótulos e os resultados já gravados.
 - **Não pontua nenhum modelo:** o contador de consultas foi comparado antes e depois, sem mudança.
 
@@ -1001,12 +1001,12 @@ Os testes verificam o código, **não** o desempenho preditivo. Foram rodados ne
 
 | Comando | Resultado | Evidência |
 |---|---|---|
-| `python -m pytest -q -p no:cacheprovider --junitxml=docs/ml/hi_large/resultados/pytest_fechamento.xml` | 208 aprovados, 0 falhas | `resultados/pytest_fechamento.xml` |
-| `python -m pytest -q -p no:cacheprovider testes/ml/test_hi_large_avaliacao.py --junitxml=docs/ml/hi_large/resultados/pytest_fechamento_hi_large.xml` | 15 aprovados | `resultados/pytest_fechamento_hi_large.xml` |
+| `python -m pytest -q -p no:cacheprovider --junitxml=pesquisa/hi_large/resultados/pytest_fechamento.xml` | 208 aprovados, 0 falhas | `resultados/pytest_fechamento.xml` |
+| `python -m pytest -q -p no:cacheprovider testes/ml/test_hi_large_avaliacao.py --junitxml=pesquisa/hi_large/resultados/pytest_fechamento_hi_large.xml` | 15 aprovados | `resultados/pytest_fechamento_hi_large.xml` |
 
 ### 12.7 Reprodução dos treinos X11 e X25
 
-**O que foi feito.** Os dois treinos efetivos foram refeitos numa pasta isolada (`artefatos_ml/hi_large/reproducao_treinos/`), com `scripts/hi_large/g_reproduzir_treinos.py`:
+**O que foi feito.** Os dois treinos efetivos foram refeitos numa pasta isolada (`artefatos_ml/hi_large/reproducao_treinos/`), com `pesquisa/hi_large/scripts/g_reproduzir_treinos.py`:
 
 - **X11:** rodada 1, fontes L e S+L com o HI-Small do lote antigo;
 - **X25:** Emenda 2, S+L corrigida.

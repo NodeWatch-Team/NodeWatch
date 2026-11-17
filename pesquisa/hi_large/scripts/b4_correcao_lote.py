@@ -11,7 +11,7 @@ a corrigida:
 
 Uso::
 
-    python scripts/hi_large/b4_correcao_lote.py [--ref HEAD]
+    python pesquisa/hi_large/scripts/b4_correcao_lote.py [--ref HEAD]
 """
 
 from __future__ import annotations

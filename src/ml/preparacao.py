@@ -110,7 +110,7 @@ class _IndiceEventos:
     As somas acumuladas **recomeçam a cada chave** (conta). Com uma soma única
     sobre todas as contas, a soma da janela de uma conta virava a diferença de
     dois números enormes e perdia precisão: até 27% de erro nas somas em USD com
-    valores na escala do HI-Large (docs/ml/hi_large/RELATORIO_HI_LARGE.md, seção 3.4).
+    valores na escala do HI-Large (pesquisa/hi_large/RELATORIO_HI_LARGE.md, seção 3.4).
     """
 
     def __init__(self, chave: np.ndarray, minuto: np.ndarray,

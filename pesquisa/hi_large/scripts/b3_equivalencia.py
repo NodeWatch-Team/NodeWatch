@@ -12,7 +12,7 @@ dias (todos os positivos do dia entram na comparação). A ordem do arquivo
 
 Uso::
 
-    python scripts/hi_large/b3_equivalencia.py
+    python pesquisa/hi_large/scripts/b3_equivalencia.py
 """
 
 from __future__ import annotations
