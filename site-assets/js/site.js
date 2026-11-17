@@ -1,5 +1,5 @@
-/* NodeWatch · artigo técnico. Menu, ampliação das capturas, link ativo e entrada suave.
-   A seção de Machine Learning fica em artigo.js (React). Sem rastreamento. */
+/* NodeWatch · artigo técnico. Menu dos blocos, ampliação das capturas, link ativo e entrada suave.
+   Os componentes interativos ficam em artigo.js (React). Sem rastreamento. */
 (function () {
   "use strict";
 
@@ -53,10 +53,14 @@
     origemFoco = document.activeElement;
     lbImg.src = img.currentSrc || img.src;
     lbImg.alt = img.alt;
-    lbLegenda.innerHTML = legenda.innerHTML;
+    if (typeof legenda === "string") lbLegenda.textContent = legenda;
+    else lbLegenda.innerHTML = legenda ? legenda.innerHTML : "";
     lightbox.showModal();
     lbFechar.focus();
   }
+
+  // Usada pelas capturas desenhadas em React (artigo.js).
+  window.nwAbrirImagem = abrir;
 
   if (lightbox) {
     lbFechar.addEventListener("click", function () { lightbox.close(); });
@@ -105,7 +109,7 @@
   var semMovimento = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (!semMovimento && "IntersectionObserver" in window) {
     var blocos = document.querySelectorAll(
-      ".etapa-pipe, .tela, .cartao, .kpi, .stack > div, .tabela-rolagem, .ml-interativo"
+      ".bloco h2, .contraste-lado, .evolucao-lado, .pilar, .cartao, .fluxo-criacao, .rf-ficha"
     );
     var revelador = new IntersectionObserver(function (entradas) {
       entradas.forEach(function (e) {

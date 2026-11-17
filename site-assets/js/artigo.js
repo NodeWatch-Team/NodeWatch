@@ -1,34 +1,78 @@
-/* NodeWatch · artigo técnico
-   Seção "Como o Machine Learning funciona": abas e simulador de score em React 18.
+/* NodeWatch · roteiro técnico
+   Componentes interativos em React 18: simulador do score (bloco 3), pipeline (bloco 4) e abas do painel (bloco 5).
    React e ReactDOM vêm de ./site-assets/vendor (UMD, sem build e sem CDN).
-   Se o React não carregar, a versão estática dentro de #ml-interativo continua visível. */
+   Se o React não carregar, a versão estática de cada alvo continua visível.
+   Fontes dos números: src/painel/score.py, src/painel/pipeline.py, interface/assets/painel-grafo.js. */
 (function () {
   "use strict";
 
-  var alvo = document.getElementById("ml-interativo");
-  if (!alvo || !window.React || !window.ReactDOM || !window.ReactDOM.createRoot) return;
+  if (!window.React || !window.ReactDOM || !window.ReactDOM.createRoot) return;
 
   var React = window.React;
   var h = React.createElement;
   var useState = React.useState;
   var useRef = React.useRef;
 
-  /* ---------- Dados (fonte: docs/ml/RELATORIO_ML.md e src/painel/score.py) ---------- */
+  function montar(id, Comp) {
+    var alvo = document.getElementById(id);
+    if (alvo) window.ReactDOM.createRoot(alvo).render(h(Comp));
+  }
 
-  var LIMIAR = 0.0910; // limiar do modelo de lavagem (máximo F1 na validação)
+  function num(x, casas) {
+    return x.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
+  }
+
+  /* Abas acessíveis (setas, Home e End), usadas no pipeline e no painel. */
+  function Abas(props) {
+    var _a = useState(0), ativa = _a[0], setAtiva = _a[1];
+    var botoes = useRef([]);
+    var itens = props.itens;
+
+    function teclado(e) {
+      var n = itens.length, prox = null;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") prox = (ativa + 1) % n;
+      else if (e.key === "ArrowLeft" || e.key === "ArrowUp") prox = (ativa - 1 + n) % n;
+      else if (e.key === "Home") prox = 0;
+      else if (e.key === "End") prox = n - 1;
+      if (prox === null) return;
+      e.preventDefault();
+      setAtiva(prox);
+      if (botoes.current[prox]) botoes.current[prox].focus();
+    }
+
+    var atual = itens[ativa];
+    return h("div", { className: "abas " + (props.classe || "") },
+      h("div", { className: "abas-lista", role: "tablist", "aria-label": props.rotulo, onKeyDown: teclado },
+        itens.map(function (a, i) {
+          var sel = i === ativa;
+          return h("button", {
+            key: a.id, type: "button", role: "tab", id: props.prefixo + "-aba-" + a.id,
+            "aria-selected": sel ? "true" : "false", "aria-controls": props.prefixo + "-painel",
+            tabIndex: sel ? 0 : -1, className: "aba" + (sel ? " ativa" : ""),
+            ref: function (el) { botoes.current[i] = el; },
+            onClick: function () { setAtiva(i); }
+          },
+            props.numerar ? h("span", { className: "aba-num" }, i + 1) : null,
+            h("span", { className: "aba-textos" },
+              h("span", { className: "aba-rotulo" }, a.rotulo),
+              a.curto ? h("span", { className: "aba-curto" }, a.curto) : null));
+        })),
+      h("div", { className: "aba-painel", role: "tabpanel", id: props.prefixo + "-painel",
+        "aria-labelledby": props.prefixo + "-aba-" + atual.id, tabIndex: 0, key: atual.id },
+        atual.conteudo()));
+  }
+
+  /* ---------- Bloco 3 · Simulador do score ---------- */
+
+  var LIMIAR = 0.0910; // limiar do modelo (máximo F1 na validação)
 
   var FAIXAS = [
     { id: "basal", nome: "Baixa", de: 0, ate: 300,
-      leitura: "Comportamento compatível com o histórico. Sem prioridade de investigação." },
+      leitura: "Compatível com o histórico. Sem prioridade de investigação." },
     { id: "observacao", nome: "Intermediária", de: 301, ate: 700,
       leitura: "Abaixo do limiar, mas perto dele. Vale revisar se outras evidências apontarem para a conta." },
     { id: "alerta", nome: "Alta (alerta)", de: 701, ate: 1000,
       leitura: "Passou do limiar do modelo: a transação sobe para o topo da fila do analista." }
-  ];
-
-  var TIPOLOGIAS = [
-    ["FAN-OUT", 72], ["FAN-IN", 68], ["SCATTER-GATHER", 67], ["GATHER-SCATTER", 67],
-    ["STACK", 67], ["CYCLE", 60], ["RANDOM", 56], ["BIPARTITE", 55]
   ];
 
   function faixaDe(score) {
@@ -42,108 +86,20 @@
     return (score / 701) * LIMIAR;
   }
 
-  function num(x, casas) {
-    return x.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
-  }
-
-  /* ---------- Peças reutilizáveis ---------- */
-
-  function Fatos(props) {
-    return h("dl", { className: "fatos" }, props.itens.map(function (f) {
-      return h("div", { key: f[0] }, h("dt", null, f[0]), h("dd", null, f[1]));
-    }));
-  }
-
-  function Grupos(props) {
-    return h("div", { className: "grupos" }, props.itens.map(function (g) {
-      return h("article", { className: "grupo", key: g.titulo },
-        h("h4", null, g.titulo),
-        h("p", null, g.texto),
-        g.exemplo ? h("p", { className: "grupo-exemplo" }, h("code", null, g.exemplo)) : null);
-    }));
-  }
-
-  /* ---------- Abas ---------- */
-
-  function AbaLavagem() {
-    return h("div", null,
-      h("p", { className: "aba-lead" },
-        "Pontua cada transação financeira. Treinado com ", h("strong", null, "Random Forest"),
-        " na base IBM AML HI-Small, com divisão temporal entre treino, validação e teste."),
-      h(Fatos, { itens: [
-        ["Transações", "5.078.345"], ["Positivas", "5.177 (0,10%)"],
-        ["Tipologias", "8"], ["Atributos", "49"]
-      ] }),
-      h("h3", { className: "aba-sub" }, "O que os 49 atributos medem"),
-      h(Grupos, { itens: [
-        { titulo: "Velocidade de repasse", texto: "Quanto tempo o dinheiro fica parado: a conta recebeu e já está enviando?", exemplo: "min_desde_rec_origem" },
-        { titulo: "Novidade do par", texto: "É a primeira vez que essas duas contas se relacionam? Quantas vezes já houve?", exemplo: "par_novo · n_par_previas" },
-        { titulo: "Desvio de valor", texto: "O valor foge do histórico da conta? Medido como z-score do log do valor em USD.", exemplo: "z_valor_origem" },
-        { titulo: "Janelas deslizantes", texto: "Contagens, somas e razão saída/entrada nas últimas 24 h de cada conta.", exemplo: "razao_saida_entrada_24h" }
-      ] }),
-      h("h3", { className: "aba-sub" }, "Recall por tipologia no teste"),
-      h("ul", { className: "barras", "aria-label": "Recall por tipologia" }, TIPOLOGIAS.map(function (t) {
-        return h("li", { key: t[0] },
-          h("span", { className: "barra-nome mono" }, t[0]),
-          h("span", { className: "barra-trilho", "aria-hidden": "true" },
-            h("span", { className: "barra-valor", style: { width: t[1] + "%" } })),
-          h("span", { className: "barra-num mono" }, t[1] + "%"));
-      })),
-      h("p", { className: "aba-nota" },
-        "Limite conhecido: positivos sem tipologia conhecida (39% do teste) têm recall de apenas 2%."));
-  }
-
-  function AbaCausal() {
-    var EVENTOS = 9;
-    var _t = useState(5), t = _t[0], setT = _t[1];
-    var pontos = [];
-    for (var i = 0; i < EVENTOS; i++) {
-      var classe = i < t ? "ev ev-passado" : i === t ? "ev ev-agora" : "ev ev-futuro";
-      pontos.push(h("li", { key: i, className: classe },
-        h("span", { className: "ev-ponto", "aria-hidden": "true" }),
-        h("span", { className: "ev-rotulo mono" }, i === t ? "t" : i < t ? "t−" + (t - i) : "t+" + (i - t))));
-    }
-    return h("div", null,
-      h("p", { className: "aba-lead" },
-        "Para pontuar uma transação no instante ", h("span", { className: "mono" }, "t"),
-        ", o sistema usa ", h("strong", null, "estritamente"), " dados ocorridos em ",
-        h("span", { className: "mono" }, "< t"), ". Nenhuma informação do futuro vaza para o atributo."),
-      h("div", { className: "linha-tempo" },
-        h("ol", { className: "eventos", "aria-hidden": "true" }, pontos),
-        h("label", { className: "controle" },
-          h("span", null, "Mova o instante ", h("span", { className: "mono" }, "t")),
-          h("input", { type: "range", min: 1, max: EVENTOS - 2, value: t,
-            onChange: function (e) { setT(Number(e.target.value)); },
-            "aria-valuetext": t + " transações anteriores visíveis" })),
-        h("p", { className: "linha-legenda" },
-          h("span", { className: "leg leg-passado" }, t + " eventos usados"),
-          h("span", { className: "leg leg-agora" }, "transação pontuada"),
-          h("span", { className: "leg leg-futuro" }, (EVENTOS - t - 1) + " eventos invisíveis"))),
-      h(Grupos, { itens: [
-        { titulo: "Divisão por tempo", texto: "Treino, validação e teste são períodos consecutivos, nunca embaralhados." },
-        { titulo: "Teste congelado", texto: "Modelo e limiar foram escolhidos na validação e fixados antes de olhar o teste." },
-        { titulo: "Lote = incremental", texto: "O cálculo em lote foi conferido contra o cálculo evento a evento: os mesmos alertas." }
-      ] }));
-  }
-
-  function AbaScore() {
+  function Simulador() {
     var _s = useState(520), score = _s[0], setScore = _s[1];
     var f = faixaDe(score);
-    var bruto = brutoDe(score);
     function atalho(v) { return h("button", { type: "button", className: "atalho", onClick: function () { setScore(v); } }, v); }
 
     return h("div", null,
-      h("p", { className: "aba-lead" },
-        "O modelo devolve um valor de 0 a 1, que não é probabilidade calibrada. O painel converte esse valor em um ",
-        h("strong", null, "índice de 0 a 1000 ancorado no limiar"), ": score ≥ 701 equivale exatamente a passar do limiar do modelo."),
       h("div", { className: "simulador faixa-" + f.id },
         h("div", { className: "sim-topo" },
           h("div", null,
             h("p", { className: "sim-score mono", "aria-live": "polite" }, score, h("small", null, " / 1000")),
             h("p", { className: "sim-faixa" }, f.nome)),
           h("dl", { className: "sim-dados" },
-            h("div", null, h("dt", null, "Score bruto do modelo"), h("dd", { className: "mono" }, "≈ " + num(bruto, 4))),
-            h("div", null, h("dt", null, "Limiar do modelo"), h("dd", { className: "mono" }, num(LIMIAR, 4))))),
+            h("div", null, h("dt", null, "Valor do modelo"), h("dd", { className: "mono" }, "≈ " + num(brutoDe(score), 4))),
+            h("div", null, h("dt", null, "Limiar"), h("dd", { className: "mono" }, num(LIMIAR, 4))))),
         h("div", { className: "regua", "aria-hidden": "true" },
           h("span", { className: "regua-faixa r-basal" }),
           h("span", { className: "regua-faixa r-observacao" }),
@@ -163,51 +119,119 @@
           h("p", { className: "mono" }, x.de + "–" + x.ate),
           h("h4", null, x.nome),
           h("p", null, x.leitura));
-      })),
-      h("p", { className: "aba-aviso" },
-        h("strong", null, "Alerta não é prova de fraude."),
-        " O score é uma ordem de prioridade estatística para a investigação humana. O NodeWatch não bloqueia, não aprova e não paga nada."));
+      })));
   }
 
-  var ABAS = [
-    { id: "lavagem", rotulo: "Modelo de lavagem", curto: "49 atributos", Comp: AbaLavagem },
-    { id: "causal", rotulo: "Rigor causal", curto: "zero vazamento", Comp: AbaCausal },
-    { id: "score", rotulo: "Score 0–1000", curto: "simulador", Comp: AbaScore }
+  /* ---------- Bloco 4 · Pipeline ---------- */
+
+  var ETAPAS = [
+    { id: "ingestao", rotulo: "Ingestão e validação", curto: "CSV ou ZIP",
+      faz: "Lê o .csv ou .zip em blocos de 200 mil linhas e confere o contrato de colunas: formato IBM AML ou colunas em português. Não pede rótulo nem arquivo de tipologias.",
+      itens: ["Linhas inválidas ficam fora e são contadas, com a coluna, um exemplo e como corrigir.", "Nada é corrigido nem preenchido.", "O modelo só é carregado se o SHA-256 conferir com o manifesto."],
+      mede: "bytes lidos" },
+    { id: "ordem", rotulo: "Ordenação cronológica", curto: "sem olhar o futuro",
+      faz: "Ordena por minuto e, no empate, pela ordem da linha. Cada transação recebe um ID de exibição (TX-n).",
+      itens: ["A janela de cada transação é [t − w, t): o próprio minuto fica de fora.", "Duas transações no mesmo minuto não enxergam uma à outra."],
+      mede: "concluída de uma vez" },
+    { id: "pontuacao", rotulo: "Atributos e pontuação", curto: "Random Forest",
+      faz: "Em blocos de cerca de 20 mil transações: calcula os 49 atributos com o estado de cada conta, aplica o Random Forest e converte o valor em score de 0 a 1000.",
+      itens: ["Score ≥ 701 vira alerta, com motivos verificáveis (par novo, repasse em menos de 60 min…).", "O estado das contas avança; o modelo não muda.", "Cancelar para no próximo bloco; o que já foi pontuado fica gravado."],
+      mede: "transações pontuadas" },
+    { id: "indices", rotulo: "Índices no SQLite", curto: "consulta local",
+      faz: "Cria os índices dos campos filtráveis e as contagens gerais no banco SQLite da análise.",
+      itens: ["Filtrar, ordenar e paginar consultam o que foi gravado, sem nova inferência.", "Tudo fica em artefatos_ml/painel/analises/<id>/."],
+      mede: "passos" },
+    { id: "manifesto", rotulo: "Manifesto e liberação", curto: "painel pronto",
+      faz: "Grava o manifesto da execução (status, tempos por etapa, versão do modelo, limiar, avisos) e libera os resultados no painel.",
+      itens: ["Os resultados continuam disponíveis depois de reiniciar o servidor.", "O painel guarda as 20 análises mais recentes."],
+      mede: "concluída de uma vez" }
   ];
 
-  function MLInterativo() {
-    var _a = useState(0), ativa = _a[0], setAtiva = _a[1];
-    var botoes = useRef([]);
-
-    function teclado(e) {
-      var n = ABAS.length, prox = null;
-      if (e.key === "ArrowRight") prox = (ativa + 1) % n;
-      else if (e.key === "ArrowLeft") prox = (ativa - 1 + n) % n;
-      else if (e.key === "Home") prox = 0;
-      else if (e.key === "End") prox = n - 1;
-      if (prox === null) return;
-      e.preventDefault();
-      setAtiva(prox);
-      if (botoes.current[prox]) botoes.current[prox].focus();
-    }
-
-    var Atual = ABAS[ativa].Comp;
-    return h("div", { className: "abas" },
-      h("div", { className: "abas-lista", role: "tablist", "aria-label": "Tópicos de Machine Learning", onKeyDown: teclado },
-        ABAS.map(function (a, i) {
-          var sel = i === ativa;
-          return h("button", {
-            key: a.id, type: "button", role: "tab", id: "aba-" + a.id,
-            "aria-selected": sel ? "true" : "false", "aria-controls": "painel-" + a.id,
-            tabIndex: sel ? 0 : -1, className: "aba" + (sel ? " ativa" : ""),
-            ref: function (el) { botoes.current[i] = el; },
-            onClick: function () { setAtiva(i); }
-          }, h("span", { className: "aba-rotulo" }, a.rotulo), h("span", { className: "aba-curto" }, a.curto));
-        })),
-      h("div", { className: "aba-painel", role: "tabpanel", id: "painel-" + ABAS[ativa].id,
-        "aria-labelledby": "aba-" + ABAS[ativa].id, tabIndex: 0, key: ABAS[ativa].id },
-        h(Atual)));
+  function Pipeline() {
+    return h(Abas, { prefixo: "pipe", rotulo: "Etapas da análise", numerar: true, classe: "abas-pipeline",
+      itens: ETAPAS.map(function (e, i) {
+        return { id: e.id, rotulo: e.rotulo, curto: e.curto, conteudo: function () {
+          return h("div", { className: "etapa-detalhe" },
+            h("p", { className: "etapa-passo mono" }, "Etapa " + (i + 1) + " de 5 · progresso medido em " + e.mede),
+            h("p", { className: "aba-lead" }, e.faz),
+            h("ul", { className: "lista-curta" }, e.itens.map(function (t) { return h("li", { key: t }, t); })));
+        } };
+      }) });
   }
 
-  window.ReactDOM.createRoot(alvo).render(h(MLInterativo));
+  /* ---------- Bloco 5 · Abas do painel ---------- */
+
+  function Captura(props) {
+    return h("figure", { className: "tela" },
+      h("button", { className: "tela-abrir", type: "button", "aria-label": "Ampliar imagem: " + props.alt,
+        onClick: function (e) {
+          var img = e.currentTarget.querySelector("img");
+          if (window.nwAbrirImagem) window.nwAbrirImagem(img, props.legenda);
+        } },
+        h("img", { src: props.src, width: props.w || 1100, height: props.hgt || 687, loading: "lazy", alt: props.alt })),
+      props.legenda ? h("figcaption", null, props.legenda) : null);
+  }
+
+  function Pontos(props) {
+    return h("ul", { className: "lista-curta" }, props.itens.map(function (t) {
+      return h("li", { key: t[0] }, h("strong", null, t[0]), " " + t[1]);
+    }));
+  }
+
+  var ABAS_PAINEL = [
+    { id: "execucao", rotulo: "Execução e logs", curto: "Análise · Operação", conteudo: function () {
+      return h("div", { className: "painel-grade" },
+        h(Captura, { src: "./site-assets/img/tela-analise.jpg", alt: "Vista Análise com as cinco etapas concluídas", legenda: "Análise de 200 mil transações sintéticas: as 5 etapas com tempo e progresso." }),
+        h(Pontos, { itens: [
+          ["Progresso das 5 etapas:", "com o que foi lido ou pontuado e a estimativa de tempo restante."],
+          ["Log da execução:", "as transações aparecem conforme são gravadas, com score e motivos."],
+          ["Operação:", "latência por consulta (ms), vazão (transações/s), CPU, RAM e logs do sistema e de ML."],
+          ["Métricas oficiais:", "precisão, recall e F1 do teste; com rótulo no arquivo, também as daquele arquivo."]
+        ] }));
+    } },
+    { id: "visao", rotulo: "Visão geral e tabela", curto: "KPIs · filtros", conteudo: function () {
+      return h("div", { className: "painel-grade" },
+        h("div", { className: "capturas-duplas" },
+          h(Captura, { src: "./site-assets/img/tela-visao.jpg", alt: "Visão geral com indicadores e faixas de score", legenda: "Visão geral: alertas, faixas e contas prioritárias." }),
+          h(Captura, { src: "./site-assets/img/tela-transacoes.jpg", alt: "Tabela de transações com filtros e score", legenda: "Transações: tabela paginada no servidor." })),
+        h(Pontos, { itens: [
+          ["Indicadores do recorte:", "transações, alertas e score mediano e máximo."],
+          ["3 faixas:", "baixa (0–300), intermediária (301–700) e alta (701–1000)."],
+          ["Filtros combinados:", "período, moeda, valor, bancos, conta, score e alerta, iguais para tabela, contas e grafo."],
+          ["Cada transação:", "score, motivos verificáveis e aviso de histórico incompleto (menos de 72 h observadas)."]
+        ] }));
+    } },
+    { id: "grafo", rotulo: "Investigação em grafo", curto: "pós-inferência", conteudo: function () {
+      return h("div", { className: "painel-grade" },
+        h(Captura, { src: "./site-assets/img/tela-grafo.jpg", w: 982, hgt: 614, alt: "Grafo da conta em foco com contas em alerta e uma sequência de repasse destacada", legenda: "Conta em foco, contas em alerta em vermelho e uma sequência de repasse destacada." }),
+        h(Pontos, { itens: [
+          ["Grafo SVG interativo:", "layouts Radial, Camadas, Circular e Forças, com zoom e arrasto."],
+          ["Busca salto a salto:", "quem recebeu e quem enviou, até 3 saltos, no máximo 30 contas e 60 arestas."],
+          ["Folhas agrupadas:", "contas ligadas só a uma vizinha viram um grupo expansível."],
+          ["Ordem no tempo:", "cada aresta é direta, sequência com horários compatíveis, simultânea ou sem ordem confirmada."]
+        ] }));
+    } },
+    { id: "sentinel", rotulo: "Sentinel AI", curto: "assistente", conteudo: function () {
+      return h("div", { className: "painel-grade" },
+        h("div", { className: "sentinel-mock", "aria-hidden": "true" },
+          h("p", { className: "sm-pergunta" }, "Por que a TX-11 tem score 177?"),
+          h("p", { className: "sm-resposta" },
+            h("span", { className: "sm-tag" }, "Fato"), " Score 177, faixa baixa: abaixo do limiar (701).",
+            h("br"), h("span", { className: "sm-tag sm-tag-2" }, "Limitação"), " Os motivos são fatos conferíveis, não a explicação do modelo.")),
+        h(Pontos, { itens: [
+          ["Modo local (padrão):", "responde sem internet, com glossário, ajuda de uso e números lidos dos resultados gravados."],
+          ["Com chave e autorização:", "usa um modelo de linguagem externo (Gemini ou Anthropic) só depois de a aba autorizar."],
+          ["Contexto verificado:", "manifesto, recorte, transação em foco e métricas oficiais; separa fatos, inferências e limitações."],
+          ["Não detecta nada:", "explica os resultados e não altera nenhum cálculo."]
+        ] }));
+    } }
+  ];
+
+  function PainelAbas() {
+    return h(Abas, { prefixo: "painel", rotulo: "Vistas do painel do analista", numerar: true, classe: "abas-painel", itens: ABAS_PAINEL });
+  }
+
+  montar("simulador-score", Simulador);
+  montar("pipeline-interativo", Pipeline);
+  montar("painel-abas", PainelAbas);
 })();
