@@ -11,7 +11,7 @@
   const TOM_STATUS = { concluida: 'ok', cancelada: 'atencao', parcial: 'atencao', erro: 'alerta', em_andamento: 'acao' };
   const NOME_ETAPA = { pendente: 'Pendente', em_andamento: 'Em andamento', concluida: 'Concluída', pulada: 'Pulada (não se aplica)',
     erro: 'Erro', cancelada: 'Cancelada', interrompida: 'Interrompida' };
-  const MARCA_ETAPA = { concluida: '✓', em_andamento: '▶', erro: '!', cancelada: '×', interrompida: '×', pulada: '–' };
+  const MARCA_ETAPA = { concluida: '✓', erro: '!', cancelada: '×', interrompida: '×', pulada: '–' };
   const NOME_DATASET = { validando: 'Validando…', valido: 'Válido', valido_com_recusas: 'Válido, com linhas recusadas', invalido: 'Inválido',
     erro: 'Erro na validação', nao_validado: 'Ainda não validado' };
 
@@ -66,19 +66,44 @@
     const fmt = formato || f.inteiro, mostrado = useContagem(valor);
     return h(React.Fragment, null, h('span', { className: 'contador-vivo', 'aria-hidden': 'true' }, fmt(mostrado)), h('span', { className: 'sr' }, fmt(valor)));
   }
-  /* Trilha horizontal do pipeline: uma marca por etapa real, na ordem do manifesto.
-     Concluída ✓ · em andamento (pulso e luz no fio até a próxima) · pendente · pulada · erro · cancelada.
-     O "tique" de bloco é refeito a cada bloco gravado (chave = medido_em do último bloco). */
+  /* Tempo de execução de uma etapa: o gravado no fechamento ou, em andamento, desde o início gravado no servidor
+     (o manifesto chega a cada 1 s, então o tempo corre sem temporizador próprio). Sem início gravado: nada. */
+  function duracaoEtapa(e) {
+    if (!f.vazio(e.duracao_s)) return e.duracao_s;
+    const t = e.status === 'em_andamento' && e.inicio ? Date.parse(e.inicio) : NaN;
+    return Number.isNaN(t) ? null : Math.max(0, (Date.now() - t) / 1000);
+  }
+  /* Volume medido da etapa ("X de Y unidade"), só quando a etapa mede progresso. */
+  function volumeEtapa(e) {
+    const p = e.progresso;
+    if (!p || !p.total) return null;
+    return e.unidade === 'bytes' ? f.bytes(p.feito) + ' de ' + f.bytes(p.total) + ' lidos' + (p.linhas_lidas ? ' · ' + f.inteiro(p.linhas_lidas) + ' linhas' : '')
+      : f.inteiro(p.feito) + ' de ' + f.inteiro(p.total) + ' ' + e.unidade;
+  }
+  /* Linha do tempo do pipeline: a ÚNICA apresentação das etapas, durante e depois da análise, na ordem do manifesto.
+     Cada etapa traz a marca de estado, o número e o nome, a situação com o tempo de execução e, quando houver, o
+     volume medido e o detalhe gravado no fechamento. Concluída ✓ verde · em andamento em vermelho (pulso; o fio até
+     a próxima etapa enche com a fração medida) · pendente discreta · pulada · erro · cancelada. O "tique" de bloco
+     é refeito a cada bloco gravado (chave = medido_em do último bloco). */
   function TrilhaEtapas({ m }) {
+    const n = m.etapas.length;
     return h('ol', { className: 'trilha-etapas', 'aria-label': 'Etapas da análise' }, m.etapas.map((e, i) => {
-      const ub = e.id === 'pontuacao' && e.status === 'em_andamento' && e.progresso ? e.progresso.ultimo_bloco : null;
-      return h('li', { key: e.id, className: 'passo ' + e.status, 'aria-current': e.status === 'em_andamento' ? 'step' : undefined },
-        h('span', { className: 'no', 'aria-hidden': 'true' }, MARCA_ETAPA[e.status] === '▶' ? '' : (MARCA_ETAPA[e.status] || (i + 1)),
-          ub && ub.medido_em ? h('i', { key: ub.medido_em, className: 'tique' }) : null),
-        i < m.etapas.length - 1 ? h('span', { className: 'fio', 'aria-hidden': 'true' }, e.status === 'em_andamento' ? h('i', { className: 'luz' }) : null) : null,
-        h('span', { className: 'rotulo-passo' }, rotuloEtapa(e)),
-        h('span', { className: 'sr' }, ': ' + (e.status === 'pulada' ? 'pulada' : NOME_ETAPA[e.status] || e.status).toLowerCase()),
-        e.status === 'pulada' ? h('span', { className: 'estado-passo', 'aria-hidden': 'true' }, 'pulada') : null);
+      const vivo = e.status === 'em_andamento', p = e.progresso;
+      const medida = !!(vivo && p && !f.vazio(p.fracao));
+      const ub = e.id === 'pontuacao' && vivo && p ? p.ultimo_bloco : null;
+      const dur = duracaoEtapa(e), volume = volumeEtapa(e);
+      const situacao = vivo && e.id === 'pontuacao' && !p ? 'Carregando o modelo' : (NOME_ETAPA[e.status] || e.status);
+      return h('li', { key: e.id, className: 'passo ' + e.status, 'aria-current': vivo ? 'step' : undefined },
+        h('div', { className: 'passo-marca', 'aria-hidden': 'true' },
+          h('span', { className: 'no' }, vivo ? '' : (MARCA_ETAPA[e.status] || (i + 1)), ub && ub.medido_em ? h('i', { key: ub.medido_em, className: 'tique' }) : null),
+          i < n - 1 ? h('span', { className: 'fio' },
+            medida ? h('i', { className: 'enche', style: { width: Math.round(p.fracao * 1000) / 10 + '%' } }) : null,
+            vivo ? h('i', { className: 'luz' }) : null) : null),
+        h('span', { className: 'rotulo-passo' }, h('span', { className: 'num-passo' }, (i + 1) + '.'), ' ' + e.nome),
+        h('span', { className: 'estado-passo' }, situacao + (medida ? ' · ' + f.pct(p.fracao, 0) : ''),
+          dur !== null ? h('span', { className: 'tempo-passo' }, ' · ' + f.duracao(dur)) : null),
+        volume ? h('span', { className: 'info-passo' }, volume) : null,
+        e.detalhe ? h('span', { className: 'info-passo', title: e.detalhe }, e.detalhe) : null);
     }));
   }
 
@@ -140,74 +165,49 @@
       h(TabelaProblemas, { problemas: v.problemas }));
   }
 
-  function Progresso({ m, aoCancelar, aoAssumir }) {
-    const atual = m.etapas.find(e => e.status === 'em_andamento');
-    const ss = m.sessao || {};
-    return h('div', { className: 'grade' },
-      h('p', { className: 'sr', role: 'status', 'aria-live': 'polite' }, m.status === 'em_andamento' ? (atual ? 'Etapa atual: ' + atual.nome : 'Preparando a análise') : 'Análise ' + NOME_STATUS[m.status]),
-      h('ol', { className: 'etapas', 'aria-label': 'Etapas da análise' }, m.etapas.map((e, i) => {
-        const p = e.progresso;
-        let volume = null;
-        if (p && p.total) {
-          volume = e.unidade === 'bytes' ? f.bytes(p.feito) + ' de ' + f.bytes(p.total) + ' lidos' + (p.linhas_lidas ? ' · ' + f.inteiro(p.linhas_lidas) + ' linhas' : '')
-            : f.inteiro(p.feito) + ' de ' + f.inteiro(p.total) + ' ' + e.unidade;   // alertas e estimativa: uma vez só, no cabeçalho da execução
-        }
-        return h('li', { key: e.id, className: 'etapa ' + e.status, 'aria-current': e.status === 'em_andamento' ? 'step' : undefined },
-          h('span', { className: 'marca', 'aria-hidden': 'true' }, MARCA_ETAPA[e.status] || (i + 1)),
-          h('div', null,
-            h('div', { className: 'linha', style: { justifyContent: 'space-between' } }, h('span', { className: 'nome' }, (i + 1) + '. ' + e.nome),
-              h('span', { className: 'situacao' }, NOME_ETAPA[e.status] + (e.duracao_s !== null && e.duracao_s !== undefined ? ' · ' + f.duracao(e.duracao_s) : ''))),
-            e.status === 'em_andamento' && p && p.total ? h(BarraProgresso, { feito: p.feito, total: p.total, rotulo: e.nome, texto: volume + ' (' + f.pct(p.fracao, 0) + ')' }) : null,
-            volume ? h('div', { className: 'situacao' }, volume + (e.status === 'em_andamento' && p.fracao !== null ? ' · ' + f.pct(p.fracao, 0) : '')) : null,
-            e.detalhe ? h('div', { className: 'situacao' }, e.detalhe) : null));
-      })),
-      /* Cancelar logo abaixo das etapas, antes do aviso de sessão: fica visível sem rolar */
-      m.status === 'em_andamento' ? h('div', { className: 'linha' },
-        h('button', { type: 'button', className: 'botao perigo', onClick: aoCancelar, disabled: m.cancelamento_solicitado }, h(Icone, { nome: 'fechar' }), m.cancelamento_solicitado ? 'Cancelamento pedido…' : 'Cancelar análise'),
-        h(Dica, { texto: m.cancelamento_solicitado ? 'A análise para no fim do bloco atual; o que já foi pontuado fica gravado.' : 'O cancelamento é seguro: para no fim do bloco atual e mantém o que já foi pontuado.' })) : null,
-      m.status === 'em_andamento' && ss.exigida ? h(Aviso, { tom: ss.desta_sessao ? '' : 'atencao', titulo: ss.desta_sessao ? 'Mantenha esta aba aberta' : 'Outra aba é a responsável por esta análise', vivo: true },
-        h('p', null, ss.desta_sessao ? 'Pode minimizar ou trocar de aba. Sem sinal por ' + f.inteiro(ss.janela_s) + ' s, a análise para num ponto seguro e fica parcial.'
-          : (ss.responsavel_ativa ? 'A sessão que iniciou a análise continua ativa em outra aba.' : 'A sessão que iniciou a análise não dá sinal: a análise vai parar no próximo ponto seguro.') + ' Para que esta aba passe a mantê-la, use o botão abaixo.'),
-        ss.desta_sessao ? null : h('div', null, h('button', { type: 'button', className: 'botao pequeno', onClick: aoAssumir }, h(Icone, { nome: 'sessao' }), 'Manter a análise nesta aba'))) : null);
-  }
-
-  /* Título da caixa "Etapas executadas" (depois do fim): quantas etapas e em que situação (a duração fica no cartão de conclusão). */
-  function ResumoEtapas({ m }) {
-    const n = s => m.etapas.filter(e => e.status === s).length;
-    const partes = [f.plural(n('concluida'), 'concluída', 'concluídas')];
-    if (n('pulada')) partes.push(f.plural(n('pulada'), 'pulada (não se aplica)', 'puladas (não se aplicam)'));
-    const outras = m.etapas.length - n('concluida') - n('pulada');
-    if (outras) partes.push(f.plural(outras, 'não concluída', 'não concluídas'));
-    return h(React.Fragment, null, 'Etapas executadas (' + m.etapas.length + ')',
-      h('span', { className: 'suave', style: { fontWeight: 400 } }, ' — ' + partes.join(', ')));
-  }
-
-  /* Cabeçalho da execução em andamento: etapa atual (rótulo curto), trilha do pipeline, progresso por etapas,
-     tempo decorrido, UMA estimativa de tempo restante e as contagens ao vivo. Tudo vem do manifesto (lido a cada 1 s);
-     o tempo decorrido é medido desde o início gravado no servidor; os números sobem até o valor recebido, nunca além. */
-  function CabecaExecucao({ m }) {
+  /* ── Acompanhamento da análise: um componente e uma fonte de estado (o manifesto, lido a cada 1 s) ──────────
+     Em andamento: título, etapa atual, percentual e barra global, a linha do tempo das etapas (TrilhaEtapas), os
+     indicadores operacionais (decorrido, restante, processadas, total e alertas), o Cancelar e o aviso de sessão.
+     Depois do fim: o cartão de conclusão (SituacaoAnalise), com a mesma linha do tempo. Não há outra lista de etapas.
+     O tempo decorrido é medido desde o início gravado no servidor; os números sobem até o valor recebido, nunca além. */
+  function AcompanhamentoVivo({ m, aoCancelar, aoAssumir }) {
     const c = m.contagens, a = andamentoAnalise(m), atual = a.atual;
     const p = atual && atual.progresso;
+    const ss = m.sessao || {};
     const inicio = Date.parse(m.iniciada_em);
     const decorrido = Number.isNaN(inicio) ? null : Math.max(0, (Date.now() - inicio) / 1000);
     const eta = p && !f.vazio(p.estimativa_restante_s) ? p.estimativa_restante_s : null;
     const vazao = eta !== null && !f.vazio(p.vazao_por_s) ? (atual.unidade === 'bytes' ? f.bytes(p.vazao_por_s) : f.inteiro(p.vazao_por_s) + ' ' + atual.unidade) + '/s' : null;
     const pont = m.etapas.find(e => e.id === 'pontuacao');
     const ub = pont && pont.status === 'em_andamento' && pont.progresso ? pont.progresso.ultimo_bloco : null;
-    return h('div', { className: 'execucao-cabeca em_andamento vivo' },
-      h('div', { className: 'linha entre' },
-        h('div', null, h('span', { className: 'eyebrow' }, atual ? 'Etapa ' + (a.idx + 1) + ' de ' + a.n : 'Preparando'), h('h3', null, a.rotulo)),
-        h('span', { className: 'percentual', title: 'Etapas concluídas mais a fração medida da etapa atual (cada etapa pesa igual)', 'aria-hidden': 'true' }, f.pct(a.geral, 0), h('small', null, ' das etapas'))),
+    return h('div', { className: 'execucao-cabeca acompanhamento em_andamento vivo' },
+      h('p', { className: 'sr', role: 'status', 'aria-live': 'polite' }, atual ? 'Etapa atual: ' + atual.nome : 'Preparando a análise'),
+      h('div', { className: 'acomp-topo' },
+        h('div', { className: 'acomp-titulos' },
+          h('h3', null, 'Análise em andamento'),
+          h('p', { className: 'acomp-atual' }, h('span', { className: 'ponto-vivo', 'aria-hidden': 'true' }),
+            h('span', null, atual ? 'Etapa ' + (a.idx + 1) + ' de ' + a.n + ' · ' : '', h('strong', null, a.rotulo), a.medida ? ' · ' + f.pct(a.fracao, 0) + ' da etapa' : ''))),
+        h('div', { className: 'acomp-acoes' },
+          h('span', { className: 'percentual', title: 'Etapas concluídas mais a fração medida da etapa atual (cada etapa pesa igual)', 'aria-hidden': 'true' },
+            f.pct(a.geral, 0), h('small', null, 'das etapas')),
+          h('div', { className: 'linha' },
+            h('button', { type: 'button', className: 'botao perigo pequeno', onClick: aoCancelar, disabled: m.cancelamento_solicitado }, h(Icone, { nome: 'fechar' }), m.cancelamento_solicitado ? 'Cancelamento pedido…' : 'Cancelar análise'),
+            h(Dica, { lado: 'esquerda', texto: m.cancelamento_solicitado ? 'A análise para no fim do bloco atual; o que já foi pontuado fica gravado.' : 'O cancelamento é seguro: para no fim do bloco atual e mantém o que já foi pontuado.' })))),
       h(BarraProgresso, { feito: Math.round(a.geral * 1000), total: 1000, rotulo: 'Progresso da análise por etapas', texto: f.pct(a.geral, 0) + ' (' + a.feitas + ' de ' + a.n + ' etapas concluídas)' }),
       h(TrilhaEtapas, { m }),
-      h('dl', { className: 'estatisticas' },
-        h(Estat, { nome: 'Decorrido', valor: f.duracao(decorrido) }),
+      h('dl', { className: 'estatisticas acomp-numeros' },
+        h(Estat, { nome: 'Decorrido', valor: f.duracao(decorrido), sub: 'desde o início no servidor' }),
         h('div', { className: 'estatistica', title: vazao ? 'Estimativa pela vazão observada nesta etapa: ' + vazao + '.' : 'A estimativa aparece depois de alguns segundos de etapa com progresso medido.' },
           h('dt', null, 'Restante'), h('dd', null, eta === null ? '—' : '≈ ' + f.duracao(eta), h('small', null, vazao ? 'estimativa · ' + vazao : 'estimativa da etapa atual'))),
-        h(Estat, { nome: 'Pontuadas', sub: c.validas ? 'de ' + f.inteiro(c.validas) + ' válidas' : null,
+        h(Estat, { nome: 'Processadas', sub: c.validas ? f.pct(c.pontuadas / c.validas, 0) + ' do total' : 'transações pontuadas',
           valor: h(React.Fragment, null, h(Contador, { valor: c.pontuadas }),
             ub && ub.medido_em ? h('span', { key: ub.medido_em, className: 'tique-bloco', 'aria-hidden': 'true' }, '+' + f.inteiro(ub.transacoes)) : null) }),
-        h(Estat, { nome: 'Alertas até agora', valor: h(Contador, { valor: c.alertas }), sub: 'sinal para investigação' })));
+        h(Estat, { nome: 'Total', valor: c.validas ? f.inteiro(c.validas) : '—', sub: c.validas ? 'transações válidas' : 'conhecido depois da leitura' }),
+        h(Estat, { nome: 'Alertas', valor: h(Contador, { valor: c.alertas }), sub: (c.pontuadas ? f.pct(c.alertas / c.pontuadas, 2) + ' · ' : '') + 'sinal para investigação' })),
+      ss.exigida ? h(Aviso, { tom: ss.desta_sessao ? '' : 'atencao', titulo: ss.desta_sessao ? 'Mantenha esta aba aberta' : 'Outra aba é a responsável por esta análise', vivo: true },
+        h('p', null, ss.desta_sessao ? 'Pode minimizar ou trocar de aba. Sem sinal por ' + f.inteiro(ss.janela_s) + ' s, a análise para num ponto seguro e fica parcial.'
+          : (ss.responsavel_ativa ? 'A sessão que iniciou a análise continua ativa em outra aba.' : 'A sessão que iniciou a análise não dá sinal: a análise vai parar no próximo ponto seguro.') + ' Para que esta aba passe a mantê-la, use o botão abaixo.'),
+        ss.desta_sessao ? null : h('div', null, h('button', { type: 'button', className: 'botao pequeno', onClick: aoAssumir }, h(Icone, { nome: 'sessao' }), 'Manter a análise nesta aba'))) : null);
   }
 
   /* Sinal do fim da análise: check desenhado (concluída) ou ícone de atenção/erro. Decorativo: o título diz o estado. */
@@ -217,12 +217,12 @@
     : h('span', { className: 'sinal-fim ' + (status === 'erro' ? 'alerta' : 'atencao'), 'aria-hidden': 'true' }, h(Icone, { nome: status === 'cancelada' ? 'fechar' : 'alerta' }));
   const TITULO_FIM = { concluida: 'Análise concluída', parcial: 'Análise parcial', cancelada: 'Análise cancelada', erro: 'A análise parou com erro' };
 
-  /* Cartão de conclusão (depois do fim): estado, números principais, causa em linguagem simples e o atalho para os resultados.
-     O nome do dataset e o status já estão no topo; aqui não se repetem. */
+  /* Cartão de conclusão (depois do fim): estado, causa em linguagem simples, a linha do tempo das etapas (com o tempo
+     de cada uma), os números principais e o atalho para os resultados. O nome do dataset e o status já estão no topo. */
   function SituacaoAnalise({ m, aoVerResultados }) {
     if (!m || m.status === 'em_andamento') return null;
     const c = m.contagens, erros = m.erros || [];
-    return h('div', { className: 'execucao-cabeca fim ' + m.status, role: m.status === 'erro' ? 'alert' : 'status' },
+    return h('div', { className: 'execucao-cabeca acompanhamento fim ' + m.status, role: m.status === 'erro' ? 'alert' : 'status' },
       h('div', { className: 'fim-topo' },
         h(SinalFim, { status: m.status }),
         h('div', { className: 'fim-titulos' }, h('h3', null, TITULO_FIM[m.status] || ('Análise ' + (NOME_STATUS[m.status] || m.status).toLowerCase())),
@@ -233,14 +233,18 @@
         e.etapa ? h('p', { className: 'fraco' }, 'Etapa: ' + (ETAPA_CURTA[e.etapa] || e.etapa)) : null,
         h('p', null, h('strong', null, 'O que aconteceu: '), e.causa),
         e.acao ? h('p', null, h('strong', null, 'O que fazer: '), e.acao) : null))) : null,
-      m.status === 'concluida' ? null : h(TrilhaEtapas, { m }),
-      m.resultados.disponiveis ? h('dl', { className: 'estatisticas' },
-        h(Estat, { nome: 'Pontuadas', valor: f.inteiro(c.pontuadas), sub: m.resultados.parciais ? 'de ' + f.inteiro(c.validas) + ' válidas (parcial)' : null }),
+      h(TrilhaEtapas, { m }),
+      m.resultados.disponiveis ? h('dl', { className: 'estatisticas acomp-numeros' },
+        h(Estat, { nome: 'Processadas', valor: f.inteiro(c.pontuadas), sub: m.resultados.parciais ? 'de ' + f.inteiro(c.validas) + ' válidas (parcial)' : null }),
         h(Estat, { nome: 'Alertas', valor: f.inteiro(c.alertas), sub: c.pontuadas ? f.pct(c.alertas / c.pontuadas, 2) + ' · sinal para investigação' : null }),
         h(Estat, { nome: 'Duração', valor: f.duracao(m.duracao_s) }))
         : h('p', { className: 'legenda' }, 'Não há resultados para consultar.'),
       (m.avisos || []).length ? h('details', null, h('summary', null, 'Avisos da análise (' + m.avisos.length + ')'), h('ul', { className: 'legenda' }, m.avisos.map((a, i) => h('li', { key: i }, '• ' + a)))) : null);
   }
+
+  /* Acompanhamento único da análise: ao vivo durante a execução, cartão de conclusão depois do fim. */
+  const AcompanhamentoAnalise = ({ m, aoCancelar, aoAssumir, aoVerResultados }) => m.status === 'em_andamento'
+    ? h(AcompanhamentoVivo, { m, aoCancelar, aoAssumir }) : h(SituacaoAnalise, { m, aoVerResultados });
 
   /* Estado vazio do seletor: resume a lista que já está no seletor (quantos, de onde, em que situação). Nada além dela. */
   const TOM_DATASET = { valido: 'ok', valido_com_recusas: 'ok', invalido: 'alerta', erro: 'alerta', validando: '', nao_validado: '' };
@@ -322,21 +326,15 @@
               : podeAnalisar ? f.inteiro(dataset.validacao.linhas.validas) + ' linhas válidas · modelo salvo, sem treino · mantenha esta página aberta'
                 : 'Disponível com um dataset válido.')),
       h(Erro, { erro: erroAnalise }));
-    const terminada = !!manifesto && manifesto.status !== 'em_andamento';
-    /* O nome do dataset e o status já estão no topo (fixo) e no cartão de conclusão: aqui só "Execução" e o início. */
-    // chave estável: quando a análise termina e o bloco muda de lugar, o React o move em vez de recriá-lo
-    // (o log mantém a rolagem e a última leitura de RAM e CPU)
+    /* O nome do dataset e o status já estão no topo (fixo) e no cartão de conclusão: aqui só "Execução" e o início.
+       Uma coluna só: o acompanhamento (etapas, progresso e números, uma vez) e, abaixo, o log da execução na largura
+       toda. Chave estável: quando a análise termina e o bloco muda de lugar, o React o move em vez de recriá-lo
+       (o log mantém a rolagem e a última leitura de RAM). */
     const processamento = manifesto ? h(Secao, { key: 'processamento', id: 'execucao', icone: 'operacao', titulo: 'Execução',
       pergunta: 'Iniciada em ' + f.instante(manifesto.iniciada_em) },
-      terminada ? h(SituacaoAnalise, { m: manifesto, aoVerResultados }) : h(CabecaExecucao, { m: manifesto }),
-      /* Durante a análise: etapas (esquerda) e log da execução (direita), lado a lado; empilham até 980 px.
-         Depois do fim: as etapas viram a caixa recolhida "Etapas executadas" e o log ocupa a largura toda. */
-      h('div', { className: 'execucao' + (terminada ? ' terminada' : '') },
-        terminada ? h('details', { className: 'execucao-etapas' }, h('summary', null, h(ResumoEtapas, { m: manifesto })),
-          h(Progresso, { m: manifesto, aoCancelar, aoAssumir }))
-          : h('div', { className: 'execucao-etapas' }, h(Progresso, { m: manifesto, aoCancelar, aoAssumir })),
-        /* log da execução: h(LogAnalise, { m: manifesto, estado }) mais o atalho para a gaveta Operação */
-        h(LogAnalise, { m: manifesto, estado, aoOperacao }))) : null;
+      h(AcompanhamentoAnalise, { m: manifesto, aoCancelar, aoAssumir, aoVerResultados }),
+      /* log da execução: h(LogAnalise, { m: manifesto, estado }) mais o atalho para a gaveta Operação */
+      h(LogAnalise, { m: manifesto, estado, aoOperacao })) : null;
     const novaAnalise = chave => h(Secao, { key: chave, id: 'dataset', icone: 'dataset', titulo: 'Nova análise' },
       estado.modelo.disponivel ? null : h(Aviso, { tom: 'erro', titulo: 'Modelo não encontrado no servidor' }, (estado.modelo.motivo || '') + ' Sem o modelo, a análise não pode ser iniciada.'),
       /* Com a análise em andamento, o envio e a escolha de dataset ficam recolhidos. */
@@ -828,7 +826,7 @@
         h('h4', null, 'Destaques da interface'),
         h(Pares, { itens: [
           ['⚠ e vermelho', 'Alerta (transação, conta ou caminho): sempre com "⚠", texto ou fundo tingido, nunca só a cor. Na tabela, faixa vermelha no início da linha e "⚠ Sim".'],
-          ['Vermelho NodeWatch', 'Item ativo, ação principal, seleção, progresso e etapa em andamento (▶). Sem "⚠", não indica alerta.'],
+          ['Vermelho NodeWatch', 'Item ativo, ação principal, seleção, progresso e etapa em andamento (marca com ponto pulsante). Sem "⚠", não indica alerta.'],
           ['Âmbar', 'Atenção: resultado parcial, linhas recusadas ou aviso.'],
           ['Verde e ✓', 'Etapa ou análise concluída; dataset válido.'],
           ['Ciano', 'Aviso informativo.'],

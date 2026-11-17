@@ -316,7 +316,7 @@ label, .rotulo { font-weight: 600; font-size: var(--t-s); display: block; margin
 .grade { display: grid; gap: var(--e-4); }
 /* grades de uma coluna: a coluna é a largura disponível, nunca a largura mínima do conteúdo (senão, em telas
    estreitas, um seletor com opções longas alarga a página inteira) */
-main, .secao .corpo, .grade, .bloco.grade, .etapas, .contas, .escala, .sequencias, .log, .lateral .conteudo,
+main, .secao .corpo, .grade, .bloco.grade, .contas, .escala, .sequencias, .log, .lateral .conteudo,
 dialog .corpo, .assistente .painel, .assistente .mensagens, .vista { grid-template-columns: minmax(0, 1fr); }
 .grade > *, .kpis > *, .cartoes > *, .linha > *, .estatisticas > * { min-width: 0; }
 .grade.duas { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
@@ -530,27 +530,7 @@ dl.pares dd { min-width: 0; overflow-wrap: anywhere; }
 .pontos li::before { content: counter(ponto); position: absolute; left: 0; top: 0; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-size: var(--t-2xs); font-weight: 700;
   color: var(--marca-2); background: var(--acao-suave); border: 1px solid rgba(240, 68, 68, 0.28); font-variant-numeric: tabular-nums; }
 
-/* ═══ 12. Etapas e progresso (execução) ═══════════════════════════════════════════════════════════ */
-.etapas { display: grid; gap: 0; position: relative; }
-.etapa { display: grid; grid-template-columns: 30px 1fr; gap: var(--e-3); padding: 10px 12px; border: 1px solid transparent; border-radius: var(--r-m); position: relative;
-  transition: border-color var(--dur-l), background var(--dur-l); }
-/* linha do tempo: um fio entre os marcadores */
-.etapa::before { content: ""; position: absolute; left: 26px; top: 40px; bottom: -10px; width: 2px; background: var(--borda-media); border-radius: 2px; }
-.etapa:last-child::before { display: none; }
-.etapa.concluida::before { background: linear-gradient(180deg, rgba(60, 207, 142, 0.6), rgba(60, 207, 142, 0.2)); }
-.etapa.em_andamento::before { background: linear-gradient(180deg, var(--marca), transparent); }
-.etapa .marca { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--borda-forte); display: grid; place-items: center; font-size: var(--t-xs); font-weight: 700;
-  color: var(--texto-fraco); background: var(--poco); position: relative; z-index: 1; }
-.etapa.concluida .marca { background: var(--ok); border-color: var(--ok); color: #03140c; }
-.etapa.em_andamento { border-color: rgba(240, 68, 68, 0.3); background: linear-gradient(90deg, rgba(240, 68, 68, 0.08), transparent 75%); }
-.etapa.em_andamento .marca { border-color: var(--marca); color: var(--marca-2); box-shadow: 0 0 0 4px rgba(240, 68, 68, 0.14), 0 0 14px rgba(240, 68, 68, 0.5); animation: pulsar 1.8s ease-in-out infinite; }
-.etapa.pulada .marca { border-style: dashed; color: var(--texto-fraco); }
-.etapa.erro, .etapa.cancelada, .etapa.interrompida { border-color: rgba(255, 90, 90, 0.3); }
-.etapa.erro .marca, .etapa.cancelada .marca, .etapa.interrompida .marca { border-color: var(--alerta); color: var(--alerta); }
-.etapa .nome { font-weight: 600; font-size: var(--t-m); }
-.etapa .situacao { font-size: var(--t-xs); color: var(--texto-fraco); }
-.etapa.concluida .situacao:first-of-type { color: var(--ok); }
-.etapa.em_andamento .situacao:first-of-type { color: var(--marca-2); }
+/* ═══ 12. Progresso e acompanhamento da análise (execução) ═════════════════════════════════════════ */
 .progresso { height: 6px; border-radius: var(--r-pilula); background: rgba(255, 255, 255, 0.06); overflow: hidden; margin: 6px 0 4px; }
 .progresso > i { display: block; height: 100%; border-radius: var(--r-pilula); background: linear-gradient(90deg, #9b2727, var(--marca) 70%, var(--marca-2)); position: relative; overflow: hidden;
   transition: width 0.5s var(--curva); box-shadow: 0 0 12px rgba(240, 68, 68, 0.55); }
@@ -558,8 +538,10 @@ dl.pares dd { min-width: 0; overflow-wrap: anywhere; }
 .progresso > i::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent); transform: translateX(-100%); animation: brilho 2.2s ease-in-out infinite; }
 @keyframes brilho { to { transform: translateX(100%); } }
 
-/* Cabeçalho da execução: estado, tempos e progresso geral */
-.execucao-cabeca { position: relative; overflow: hidden; display: grid; gap: var(--e-3); padding: 18px; border: 1px solid var(--borda); border-radius: var(--r-l); background: var(--sup-2); }
+/* Acompanhamento da análise: um cartão só, a única apresentação do andamento. Em andamento: título, etapa atual,
+   percentual e barra global, linha do tempo das etapas, números operacionais, Cancelar e aviso de sessão. Depois do
+   fim: o cartão de conclusão (classe .fim) com a mesma linha do tempo. */
+.execucao-cabeca { position: relative; overflow: hidden; display: grid; gap: 14px; padding: 16px 18px; border: 1px solid var(--borda); border-radius: var(--r-l); background: var(--sup-2); }
 .execucao-cabeca.em_andamento { border-color: rgba(240, 68, 68, 0.3); background: radial-gradient(500px 200px at 0% 0%, rgba(240, 68, 68, 0.12), transparent 70%), var(--sup-2); }
 .execucao-cabeca.concluida { border-color: var(--ok-borda); background: radial-gradient(500px 200px at 0% 0%, rgba(60, 207, 142, 0.08), transparent 70%), var(--sup-2); }
 .execucao-cabeca.erro { border-color: var(--alerta-borda); background: radial-gradient(500px 200px at 0% 0%, rgba(255, 70, 70, 0.1), transparent 70%), var(--sup-2); }
@@ -567,20 +549,21 @@ dl.pares dd { min-width: 0; overflow-wrap: anywhere; }
 .execucao-cabeca h3 { margin: 0; font: 650 var(--t-l)/1.3 var(--titulo); letter-spacing: -0.01em; }
 .execucao-cabeca .progresso { height: 8px; margin: 0; }
 .execucao-cabeca .estatisticas { background: rgba(0, 0, 0, 0.25); }
-.execucao-cabeca .percentual { font: 650 1.7rem/1 var(--titulo); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.execucao-cabeca .percentual { display: inline-flex; align-items: baseline; gap: 6px; font: 650 1.7rem/1 var(--titulo); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.execucao-cabeca .percentual small { font: 500 var(--t-xs)/1 var(--fonte); color: var(--texto-fraco); letter-spacing: 0; }
+.acomp-topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; }
+.acomp-titulos { display: grid; gap: 4px; min-width: 0; }
+.acomp-atual { margin: 0; display: flex; align-items: center; gap: 8px; font-size: var(--t-s); color: var(--texto-suave); overflow-wrap: anywhere; }
+.acomp-atual strong { color: var(--marca-2); font-weight: 650; }
+.acomp-atual .ponto-vivo { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--marca); animation: vivo-pulso 1.8s ease-out infinite; }
+.acomp-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+.acomp-acoes .linha { gap: 6px; flex-wrap: nowrap; }
+/* números operacionais: uma faixa só, mais baixa que as estatísticas comuns */
+.acomp-numeros .estatistica { padding: 8px 14px; }
+.acomp-numeros .estatistica dd { font-size: var(--t-m); }
+.acomp-numeros .estatistica dd small { font-size: var(--t-2xs); }
 
-/* ── Execução: etapas (esquerda) e log da execução (direita), sempre abertos; empilham até 980 px ── */
-.execucao { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--e-4); align-items: start; }
-.execucao > *, .log-analise > *, .log-fixo > * { min-width: 0; }
-/* etapas compactas só aqui (a regra global .etapa não muda); o texto quebra em vez de ser cortado */
-.execucao .etapa { grid-template-columns: 24px minmax(0, 1fr); gap: var(--e-2); padding: 8px 10px; overflow-wrap: anywhere; }
-.execucao .etapa::before { left: 21px; top: 34px; }
-.execucao .etapa .marca { width: 24px; height: 24px; font-size: var(--t-2xs); }
-.execucao .etapa .nome, .execucao .etapa .situacao { overflow-wrap: anywhere; }
-/* depois do fim: as etapas ficam na caixa recolhida "Etapas executadas" e o log ocupa a largura toda */
-.execucao.terminada { grid-template-columns: minmax(0, 1fr); }
-.execucao.terminada > details.execucao-etapas { padding: 8px 12px; border: 1px solid var(--borda); border-radius: var(--r-l); background: var(--sup-2); }
-.execucao > div.execucao-etapas { padding: 12px; border: 1px solid var(--borda); border-radius: var(--r-l); background: var(--sup-2); }
+.log-analise > *, .log-fixo > * { min-width: 0; }
 /* sem a linha "Rótulo do dataset" (EXIBIR.rotulo = false) ou sem a linha "Tipologia registrada" (análises sem
    tipologias, isto é, todas as atuais), cada entrada do log tem uma linha a menos; sem as duas, duas linhas a menos */
 .log-rolagem.sem-rotulo, .log-rolagem.sem-tipologias { --log-menos: 1.15rem; }
@@ -1092,7 +1075,6 @@ main { padding-bottom: 88px; }
   main { padding: var(--e-4); }
 }
 @media (max-width: 980px) {
-  .execucao { grid-template-columns: minmax(0, 1fr); }
   .log-rolagem { --log-linha: 10.6rem; }
   .fluxo-contas { grid-template-columns: minmax(0, 1fr); }
   .fluxo-contas .seta-fluxo { transform: rotate(90deg); }
@@ -1204,28 +1186,42 @@ main { padding-bottom: 88px; }
 /* Contas prioritárias (acesso rápido): entram em sequência curta */
 .contas-rapidas .contas li { animation: vivo-entrar 0.42s var(--curva) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
 
-/* ── Execução: trilha horizontal do pipeline (etapas reais, na ordem do manifesto) ── */
-.execucao-cabeca.vivo > .linha.entre { padding-right: 0; }
-.trilha-etapas { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0; margin: 4px 0 2px; }
-.trilha-etapas .passo { position: relative; display: grid; justify-items: center; align-content: start; gap: 6px; min-width: 0; text-align: center; }
-.trilha-etapas .no { position: relative; z-index: 1; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+/* ── Linha do tempo das etapas: a única apresentação das etapas (cinco colunas numa linha) ──
+   Cada coluna: marca e fio até a próxima etapa, número e nome, situação com o tempo e, quando houver, volume e
+   detalhe (até duas linhas cada; o texto inteiro fica na dica). A etapa atual tem fundo e contorno vermelhos. */
+.trilha-etapas { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0; margin: 0; padding: 0; list-style: none; }
+.trilha-etapas .passo { position: relative; display: grid; align-content: start; gap: 3px; min-width: 0; padding: 10px; border-radius: var(--r-m); }
+.trilha-etapas .passo-marca { display: flex; align-items: center; margin-bottom: 5px; }
+.trilha-etapas .no { position: relative; z-index: 1; flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
   border: 2px solid var(--borda-forte); background: var(--poco); color: var(--texto-fraco); font: 700 var(--t-2xs)/1 var(--fonte);
   transition: border-color var(--dur-l), background var(--dur-l), color var(--dur-l); }
-.trilha-etapas .fio { position: absolute; top: 12px; left: calc(50% + 15px); right: calc(-50% + 15px); height: 2px; border-radius: 2px; background: var(--borda-media); overflow: hidden; }
-.trilha-etapas .rotulo-passo { font-size: var(--t-2xs); line-height: 1.3; color: var(--texto-fraco); padding: 0 4px; overflow-wrap: anywhere; }
-.trilha-etapas .estado-passo { font-size: var(--t-2xs); color: var(--texto-fraco); font-style: italic; margin-top: -4px; }
+/* o fio vai da marca até a marca da próxima etapa (atravessa o recuo da coluna seguinte) */
+.trilha-etapas .fio { position: relative; flex: 1; height: 2px; margin: 0 -10px 0 8px; border-radius: 2px; background: var(--borda-media); overflow: hidden; }
+.trilha-etapas .rotulo-passo { font: 600 var(--t-xs)/1.35 var(--fonte); color: var(--texto-fraco); overflow-wrap: anywhere; }
+.trilha-etapas .num-passo { font-variant-numeric: tabular-nums; }
+.trilha-etapas .estado-passo { font-size: var(--t-2xs); line-height: 1.35; color: var(--texto-fraco); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.trilha-etapas .tempo-passo { color: var(--texto-suave); font-weight: 400; }
+.trilha-etapas .info-passo { font-size: var(--t-2xs); line-height: 1.35; color: var(--texto-fraco); overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .trilha-etapas .concluida .no { border-color: var(--ok); background: var(--ok-suave); color: var(--ok); }
 .trilha-etapas .concluida .fio { background: linear-gradient(90deg, rgba(60, 207, 142, 0.55), rgba(60, 207, 142, 0.25)); }
 .trilha-etapas .concluida .rotulo-passo { color: var(--texto-suave); }
+.trilha-etapas .concluida .estado-passo { color: var(--ok); }
+.trilha-etapas .em_andamento { background: linear-gradient(180deg, rgba(240, 68, 68, 0.13), rgba(240, 68, 68, 0.03)); box-shadow: inset 0 0 0 1px rgba(240, 68, 68, 0.32); }
 .trilha-etapas .em_andamento .no { border-color: var(--marca); background: rgba(240, 68, 68, 0.12); animation: vivo-pulso 1.8s ease-out infinite; }
 .trilha-etapas .em_andamento .no::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--marca-2); box-shadow: 0 0 8px rgba(255, 102, 102, 0.8); }
-.trilha-etapas .em_andamento .rotulo-passo { color: var(--texto); font-weight: 600; }
-/* luz que percorre o fio em direção à próxima etapa: só existe enquanto a etapa está em andamento */
+.trilha-etapas .em_andamento .rotulo-passo { color: var(--texto); }
+.trilha-etapas .em_andamento .estado-passo { color: var(--marca-2); font-weight: 600; }
+.trilha-etapas .em_andamento .info-passo { color: var(--texto-suave); }
+/* fio da etapa atual: enche com a fração medida; a luz percorre o fio enquanto a etapa está em andamento */
+.trilha-etapas .fio .enche { position: absolute; top: 0; bottom: 0; left: 0; background: linear-gradient(90deg, #9b2727, var(--marca-2)); transition: width 0.5s var(--curva); }
 .trilha-etapas .fio .luz { position: absolute; top: 0; left: -35%; width: 35%; height: 100%; background: linear-gradient(90deg, transparent, var(--marca-2), transparent); animation: vivo-viajar 1.6s linear infinite; will-change: transform; }
 .trilha-etapas .pulada .no { border-style: dashed; }
 .trilha-etapas .erro .no, .trilha-etapas .interrompida .no { border-color: var(--alerta); background: var(--alerta-suave); color: var(--alerta-forte); }
 .trilha-etapas .cancelada .no { border-color: var(--atencao); background: var(--atencao-suave); color: var(--atencao); }
 .trilha-etapas .erro .rotulo-passo, .trilha-etapas .interrompida .rotulo-passo, .trilha-etapas .cancelada .rotulo-passo { color: var(--texto); }
+.trilha-etapas .erro .estado-passo, .trilha-etapas .interrompida .estado-passo { color: var(--alerta-forte); }
+.trilha-etapas .cancelada .estado-passo { color: var(--atencao); }
 /* tique de bloco: um anel que se expande a cada bloco gravado (refeito pela chave medido_em); invisível sem animação */
 .trilha-etapas .no .tique { position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--marca-2); opacity: 0; pointer-events: none; animation: vivo-tique 0.9s ease-out; }
 /* contagens ao vivo: "+N" do último bloco sobe e some ao lado de Pontuadas */
@@ -1267,8 +1263,18 @@ span.sinal-fim.alerta { color: var(--alerta-forte); background: var(--alerta-sua
   .chip-vivo { order: 6; }
 }
 @media (max-width: 720px) {
-  /* trilha estreita: só as marcas; os nomes ficam para leitores de tela e a etapa atual está no título */
-  .trilha-etapas .rotulo-passo, .trilha-etapas .estado-passo { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* linha do tempo estreita: lista vertical, marca e fio à esquerda e os textos ao lado (nada escondido) */
+  .trilha-etapas { grid-auto-flow: row; grid-auto-columns: auto; gap: 2px; }
+  .trilha-etapas .passo { grid-template-columns: 26px minmax(0, 1fr); column-gap: 10px; row-gap: 1px; padding: 6px 8px; }
+  .trilha-etapas .passo-marca { grid-row: 1 / span 4; flex-direction: column; align-self: stretch; margin: 0; }
+  .trilha-etapas .passo > :not(.passo-marca) { grid-column: 2; }
+  .trilha-etapas .fio { flex: 1; width: 2px; height: auto; min-height: 6px; margin: 4px 0 -8px; }
+  .trilha-etapas .fio .enche, .trilha-etapas .fio .luz { display: none; }
+  .acomp-acoes { width: 100%; justify-content: space-between; }
+  /* números operacionais dois a dois (o último, se sobrar, ocupa a linha) */
+  .acomp-numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .acomp-numeros .estatistica:nth-child(odd) { border-right: 1px solid var(--borda); }
+  .acomp-numeros .estatistica:last-child:nth-child(odd) { grid-column: 1 / -1; border-right: 0; }
   .execucao-cabeca.fim .fim-topo { grid-template-columns: auto minmax(0, 1fr); }
   .execucao-cabeca.fim .fim-topo > .botao { grid-column: 1 / -1; width: 100%; }
   .leitura-visao li { font-size: var(--t-s); }
@@ -1277,15 +1283,16 @@ span.sinal-fim.alerta { color: var(--alerta-forte); background: var(--alerta-sua
   .chip-vivo { max-width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .visao-geral > *, .contas-rapidas .contas li, .trilha-etapas .em_andamento .no, .trilha-etapas .fio .luz, .chip-vivo .ponto-vivo,
+  .visao-geral > *, .contas-rapidas .contas li, .trilha-etapas .em_andamento .no, .trilha-etapas .fio .luz, .chip-vivo .ponto-vivo, .acomp-atual .ponto-vivo,
   .topo .topo-progresso > i::after, svg.sinal-fim .anel, svg.sinal-fim .check, span.sinal-fim { animation: none; }
   .trilha-etapas .fio .luz, .trilha-etapas .no .tique, .execucao-cabeca .tique-bloco, .topo .topo-progresso > i::after { display: none; }
-  .topo .topo-progresso > i, .kpis-visao .kpi-acao .ico, .chip-vivo, .trilha-etapas .no { transition: none; }
+  .topo .topo-progresso > i, .kpis-visao .kpi-acao .ico, .chip-vivo, .trilha-etapas .no, .trilha-etapas .fio .enche { transition: none; }
 }
 @media (forced-colors: active) {
   .leitura.leitura-visao, .chip-vivo { border: 1px solid CanvasText; }
   .trilha-etapas .no { border-color: CanvasText; }
-  .trilha-etapas .em_andamento .no { outline: 2px solid Highlight; }
+  .trilha-etapas .em_andamento .no, .trilha-etapas .em_andamento { outline: 2px solid Highlight; }
+  .trilha-etapas .fio .enche { background: Highlight; }
   .topo .topo-progresso > i { background: Highlight; }
 }
 
