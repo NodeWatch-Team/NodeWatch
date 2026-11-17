@@ -391,9 +391,7 @@ NodeWatch/
 |       └── RFC_Grupo1_Automatos_Fraude.md
 |   ├── ui/
 |       └──  README-INTERFACE.md
-|   ├── SENTINEL_AI.md
-|   ├── guia-execucao-local.md
-|   └── guia-execucao-python.md
+|   └── SENTINEL_AI.md
 ├── interface/
 |   └── assets/
 |       └── logo.png
