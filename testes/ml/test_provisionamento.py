@@ -140,6 +140,43 @@ def test_modelo_proprio_da_maquina_e_mantido(repo: Path, modelo_minimo):
     assert r["origem"] == "local_proprio" and pv.sha256(_instalado(repo)) == sha
 
 
+def test_versao_distribuida_anterior_e_substituida_sem_ser_carregada(repo: Path):
+    # Cópia antiga do modelo distribuído (aqui, bytes que nem carregariam): o SHA-256 dela está em
+    # sha256_anteriores, então ela é trocada pela versão atual antes de qualquer carga.
+    antigo = b"modelo distribuido antigo, que nao carrega mais"
+    _instalado(repo).parent.mkdir(parents=True)
+    _instalado(repo).write_bytes(antigo)
+    m = _manifesto(repo)
+    m["sha256_anteriores"] = [pv.sha256(_instalado(repo))]
+    _gravar_manifesto(repo, m)
+    avisos: list = []
+    r = pv.garantir_modelo(repo, baixar_se_preciso=False, avisar=avisos.append)
+    assert r["origem"] == "atualizado" and pv.sha256(_instalado(repo)) == m["sha256"]
+    assert any("Versão anterior" in a for a in avisos)
+    assert pv.garantir_modelo(repo, baixar_se_preciso=False, avisar=lambda _: None)["origem"] == "ja_instalado"
+
+
+def test_lista_de_anteriores_nao_afeta_modelo_proprio(repo: Path, modelo_minimo):
+    m = _manifesto(repo)
+    m["sha256_anteriores"] = ["0" * 64]
+    _gravar_manifesto(repo, m)
+    pv.garantir_modelo(repo, baixar_se_preciso=False, avisar=lambda _: None)
+    modelo_minimo.metadados["marca"] = "treinado aqui"
+    modelo_minimo.salvar(repo / "artefatos_ml")
+    sha = pv.sha256(_instalado(repo))
+    assert pv.garantir_modelo(repo, baixar_se_preciso=False, avisar=lambda _: None)["origem"] == "local_proprio"
+    assert pv.sha256(_instalado(repo)) == sha
+
+
+def test_preparar_distribuicao_registra_as_versoes_anteriores(tmp_path: Path, modelo_minimo):
+    modelo_minimo.salvar(tmp_path / "artefatos_ml")
+    m = pv.preparar_distribuicao(tmp_path, url="file:///x", anteriores=["a" * 64, None, "a" * 64])
+    assert m["sha256_anteriores"] == ["a" * 64]
+    m2 = pv.preparar_distribuicao(tmp_path, url="file:///x", anteriores=[m["sha256"]])
+    assert m2["sha256"] not in m2["sha256_anteriores"]          # a versão atual nunca entra na lista
+    assert m2["sha256_anteriores"] == ([] if m2["sha256"] == m["sha256"] else [m["sha256"]])
+
+
 def test_modelo_instalado_corrompido_nao_e_sobrescrito_e_explica_como_voltar(repo: Path):
     _instalado(repo).parent.mkdir(parents=True)
     _instalado(repo).write_bytes(b"isto nao e um modelo")

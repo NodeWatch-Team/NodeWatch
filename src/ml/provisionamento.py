@@ -16,6 +16,9 @@ O que ``garantir_modelo`` faz (sempre na mesma ordem)
        pode falhar ao carregar ou prever diferente.
     2. Se ``artefatos_ml/modelo_unificado.joblib`` já existe:
        * com o SHA-256 do manifesto → é o modelo distribuído, já instalado;
+       * com o SHA-256 de uma versão distribuída anterior (lista
+         ``sha256_anteriores`` do manifesto) → é uma cópia desatualizada:
+         é substituída pela versão atual (passo 3), **sem ser carregada**;
        * com outro SHA-256 → é um modelo treinado nesta máquina pela CLI: é
          mantido (nunca sobrescrito) e só validado.
     3. Se não existe: confere o SHA-256 de ``modelos/modelo_unificado.joblib``.
@@ -57,7 +60,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 RAIZ = Path(__file__).resolve().parents[2]
 PASTA_DISTRIBUIDA = "modelos"
@@ -257,16 +260,22 @@ def _garantir(raiz: Path, baixar_se_preciso: bool, avisar: Callable[[str], None]
     alvo = ativa / NOME_MODELO
     sha_dist = manifesto["sha256"]
 
+    atualizar = False
     if alvo.is_file():
         sha_ativo = sha256(alvo)
-        origem = "ja_instalado" if sha_ativo == sha_dist else "local_proprio"
-        if origem == "local_proprio":
-            avisar("Modelo próprio desta máquina em artefatos_ml/ (diferente do distribuído): mantido, só validado.")
-        info = validar(ativa, manifesto)
-        return {"origem": origem, "sha256": sha_ativo, "dependencias": versoes, **info}
+        # Cópia de uma versão distribuída anterior: é trocada sem ser carregada (o pickle antigo pode
+        # depender de classes que não existem mais no código).
+        atualizar = sha_ativo != sha_dist and sha_ativo in (manifesto.get("sha256_anteriores") or [])
+        if not atualizar:
+            origem = "ja_instalado" if sha_ativo == sha_dist else "local_proprio"
+            if origem == "local_proprio":
+                avisar("Modelo próprio desta máquina em artefatos_ml/ (diferente do distribuído): mantido, só validado.")
+            info = validar(ativa, manifesto)
+            return {"origem": origem, "sha256": sha_ativo, "dependencias": versoes, **info}
+        avisar("Versão anterior do modelo distribuído em artefatos_ml/: será substituída pela versão atual.")
 
     fonte = dist / NOME_MODELO
-    origem = "copiado"
+    origem = "atualizado" if atualizar else "copiado"
     if not fonte.is_file() or _parece_lfs(fonte) or sha256(fonte) != sha_dist:
         motivo = ("não existe" if not fonte.is_file() else "é um ponteiro do Git LFS" if _parece_lfs(fonte)
                   else "não confere com o SHA-256 do manifesto")
@@ -277,7 +286,7 @@ def _garantir(raiz: Path, baixar_se_preciso: bool, avisar: Callable[[str], None]
         avisar(f"{PASTA_DISTRIBUIDA}/{NOME_MODELO} {motivo}; baixando a versão do manifesto.")
         url = os.environ.get(VAR_URL) or (manifesto.get("download") or {}).get("url") or URL_PADRAO
         baixar(url, fonte, sha_dist, manifesto.get("bytes"), avisar)
-        origem = "baixado"
+        origem = "atualizado" if atualizar else "baixado"
 
     instalados = []
     try:
@@ -318,8 +327,12 @@ def _sem_caminhos(o: Any) -> None:
             _sem_caminhos(v)
 
 
-def preparar_distribuicao(raiz: Path = RAIZ, url: str = URL_PADRAO) -> Dict[str, Any]:
-    """Copia o modelo de ``artefatos_ml/`` para ``modelos/`` (sem caminhos locais) e grava o manifesto."""
+def preparar_distribuicao(raiz: Path = RAIZ, url: str = URL_PADRAO, anteriores: Sequence[str] = ()) -> Dict[str, Any]:
+    """Copia o modelo de ``artefatos_ml/`` para ``modelos/`` (sem caminhos locais) e grava o manifesto.
+
+    ``anteriores``: SHA-256 de versões distribuídas antes desta. Instalações com uma delas em
+    ``artefatos_ml/`` são atualizadas por :func:`garantir_modelo` em vez de tratadas como modelo próprio.
+    """
     import joblib
 
     from src.ml.modelos import ModeloUnificado, versoes
@@ -339,10 +352,12 @@ def preparar_distribuicao(raiz: Path = RAIZ, url: str = URL_PADRAO) -> Dict[str,
     lav = modelo.cabeca("lavagem")
     md = lav.metadados or {}
     salvas = modelo.metadados.get("versoes") or versoes()
+    sha_novo = sha256(dist / NOME_MODELO)
     manifesto = {
         "formato_manifesto": 1,
         "artefato": NOME_MODELO,
-        "sha256": sha256(dist / NOME_MODELO),
+        "sha256": sha_novo,
+        "sha256_anteriores": [s for s in dict.fromkeys(anteriores) if s and s != sha_novo],
         "bytes": (dist / NOME_MODELO).stat().st_size,
         "metadados": NOME_METADADOS,
         "sha256_metadados": sha256(dist / NOME_METADADOS),
@@ -371,6 +386,7 @@ def preparar_distribuicao(raiz: Path = RAIZ, url: str = URL_PADRAO) -> Dict[str,
 
 def _linhas(resultado: Dict[str, Any]) -> List[str]:
     origem = {"ja_instalado": "já instalado", "copiado": "instalado agora a partir de modelos/",
+              "atualizado": "versão anterior substituída pela atual",
               "baixado": "baixado e instalado agora", "local_proprio": "modelo próprio desta máquina"}[resultado["origem"]]
     return [f"[OK] Modelo de ML pronto: {resultado['versao']} ({origem}); {resultado['colunas']} atributos; "
             f"limiar de alerta {resultado['limiar_alerta']:.4f}.",
@@ -386,7 +402,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     a = p.parse_args(argv)
     if a.preparar_distribuicao:
         m = ler_manifesto(RAIZ) if (RAIZ / PASTA_DISTRIBUIDA / NOME_MANIFESTO).is_file() else {}
-        novo = preparar_distribuicao(RAIZ, (m.get("download") or {}).get("url") or URL_PADRAO)
+        novo = preparar_distribuicao(RAIZ, (m.get("download") or {}).get("url") or URL_PADRAO,
+                                     [*(m.get("sha256_anteriores") or []), m.get("sha256")])
         print(f"Distribuição preparada: {novo['lavagem']['versao']}, SHA-256 {novo['sha256']}, {novo['bytes']} bytes.")
         return 0
     try:
