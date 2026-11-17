@@ -404,4 +404,4 @@ Testes: `testes/painel/test_exibicao.py` (estático e, com Node instalado, execu
 - **Grafo em tela estreita:** em 320 e 390 px, o grafo rola dentro da própria moldura (largura mínima de 660 px).
 - **Tema:** só o escuro; a logo tem "Node" em branco e não serve a fundo claro.
 - **Fuso horário.** O dataset não documenta o fuso; as datas são exibidas como estão no arquivo.
-- **Só transações financeiras.** Medições de rede são recusadas neste painel.
+- **Só transações financeiras.** Arquivos em outros formatos são recusados, com a lista das colunas que faltam.

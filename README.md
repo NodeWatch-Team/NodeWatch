@@ -352,15 +352,12 @@ CSV ou ZIP de transações
 
 ## Modulo de ML (`src/ml`)
 
-Arquitetura unica e modular (scikit-learn) com uma cabeca por tarefa:
-
-- `estado_rede`: preve o estado da proxima medicao de rede (`dataset_final.csv`);
-- `lavagem`: pontua transacoes do IBM AML HI-Small, que e sintetico;
-- `fusao_rede_transacao`: fica bloqueada ate existir vinculo verificavel entre transacoes e telemetria.
+Uma tarefa, `lavagem`: pontua transações do IBM AML HI-Small (sintético) com um Random Forest. O módulo didático de
+telemetria de rede (`estado_rede`) e a fusão rede ↔ transação foram removidos em 17/11/2026.
 
 **Para entender o sistema inteiro, comece pelo manual** [`docs/COMO_FUNCIONA_O_NODEWATCH.md`](docs/COMO_FUNCIONA_O_NODEWATCH.md) (tambem em [PDF](docs/COMO_FUNCIONA_O_NODEWATCH.pdf)).
 
-Instalacao, comandos e protocolo estao em [`docs/ml/README.md`](docs/ml/README.md). Os resultados medidos estao em [`docs/ml/RELATORIO_ML.md`](docs/ml/RELATORIO_ML.md), e o contrato de integracao em [`docs/ml/CONTRATO_INTEGRACAO.md`](docs/ml/CONTRATO_INTEGRACAO.md).
+Instalacao, comandos e protocolo estao em [`docs/ml/README.md`](docs/ml/README.md). Os resultados medidos estao em [`docs/ml/RELATORIO_ML.md`](docs/ml/RELATORIO_ML.md).
 
 ### Painel do analista (pagina inicial)
 

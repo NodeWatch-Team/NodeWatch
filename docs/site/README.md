@@ -37,7 +37,7 @@ e abra `http://127.0.0.1:8000/`.
 
 1. **Resumo**: problema (regras estáticas × *smurfing*/*layering*/falsos positivos), solução e KPIs.
 2. **Pipeline**: ingestão e validação → grafo → atributos e inferência → triagem visual, com as capturas do painel.
-3. **Machine Learning** (React): modelo de lavagem, modelo de rede, rigor causal e simulador do score 0–1000.
+3. **Machine Learning** (React): modelo de lavagem, rigor causal e simulador do score 0–1000.
 4. **Referência rápida**: algoritmos de grafo, Random Forest, métricas, stack e bases.
 5. **Ficha acadêmica**.
 
@@ -45,9 +45,8 @@ e abra `http://127.0.0.1:8000/`.
 
 | Número | Fonte |
 |---|---|
-| 5.078.345 transações, 5.177 positivas, 8 tipologias, recall por tipologia | `docs/ml/RELATORIO_ML.md`, seção 2 |
-| AP 0,464; precisão 0,627; recall 0,407 (teste) | `docs/ml/RELATORIO_ML.md`, seção 2.3 |
-| 333.954 medições, 135 caminhos, macro-F1 0,75 × persistência 0,71 | `docs/ml/RELATORIO_ML.md`, seção 1 |
+| 5.078.345 transações, 5.177 positivas, 8 tipologias, recall por tipologia | `docs/ml/RELATORIO_ML.md`, seção 1 |
+| AP 0,464; precisão 0,627; recall 0,407 (teste) | `docs/ml/RELATORIO_ML.md`, seção 1.3 |
 | 49 e 21 atributos | `docs/COMO_FUNCIONA_O_NODEWATCH.md` |
 | Faixas 0–300 / 301–700 / 701–1000 e conversão ancorada no limiar 0,0910 | `src/painel/score.py` |
 

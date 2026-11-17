@@ -2,20 +2,15 @@
 
 Manual completo do sistema: [`docs/COMO_FUNCIONA_O_NODEWATCH.md`](../COMO_FUNCIONA_O_NODEWATCH.md).
 
-É uma arquitetura única e modular, em scikit-learn: um codificador por fonte de dados e uma cabeça por tarefa, tudo salvo em um único artefato (`artefatos_ml/modelo_unificado.joblib`).
+Uma tarefa, em scikit-learn: a cabeça `lavagem`, com o preparador `financeiro`, salva em um único artefato (`modelos/modelo_unificado.joblib`, instalado em `artefatos_ml/`).
 
 | cabeça | dados | saída | status |
 | --- | --- | --- | --- |
-| `estado_rede` | `dataset_final.csv` (telemetria por fluxo) | `OK`/`RISCO`/`FALHA` da **próxima medição**, probabilidades e `score_alerta_rede` | treinada |
-| `estado_rede__com_classe_atual` | idem, mais `classe_atual` | variante comparativa | treinada |
 | `lavagem` | IBM AML HI-Small (sintético) | `score_lavagem`, alerta e motivos verificáveis | treinada |
-| `fusao_rede_transacao` | transações vinculadas à telemetria | — | **indisponível** (ver [CONTRATO_INTEGRACAO.md](CONTRATO_INTEGRACAO.md)) |
 
-Cada cabeça disponível foi treinada e avaliada **separadamente**, nos seus próprios dados. As fontes não têm amostras em comum, então o modelo não aprendeu nenhuma relação entre rede e lavagem.
+`score_lavagem` é uma pontuação aprendida em dados sintéticos, e não fraude confirmada nem probabilidade calibrada.
 
-Alguns termos têm significado preciso:
-- `score_alerta_rede` é o estado de rede não-OK previsto, e não fraude;
-- `score_lavagem` é uma pontuação aprendida em dados sintéticos, e não fraude confirmada.
+O módulo didático de telemetria de rede (`estado_rede`) e o lugar reservado da fusão rede ↔ transação foram removidos em 17/11/2026; continuam no histórico do Git.
 
 Resultados: [RELATORIO_ML.md](RELATORIO_ML.md). Dicionário de dados: [DICIONARIO_DADOS.md](DICIONARIO_DADOS.md).
 
@@ -34,7 +29,6 @@ As versões fixadas em `requirements-ml.txt` são as usadas no treino documentad
 
 1. Copie `ml_config.exemplo.toml` para `ml_config.local.toml`. A cópia é ignorada pelo git.
 2. Ajuste os caminhos:
-   - `[rede].arquivos`: um ou mais CSVs `rede_v1`;
    - `[financeiro].transacoes`: `HI-Small_Trans.csv` ou o `.zip` que o contém;
    - opcionalmente `contas` e `padroes`.
 3. Os arquivos originais nunca são alterados.
@@ -47,7 +41,6 @@ Os dados não estão no repositório; vêm do `.rar` entregue pela professora. C
 
 | Arquivo | SHA-256 | Uso |
 |---|---|---|
-| `dataset_final.csv` | `125453f154616b6d02587f9577aab14828002ebc31d8ae053771780058d9b997` | Estado de rede |
 | `HI-Small_Trans.zip` | `93c9d65156a28596c756bd1395531e231c5950bbbdbfe665500bc866ed595179` | Lavagem |
 | `HI-Small_accounts.csv` | `786808526e33cfc441212dd6fccda7edfc24172149bed59c6ef59b186836b014` | Auditoria de contas |
 | `HI-Small_Patterns.txt` | `2c546b5ce6009e73851f0139af053cf845f08bf92f3bc82fe1eb937dec2ef39b` | Auditoria e recall por padrão |
@@ -57,24 +50,19 @@ Os dados não estão no repositório; vêm do `.rar` entregue pela professora. C
 Rode da raiz do projeto, com o Python do `.venv`:
 
 ```bash
-python -m src.ml.cli auditar --fonte todas
+python -m src.ml.cli auditar
 ```
 Audita os dados e grava JSON e MD em `artefatos_ml/auditoria`.
 
 ```bash
-python -m src.ml.cli treinar --tarefa todas
+python -m src.ml.cli treinar --tarefa lavagem
 ```
 Ajusta cada configuração no treino e escolhe configuração e limiar na validação.
 
 ```bash
-python -m src.ml.cli avaliar --tarefa todas
+python -m src.ml.cli avaliar --tarefa lavagem
 ```
 Avalia uma única vez no teste, com o artefato congelado.
-
-```bash
-python -m src.ml.cli prever --tarefa estado_rede --entrada novo.csv --saida previsoes_rede.csv
-```
-Faz inferência sem `alvo`/`split`. Aceita vários CSVs.
 
 ```bash
 python -m src.ml.cli prever --tarefa lavagem --entrada transacoes.csv --historico HI-Small_Trans.zip --saida previsoes_lavagem.csv
@@ -88,10 +76,10 @@ python -m src.ml.cli documentar
 python -m src.ml.cli tarefas
 python -m pytest testes/ml
 ```
-- `exemplos` gera entradas derivadas sem rótulo e as previsões delas, em `artefatos_ml/exemplos`.
+- `exemplos` gera uma entrada derivada sem rótulo e as previsões dela, em `artefatos_ml/exemplos`.
 - `relatorio` gera `docs/ml/RELATORIO_ML.md` a partir dos resultados salvos.
 - `documentar` gera o dicionário de dados e `docs/ml/esquemas/*.json`.
-- `tarefas` mostra o status das cabeças e o que falta para a fusão.
+- `tarefas` mostra o status da cabeça do modelo.
 
 ### Usar o modelo no painel
 
@@ -101,7 +89,7 @@ A interface antiga (exploração de previsões, Analisar dataset, eventos, repla
 
 ### Testes
 
-- `pytest testes/ml` roda os testes do módulo, todos com dados sintéticos. `test_referencia_financeira.py` compara os atributos vetorizados com uma referência por força bruta (`testes/ml/referencia_financeira.py`).
+- `pytest testes/ml` roda os testes do módulo, todos com dados sintéticos. `test_treino_cli.py` roda o treino inteiro pela CLI (auditar → treinar → avaliar → prever → relatorio). `test_referencia_financeira.py` compara os atributos vetorizados com uma referência por força bruta (`testes/ml/referencia_financeira.py`).
 
 ### O que está versionado em `docs/ml`
 
@@ -110,7 +98,6 @@ A interface antiga (exploração de previsões, Analisar dataset, eventos, repla
 | Em `docs/ml` | Origem |
 |---|---|
 | `resultados/*.json` | Cópias de `artefatos_ml/resultados/*.json`, de `artefatos_ml/auditoria/auditoria_*.json` e de `artefatos_ml/metadados_modelo.json`, com os caminhos absolutos trocados pelo nome do arquivo |
-| `exemplos/previsoes_rede_amostra.csv` | Cabeçalho e 200 primeiras linhas de `artefatos_ml/exemplos/previsoes_rede_exemplo.csv`, gerado por `exemplos` a partir das linhas do teste sem `alvo`/`split`, embaralhadas com a semente 42 |
 | `exemplos/previsoes_lavagem_amostra.csv` | Cabeçalho e 200 primeiras linhas de `artefatos_ml/exemplos/previsoes_lavagem_exemplo.csv`, gerado a partir das transações de 10/09/2022 sem rótulo, com o histórico anterior a esse dia (`--historico`) |
 | `exemplos/*.relatorio.json` | Relatórios de inferência dessas previsões, com os caminhos absolutos trocados pelo nome |
 | `RELATORIO_ML.md` | Gerado por `relatorio`, que acrescenta `notas_relatorio.md` ao final |
@@ -118,12 +105,6 @@ A interface antiga (exploração de previsões, Analisar dataset, eventos, repla
 As amostras mostram o formato da saída, não uma seleção representativa.
 
 ## Protocolo, em resumo
-
-### Rede
-- **Divisão temporal:** usa a coluna `split` (treino < validação < teste, com lacunas ≥ 1 h). Os mesmos 135 fluxos aparecem nos três períodos.
-- **Fluxos inéditos:** há uma avaliação separada com GroupKFold por `id_fluxo` e por `anchor_id`. Ela treina no período de treino e testa no período de teste dos grupos retirados.
-- **Sentinelas:** o `-1` é sentinela só onde a auditoria confirma. Em `delta_ttl_clip`, valores negativos são legítimos.
-- **Ajustes:** imputação, remoção de constantes (`ttl_reset`), log e escala são ajustados só no treino.
 
 ### Lavagem
 - **Divisão temporal por dia:**
@@ -137,7 +118,7 @@ As amostras mostram o formato da saída, não uma seleção representativa.
 - **Amostragem:** os negativos do treino são subamostrados (20%) com peso 5. Validação e teste preservam a distribuição original.
 
 ### Seleção
-- **Configuração:** rede por macro-F1 na validação; lavagem por average precision na validação.
+- **Configuração:** maior average precision na validação.
 - **Limiar:** máximo F1 na validação. Não houve custos nem capacidade fornecidos.
 
 ## Estrutura
@@ -145,13 +126,13 @@ As amostras mostram o formato da saída, não uma seleção representativa.
 ```
 src/ml/config.py       configuração (TOML + padrões)
 src/ml/esquemas.py     contratos versionados e validação
-src/ml/ingestao.py     leitura de CSVs de rede, HI-Small, contas e padrões
+src/ml/ingestao.py     leitura do HI-Small, das contas e dos padrões
 src/ml/auditoria.py    verificações de dados refeitas a cada execução
-src/ml/preparacao.py   sentinelas, pipelines e atributos financeiros point-in-time
-src/ml/modelos.py      grades, cabeças, ModeloUnificado, fusão bloqueada
-src/ml/avaliacao.py    métricas (classes, eventos, alertas, calibração, PR, top-k)
-src/ml/experimentos.py treino/validação/teste e grupos inéditos
-src/ml/previsao.py     inferência sem reajuste, deriva (PSI) e motivos
+src/ml/preparacao.py   atributos financeiros point-in-time e pipelines de treino
+src/ml/modelos.py      grade de treino, CabecaClassificacao e ModeloUnificado (o artefato)
+src/ml/avaliacao.py    métricas (precisão, recall, F1, AP, calibração, recall por grupo)
+src/ml/experimentos.py treino/validação/teste
+src/ml/previsao.py     inferência sem reajuste e motivos verificáveis
 src/ml/incremental.py  estado financeiro incremental (atributos sem reconstruir o histórico)
 src/ml/formatos.py     formatos de entrada e detecção pelo cabeçalho
 src/ml/provisionamento.py  instalação do modelo distribuído (conferência de SHA-256)
