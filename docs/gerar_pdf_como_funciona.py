@@ -3,6 +3,7 @@
 Uso (da raiz do projeto)::
 
     python docs/gerar_pdf_como_funciona.py
+    python docs/gerar_pdf_como_funciona.py --fonte docs/APRESENTACAO_NODEWATCH.md
     python docs/gerar_pdf_como_funciona.py --png pasta_paginas   # também salva cada página em PNG
 
 Requisitos: Chrome ou Edge (impressão headless) e ``pip install markdown pymupdf``.
@@ -39,7 +40,7 @@ CANDIDATOS = [
 ]
 CSS = """
 @page { size: A4; margin: 20mm 18mm 18mm 18mm;
-  @top-right { content: "Como funciona o NodeWatch"; font: 8pt "Segoe UI", Arial, sans-serif; color: #7a8290; }
+  @top-right { content: "@@TITULO@@"; font: 8pt "Segoe UI", Arial, sans-serif; color: #7a8290; }
   @bottom-center { content: counter(page); font: 9pt "Segoe UI", Arial, sans-serif; color: #4a5260; } }
 @page :first { @top-right { content: none; } @bottom-center { content: none; } }
 html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -128,15 +129,15 @@ def para_html(texto: str) -> Tuple[str, List[Tuple[int, str, str]]]:
     return corpo, titulos
 
 
-def montar(corpo: str, titulos, paginas: Dict[str, int], capa: str) -> str:
+def montar(corpo: str, titulos, paginas: Dict[str, int], capa: str, titulo_doc: str) -> str:
     linhas = []
     for nivel, ident, titulo in titulos:
         classe = "n0" if ident.startswith("s-parte-") else f"n{nivel}"
         linhas.append(f'<div class="{classe}"><a href="#{ident}"><span>{html_mod.escape(titulo)}</span>'
                       f'<span class="pt"></span><span>{paginas.get(ident, "")}</span></a></div>')
     sumario = f'<div class="sumario"><div class="tit">Sumário</div>{"".join(linhas)}</div>'
-    return (f'<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Como funciona o NodeWatch</title>'
-            f"<style>{CSS}</style></head><body>{capa}{sumario}{corpo}</body></html>")
+    return (f'<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>{html_mod.escape(titulo_doc)}</title>'
+            f"<style>{CSS.replace('@@TITULO@@', titulo_doc)}</style></head><body>{capa}{sumario}{corpo}</body></html>")
 
 
 def paginas_dos_titulos(pdf: Path, titulos) -> Dict[str, int]:
@@ -182,13 +183,16 @@ def conferir(pdf: Path) -> List[str]:
 
 def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--fonte", type=Path, default=FONTE, help="Markdown com bloco <!--capa (padrão: o manual)")
     p.add_argument("--navegador")
     p.add_argument("--png", type=Path)
     p.add_argument("--dpi", type=int, default=80)
     a = p.parse_args(argv)
     import pymupdf
 
-    texto = FONTE.read_text(encoding="utf-8")
+    fonte = a.fonte.resolve()
+    destino = fonte.with_suffix(".pdf")
+    texto = fonte.read_text(encoding="utf-8")
     # A capa vem do bloco de metadados no início do Markdown (entre <!--capa e -->).
     m = re.search(r"<!--capa\n(.*?)-->", texto, flags=re.S)
     campos = dict(l.split(": ", 1) for l in m.group(1).strip().splitlines())
@@ -197,7 +201,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             + "".join(f"<p><strong>{k}:</strong> {v}</p>" for k, v in campos.items() if k not in ("rotulo", "titulo", "sub"))
             + "</div></div>")
     # o título do documento no Markdown não se repete: a capa já o traz
-    corpo_md = re.sub(r"^# Como funciona o NodeWatch\n", "", texto[m.end():], count=1, flags=re.M)
+    corpo_md = re.sub(r"^# " + re.escape(campos["titulo"]) + r"\n", "", texto[m.end():], count=1, flags=re.M)
     corpo, titulos = para_html(corpo_md)
     navegador = achar_navegador(a.navegador)
     paginas: Dict[str, int] = {}
@@ -205,7 +209,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         htmlp = Path(tmp) / "manual.html"
         pdf = Path(tmp) / "manual.pdf"
         for rodada in range(1, 6):
-            htmlp.write_text(montar(corpo, titulos, paginas, capa), encoding="utf-8")
+            htmlp.write_text(montar(corpo, titulos, paginas, capa, campos["titulo"]), encoding="utf-8")
             imprimir(navegador, htmlp, pdf)
             novas = paginas_dos_titulos(pdf, titulos)
             if novas == paginas:
@@ -216,14 +220,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         marcadores = [[1, "Sumário", 2]] + [[n, t, paginas[i]] for n, i, t in titulos]
         with pymupdf.open(pdf) as doc:
             doc.set_toc(marcadores)
-            doc.save(DESTINO, garbage=3, deflate=True)
-    with pymupdf.open(DESTINO) as doc:
-        print(f"{DESTINO.name}: {doc.page_count} páginas (sumário estável na rodada {rodada})")
+            doc.save(destino, garbage=3, deflate=True)
+    with pymupdf.open(destino) as doc:
+        print(f"{destino.name}: {doc.page_count} páginas (sumário estável na rodada {rodada})")
         if a.png:
             a.png.mkdir(parents=True, exist_ok=True)
             for n, pg in enumerate(doc, start=1):
                 pg.get_pixmap(dpi=a.dpi).save(a.png / f"pagina_{n:02d}.png")
-    problemas = conferir(DESTINO)
+    problemas = conferir(destino)
     for x in problemas:
         print("ATENÇÃO:", x)
     return 1 if problemas else 0
