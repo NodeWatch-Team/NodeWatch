@@ -32,10 +32,12 @@ import threading
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional
 
-from src.ml.eventos import agora, iso
+from src.ml.tempo import agora, iso
 
 TTL_S = 150.0
 PULSO_S = 15.0
+_padrao: Optional["GerenciadorSessoes"] = None
+_trava_padrao = threading.Lock()
 
 
 @dataclass
@@ -112,3 +114,16 @@ class GerenciadorSessoes:
                 "leitura": (f"Sem pulso por {int(self.ttl_s)} s (aba fechada, navegador caído ou conexão "
                             "perdida), a sessão expira e o trabalho dela para no próximo ponto seguro. "
                             "Minimizar ou trocar de aba não encerra a sessão.")}
+
+
+def padrao() -> GerenciadorSessoes:
+    """Gerenciador único do processo, compartilhado pelas rotas ``/api/painel`` e ``/api/ml``.
+
+    Uma sessão aberta numa das interfaces vale na outra. Os testes e o ambiente de teste
+    passam um gerenciador próprio e não usam este.
+    """
+    global _padrao
+    with _trava_padrao:
+        if _padrao is None:
+            _padrao = GerenciadorSessoes()
+        return _padrao

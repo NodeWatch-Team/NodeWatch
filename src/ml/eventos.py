@@ -42,6 +42,7 @@ import numpy as np
 import pandas as pd
 
 from src.ml.esquemas import ESQUEMA_REDE_V1, ESQUEMA_VINCULO_V1, ErroEsquema, FEATURES_REDE
+from src.ml.tempo import agora, iso  # noqa: F401  (reexportados: ev.agora e ev.iso continuam valendo)
 
 VERSAO_ENVELOPE = "evento_v1"
 ESQUEMA_POR_TIPO = {
@@ -122,15 +123,6 @@ def controle(acao: str, origem: str, modo: str, **dados: Any) -> Evento:
     return Evento(f"controle:{acao}", f"controle:{acao}", "controle", "-", 0.0, agora(), origem, modo,
                   {"acao": acao, **dados})
 
-
-def iso(epoca: Optional[float]) -> Optional[str]:
-    if epoca is None or (isinstance(epoca, float) and math.isnan(epoca)):
-        return None
-    return datetime.fromtimestamp(float(epoca), tz=timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-
-
-def agora() -> float:
-    return datetime.now(timezone.utc).timestamp()
 
 
 def epoca(valor: Any, campo: str) -> float:
