@@ -93,3 +93,17 @@ artefatos_teste/
 
 # Configurações locais do Claude Code (caminhos de cada máquina)
 .claude/launch.json
+
+# Bancos e logs de execução gerados fora de artefatos_ml/ (por exemplo, ao rodar o painel com outra raiz)
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.jsonl
+
+# Caches de ferramentas de análise de código
+.ruff_cache/
+.mypy_cache/
+
+# Arquivos do Windows, do OneDrive e travas do Office
+desktop.ini
+~$*
