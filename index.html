@@ -19,15 +19,36 @@
 
   <link rel="icon" href="./site-assets/img/favicon.ico" sizes="16x16 32x32 48x48">
   <link rel="apple-touch-icon" href="./site-assets/img/apple-touch-icon.png">
-  <link rel="stylesheet" href="./site-assets/css/site.css?v=20261118a">
+  <link rel="stylesheet" href="./site-assets/css/site.css?v=20261119a">
   <!-- Camada visual e de movimento ("The Living Intelligence Network"): vivo.css + vivo.js. Sem eles, o site continua igual. -->
-  <link rel="stylesheet" href="./site-assets/css/vivo.css?v=20261118a">
+  <link rel="stylesheet" href="./site-assets/css/vivo.css?v=20261119a">
   <script>document.documentElement.classList.add("js");if(!(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches))document.documentElement.classList.add("nv-intro");</script>
-  <script src="./site-assets/js/vivo.js?v=20261118a" defer></script>
-  <script src="./site-assets/vendor/react-18.3.1.production.min.js" defer></script>
-  <script src="./site-assets/vendor/react-dom-18.3.1.production.min.js" defer></script>
-  <script src="./site-assets/js/site.js?v=20261118a" defer></script>
-  <script src="./site-assets/js/artigo.js?v=20261118a" defer></script>
+  <script src="./site-assets/js/vivo.js?v=20261119a" defer></script>
+  <script src="./site-assets/js/site.js?v=20261119a" defer></script>
+  <!-- As demonstrações em React (blocos 3, 4 e 5) ficam abaixo da dobra: React e artigo.js carregam fora do caminho crítico,
+       quando o navegador fica ocioso após o load ou quando o leitor se aproxima delas (o que vier primeiro).
+       Até lá, a versão estática de cada demonstração continua visível. -->
+  <script>
+    (function () {
+      var arquivos = ["./site-assets/vendor/react-18.3.1.production.min.js", "./site-assets/vendor/react-dom-18.3.1.production.min.js", "./site-assets/js/artigo.js?v=20261119a"];
+      var feito = false;
+      function carregar() {
+        if (feito) return;
+        feito = true;
+        arquivos.forEach(function (u) { var s = document.createElement("script"); s.src = u; s.async = false; document.head.appendChild(s); });
+      }
+      window.addEventListener("load", function () {
+        if (window.requestIdleCallback) requestIdleCallback(carregar, { timeout: 2000 }); else setTimeout(carregar, 300);
+      });
+      document.addEventListener("DOMContentLoaded", function () {
+        if (!("IntersectionObserver" in window)) return carregar();
+        var obs = new IntersectionObserver(function (es) {
+          for (var i = 0; i < es.length; i++) if (es[i].isIntersecting) { obs.disconnect(); carregar(); return; }
+        }, { rootMargin: "1200px 0px" });
+        ["conversao-score", "pipeline-interativo", "painel-demo"].forEach(function (id) { var el = document.getElementById(id); if (el) obs.observe(el); });
+      });
+    })();
+  </script>
 </head>
 <body>
   <a class="pular" href="#conteudo">Pular para o conteúdo</a>
@@ -100,13 +121,15 @@
               Vídeo pitch • Apresentação rápida
             </figcaption>
             <div class="video-quadro">
-              <iframe
-                src="https://www.youtube-nocookie.com/embed/1kg24a6yc10?rel=0"
-                title="Vídeo pitch do NodeWatch"
-                loading="lazy"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                referrerpolicy="strict-origin-when-cross-origin"
-                allowfullscreen></iframe>
+              <!-- Capa leve do vídeo: o player do YouTube (~1 MB) só carrega no clique; sem JavaScript, o link abre o vídeo no YouTube. -->
+              <a class="video-capa" href="https://www.youtube.com/watch?v=1kg24a6yc10" target="_blank" rel="noopener" aria-label="Reproduzir o vídeo pitch do NodeWatch"
+                 data-embed="https://www.youtube-nocookie.com/embed/1kg24a6yc10?rel=0" data-titulo="Vídeo pitch do NodeWatch">
+                <picture>
+                  <source type="image/webp" srcset="https://i.ytimg.com/vi_webp/1kg24a6yc10/sddefault.webp 640w, https://i.ytimg.com/vi_webp/1kg24a6yc10/maxresdefault.webp 1280w" sizes="(min-width: 960px) 540px, 100vw">
+                  <img src="https://i.ytimg.com/vi/1kg24a6yc10/hqdefault.jpg" alt="" width="1280" height="720" decoding="async" fetchpriority="low">
+                </picture>
+                <span class="video-play" aria-hidden="true"><svg viewBox="0 0 68 48" width="68" height="48"><path d="M66.5 7.7a8.5 8.5 0 0 0-6-6C55.3.3 34 .3 34 .3s-21.3 0-26.5 1.4a8.5 8.5 0 0 0-6 6C.1 12.9.1 24 .1 24s0 11.1 1.4 16.3a8.5 8.5 0 0 0 6 6C12.7 47.7 34 47.7 34 47.7s21.3 0 26.5-1.4a8.5 8.5 0 0 0 6-6C67.9 35.1 67.9 24 67.9 24s0-11.1-1.4-16.3z"/><path d="M45 24 27 14v20z" fill="#fff"/></svg></span>
+              </a>
             </div>
           </figure>
         </div>

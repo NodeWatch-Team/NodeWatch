@@ -33,6 +33,9 @@
   if (!reduz) html.classList.add("nv-anima");
   if (fino) html.classList.add("nv-fino");
   if (!reduz && !fraco && !estreito && nucleos >= 6 && temVidro) html.classList.add("nv-alto");
+  // Modo leve: toque, tela pequena ou aparelho modesto. Versões simplificadas dos efeitos mais caros (ver vivo.css).
+  var leve = !fino || fraco || estreito || economia;
+  if (leve) html.classList.add("nv-leve");
 
   var NS = "http://www.w3.org/2000/svg";
   var agora = function () { return window.performance && performance.now ? performance.now() : Date.now(); };
@@ -106,353 +109,54 @@
       '<stop offset="0.35" stop-color="rgb(' + rgb + ')" stop-opacity="0.35"/><stop offset="1" stop-color="rgb(' + rgb + ')" stop-opacity="0"/></radialGradient>';
   }
 
-  /* ---------- Rede neural em canvas ---------- */
+  /* ---------- Rede neural: num Web Worker (OffscreenCanvas) sempre que possível ---------- */
+  // O desenho da rede era o maior custo da thread principal. No worker, rolagem, toques e menus ficam livres.
+  var telaRede = $(".nv-rede", ambiente);
+  var rede = null;
+  var tamRede = { w: 0, h: 0 };
+  function alturaRede() { return Math.max(window.innerHeight, html.clientHeight); }
+  (function iniciarRede() {
+    if (!telaRede) return;
+    var eu = doc.currentScript && doc.currentScript.src;
+    var url = eu ? eu.replace(/vivo\.js/, "vivo-rede.js") : "./site-assets/js/vivo-rede.js";
+    tamRede.w = window.innerWidth; tamRede.h = alturaRede();
+    telaRede.style.height = tamRede.h + "px";
+    var op = { fraco: fraco, estreito: estreito, fino: fino, reduz: reduz, leve: leve, w: tamRede.w, h: tamRede.h, dpr: window.devicePixelRatio || 1 };
+    function lento() { html.classList.remove("nv-alto"); }
 
-  var HUMORES = {
-    inicio:   { c: [56, 225, 255],  alerta: 0.2,  ritmo: 1,   vel: 1 },
-    problema: { c: [255, 140, 140], alerta: 0.42, ritmo: 1.1, vel: 1 },
-    modelo:   { c: [160, 145, 255], alerta: 0.12, ritmo: 1.6, vel: 1.1 },
-    metricas: { c: [86, 205, 255],  alerta: 0.1,  ritmo: 0.8, vel: 0.7 },
-    producao: { c: [56, 225, 255],  alerta: 0.14, ritmo: 2.3, vel: 1.7 },
-    painel:   { c: [96, 215, 255],  alerta: 0.36, ritmo: 1.2, vel: 1 },
-    escopo:   { c: [115, 232, 200], alerta: 0.04, ritmo: 0.6, vel: 0.55 }
-  };
-
-  function criarRede(canvas) {
-    var ctx = canvas.getContext && canvas.getContext("2d");
-    if (!ctx) return null;
-    var W = 0, H = 0, dpr = 1, M = 70;
-    var nos = [], pulsos = [], ondas = [];
-    var t0 = agora(), espera = 300;
-    var qualidade = fraco ? 0.55 : estreito ? 0.62 : 1;
-    var L = estreito ? 118 : 150;
-    var humor = { c: HUMORES.inicio.c.slice(), alerta: 0.2, ritmo: 1, vel: 1 };
-    var cam = { x: 0, y: 0 };
-    var sprites = {};
-    var medidas = { n: 0, soma: 0, feito: false };
-    var parado = false;
-
-    function sprite(rgb) {
-      var k = rgb.join(",");
-      if (sprites[k]) return sprites[k];
-      var c = doc.createElement("canvas"), s = 64;
-      c.width = c.height = s;
-      var g = c.getContext("2d"), gr = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-      gr.addColorStop(0, "rgba(" + k + ",0.9)");
-      gr.addColorStop(0.25, "rgba(" + k + ",0.35)");
-      gr.addColorStop(1, "rgba(" + k + ",0)");
-      g.fillStyle = gr;
-      g.fillRect(0, 0, s, s);
-      return (sprites[k] = c);
+    if (window.Worker && window.OffscreenCanvas && telaRede.transferControlToOffscreen) {
+      try {
+        var w = new Worker(url);
+        var off = telaRede.transferControlToOffscreen();
+        w.postMessage({ tipo: "iniciar", canvas: off, op: op }, [off]);
+        w.onmessage = function (m) { if (m.data && m.data.tipo === "lento") lento(); };
+        rede = { enviar: function (m) { w.postMessage(m); }, worker: true };
+        return;
+      } catch (x) { /* segue para a versão na página */ }
     }
-    var VERMELHO = [255, 84, 84];
-
-    function dimensionar(forcar) {
-      var w = window.innerWidth, h = Math.max(window.innerHeight, html.clientHeight);
-      // No celular, a barra de endereço muda a altura o tempo todo: só refaz em mudança real.
-      if (!forcar && w === W && Math.abs(h - H) < 140) return;
-      dpr = Math.min(window.devicePixelRatio || 1, qualidade < 1 ? 1.25 : 1.75);
-      W = w; H = h;
-      canvas.width = Math.round(W * dpr);
-      canvas.height = Math.round(H * dpr);
-      canvas.style.height = H + "px";
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      popular();
-      if (parado) desenhar(agora(), 16);
-    }
-
-    function popular() {
-      var area = W * H;
-      var n = Math.round(limitar(area / (estreito ? 8200 : 11500), 30, 132) * qualidade);
-      var ox = W < 960 ? W * 0.5 : W * 0.3, oy = H * 0.4, dmax = Math.sqrt(W * W + H * H);
-      while (nos.length > n) nos.pop();
-      while (nos.length < n) {
-        var z = 0.22 + Math.pow(Math.random(), 1.5) * 0.78;
-        var x = Math.random() * W, y = Math.random() * (H + 2 * M) - M;
-        var d = Math.sqrt((x - ox) * (x - ox) + (y - oy) * (y - oy));
-        nos.push({
-          x: x, y: y, z: z,
-          a: Math.random() * 6.283, w: (Math.random() - 0.5) * 0.0008, v: 0.009 + Math.random() * 0.017, f: Math.random() * 6.283,
-          b: 0, nasce: 120 + d / dmax * 1500 + Math.random() * 300, sx: 0, sy: 0, ok: false
-        });
-      }
-    }
-
-    function mascara(x) {
-      // A rede vive sobretudo nas margens: atrás da coluna de texto ela fica bem mais discreta.
-      if (W < 900) return 0.5;
-      var meia = Math.min(W, 1164) / 2 - 10, d = Math.abs(x - W / 2) - meia;
-      if (d <= -140) return 0.3;
-      if (d >= 40) return 1;
-      return 0.3 + (d + 140) / 180 * 0.7;
-    }
-
-    function vizinho(i) {
-      var a = nos[i], melhores = [];
-      for (var j = 0; j < nos.length; j++) {
-        if (j === i) continue;
-        var b = nos[j];
-        if (!b.ok || Math.abs(a.z - b.z) > 0.38) continue;
-        var dx = b.sx - a.sx, dy = b.sy - a.sy;
-        if (dx * dx + dy * dy < L * L) melhores.push(j);
-      }
-      return melhores.length ? melhores[(Math.random() * melhores.length) | 0] : -1;
-    }
-
-    function lancarPulso(origem, saltos) {
-      if (pulsos.length > 26) return;
-      var i = origem;
-      if (i === undefined || i < 0) {
-        for (var tent = 0; tent < 6; tent++) {
-          var c = (Math.random() * nos.length) | 0;
-          if (nos[c].ok && nos[c].sx > 0 && nos[c].sx < W && nos[c].sy > 0 && nos[c].sy < H) { i = c; break; }
-        }
-      }
-      if (i === undefined || i < 0) return;
-      var j = vizinho(i);
-      if (j < 0) return;
-      pulsos.push({ a: i, b: j, t: 0, dur: 650 + Math.random() * 700, al: Math.random() < humor.alerta, s: saltos || 0 });
-    }
-
-    var proximoPulso = 600;
-
-    function choque(x, y, vermelho) {
-      ondas.push({ x: x, y: y, r: 4, max: estreito ? 220 : 320, al: !!vermelho });
-      if (ondas.length > 6) ondas.shift();
-    }
-
-    function desenhar(t, dt) {
-      var intro = reduz ? 0.75 : limitar((t - t0 - espera) / 1700, 0, 1);
-      intro = 1 - Math.pow(1 - intro, 3);
-      var alvo = HUMORES[E.secao] || HUMORES.inicio;
-      var k = 1 - Math.pow(0.975, dt / 16.7);
-      for (var c = 0; c < 3; c++) humor.c[c] += (alvo.c[c] - humor.c[c]) * k;
-      humor.alerta += (alvo.alerta - humor.alerta) * k;
-      humor.ritmo += (alvo.ritmo - humor.ritmo) * k;
-      humor.vel += (alvo.vel - humor.vel) * k;
-      var R = humor.c[0] | 0, G = humor.c[1] | 0, B = humor.c[2] | 0;
-      var rgb = R + "," + G + "," + B;
-
-      // Câmera: o mouse desloca as camadas conforme a profundidade (parallax 3D); no toque, um "sensor" passeia sozinho.
-      var mx = E.mx, my = E.my, ativo = E.ponteiro;
-      if (!fino && !reduz) {
-        mx = W * (0.5 + 0.4 * Math.sin(t * 0.00011));
-        my = H * (0.5 + 0.34 * Math.sin(t * 0.00017 + 1.3));
-        ativo = true;
-      }
-      var cx = fino && E.ponteiro ? (E.mx - W / 2) * -0.04 : 0, cy = fino && E.ponteiro ? (E.my - H / 2) * -0.04 : 0;
-      cam.x += (cx - cam.x) * 0.06;
-      cam.y += (cy - cam.y) * 0.06;
-      var turbo = 1 + Math.min(2.5, Math.abs(E.vel) * 0.025);
-
-      var i, j, n, m;
-      var raioMouse = fino ? 175 : 150, forcaMouse = fino ? 1 : 0.55;
-      var Hm = H + 2 * M;
-      for (i = 0; i < nos.length; i++) {
-        n = nos[i];
-        if (!reduz) {
-          n.a += n.w * dt + Math.sin(t * 0.00021 + n.f) * 0.0006 * dt;
-          var sp = n.v * (0.35 + n.z) * humor.vel * turbo;
-          n.x += Math.cos(n.a) * sp * dt;
-          n.y += Math.sin(n.a) * sp * dt;
-          if (n.x < -M) n.x += W + 2 * M; else if (n.x > W + M) n.x -= W + 2 * M;
-        }
-        var py = n.y - E.sy * n.z * 0.22 + cam.y * n.z + M;
-        py = ((py % Hm) + Hm) % Hm - M;
-        n.sx = n.x + cam.x * n.z;
-        n.sy = py;
-        n.ok = (t - t0) > n.nasce || reduz;
-        n.b *= Math.pow(0.94, dt / 16.7);
-        if (ativo && !reduz) {
-          var dx = n.sx - mx, dy = n.sy - my, d2 = dx * dx + dy * dy;
-          if (d2 < raioMouse * raioMouse) {
-            var d = Math.sqrt(d2) || 1, q = 1 - d / raioMouse;
-            n.x += dx / d * q * 0.9 * forcaMouse * (dt / 16.7);
-            n.y += dy / d * q * 0.9 * forcaMouse * (dt / 16.7);
-            if (q * 0.65 * forcaMouse > n.b) n.b = q * 0.65 * forcaMouse;
-          }
-        }
-      }
-
-      // Ondas de choque dos cliques empurram e acendem os nós.
-      for (m = ondas.length - 1; m >= 0; m--) {
-        var o = ondas[m];
-        o.r += dt * 0.55;
-        var vida = 1 - o.r / o.max;
-        if (vida <= 0) { ondas.splice(m, 1); continue; }
-        for (i = 0; i < nos.length; i++) {
-          n = nos[i];
-          var ox = n.sx - o.x, oy = n.sy - o.y, od = Math.sqrt(ox * ox + oy * oy) || 1;
-          if (Math.abs(od - o.r) < 26) {
-            n.x += ox / od * 2.2 * vida;
-            n.y += oy / od * 2.2 * vida;
-            if (vida > n.b) n.b = vida;
-          }
-        }
-      }
-
-      ctx.clearRect(0, 0, W, H);
-
-      // Conexões: aparecem e somem conforme os nós se aproximam; camadas de profundidade parecidas se ligam.
-      var L2 = L * L;
-      for (i = 0; i < nos.length; i++) {
-        n = nos[i];
-        if (!n.ok) continue;
-        var fi = reduz ? 1 : limitar((t - t0 - n.nasce) / 700, 0, 1);
-        for (j = i + 1; j < nos.length; j++) {
-          m = nos[j];
-          if (!m.ok) continue;
-          var ddx = m.sx - n.sx;
-          if (ddx > L || ddx < -L) continue;
-          var ddy = m.sy - n.sy;
-          if (ddy > L || ddy < -L) continue;
-          var dd = ddx * ddx + ddy * ddy;
-          if (dd > L2 || Math.abs(n.z - m.z) > 0.38) continue;
-          var kk = 1 - Math.sqrt(dd) / L;
-          var midx = (n.sx + m.sx) / 2, midy = (n.sy + m.sy) / 2;
-          var al = kk * kk * 0.5 * Math.min(n.z, m.z) * mascara(midx) * intro * fi * Math.min(1, limitar((t - t0 - m.nasce) / 700, 0, 1) + (reduz ? 1 : 0));
-          if (ativo) {
-            var mdx = midx - mx, mdy = midy - my, md = mdx * mdx + mdy * mdy;
-            if (md < 40000) al += (1 - Math.sqrt(md) / 200) * 0.32 * kk * intro;
-          }
-          al += (n.b + m.b) * 0.18 * kk;
-          if (al < 0.012) continue;
-          ctx.strokeStyle = "rgba(" + rgb + "," + (al > 0.85 ? 0.85 : al).toFixed(3) + ")";
-          ctx.lineWidth = 0.45 + Math.min(n.z, m.z) * 0.65;
-          ctx.beginPath();
-          ctx.moveTo(n.sx, n.sy);
-          ctx.lineTo(m.sx, m.sy);
-          ctx.stroke();
-        }
-      }
-
-      // Linhas do "sensor" (cursor) até os nós mais próximos.
-      if (ativo && intro > 0.2 && !reduz) {
-        var lig = 0;
-        for (i = 0; i < nos.length && lig < 6; i++) {
-          n = nos[i];
-          if (!n.ok) continue;
-          var cdx = n.sx - mx, cdy = n.sy - my, cd = Math.sqrt(cdx * cdx + cdy * cdy);
-          if (cd < 140) {
-            lig++;
-            ctx.strokeStyle = "rgba(" + rgb + "," + ((1 - cd / 140) * (fino ? 0.38 : 0.2) * intro).toFixed(3) + ")";
-            ctx.lineWidth = 0.7;
-            ctx.beginPath();
-            ctx.moveTo(mx, my);
-            ctx.lineTo(n.sx, n.sy);
-            ctx.stroke();
-          }
-        }
-      }
-
-      // Nós e brilhos.
-      ctx.globalCompositeOperation = "lighter";
-      var spr = sprite(alvo.c), sprV = sprite(VERMELHO);
-      for (i = 0; i < nos.length; i++) {
-        n = nos[i];
-        if (!n.ok || n.sy < -20 || n.sy > H + 20) continue;
-        var fa = reduz ? 1 : limitar((t - t0 - n.nasce) / 600, 0, 1);
-        var mk = mascara(n.sx);
-        var a1 = ((0.25 + n.z * 0.55) * mk * intro + n.b * 0.8) * fa;
-        var rr = 0.55 + n.z * 1.45 + n.b * 1.6;
-        ctx.globalAlpha = a1 > 1 ? 1 : a1;
-        ctx.fillStyle = "rgb(" + (200 + R * 0.2 | 0) + "," + (200 + G * 0.2 | 0) + "," + (200 + B * 0.2 | 0) + ")";
-        ctx.beginPath();
-        ctx.arc(n.sx, n.sy, rr, 0, 6.283);
-        ctx.fill();
-        if (n.z > 0.72 || n.b > 0.08) {
-          var s = 10 + n.z * 20 + n.b * 34;
-          ctx.globalAlpha = Math.min(1, (0.22 * n.z * mk * intro + n.b * 0.75) * fa);
-          ctx.drawImage(n.br ? sprV : spr, n.sx - s / 2, n.sy - s / 2, s, s);
-        }
-        if (n.br && n.b < 0.05) n.br = false;
-      }
-
-      // Pulsos: transações percorrendo as conexões; os vermelhos são os suspeitos.
-      if (!reduz && intro > 0.35) {
-        proximoPulso -= dt * humor.ritmo * turbo;
-        if (proximoPulso <= 0) {
-          lancarPulso();
-          proximoPulso = 230 + Math.random() * 380;
-        }
-      }
-      for (m = pulsos.length - 1; m >= 0; m--) {
-        var p = pulsos[m];
-        p.t += dt;
-        var pa = nos[p.a], pb = nos[p.b];
-        if (!pa || !pb) { pulsos.splice(m, 1); continue; }
-        var kt = limitar(p.t / p.dur, 0, 1), e = kt < 0.5 ? 2 * kt * kt : 1 - Math.pow(-2 * kt + 2, 2) / 2;
-        var x = pa.sx + (pb.sx - pa.sx) * e, y = pa.sy + (pb.sy - pa.sy) * e;
-        var dxp = pb.sx - pa.sx, dyp = pb.sy - pa.sy, lp = Math.sqrt(dxp * dxp + dyp * dyp) || 1;
-        if (lp > L * 1.6) { pulsos.splice(m, 1); continue; } // a conexão "quebrou" com a rolagem
-        var ux = dxp / lp, uy = dyp / lp, cauda = 26;
-        var cor = p.al ? "255,96,96" : rgb;
-        var gr = ctx.createLinearGradient(x - ux * cauda, y - uy * cauda, x, y);
-        gr.addColorStop(0, "rgba(" + cor + ",0)");
-        gr.addColorStop(1, "rgba(" + cor + ",0.9)");
-        ctx.globalAlpha = 1;
-        ctx.strokeStyle = gr;
-        ctx.lineWidth = 1.6;
-        ctx.beginPath();
-        ctx.moveTo(x - ux * cauda, y - uy * cauda);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-        ctx.globalAlpha = 0.95;
-        ctx.drawImage(p.al ? sprV : spr, x - 13, y - 13, 26, 26);
-        ctx.fillStyle = "#fff";
-        ctx.beginPath();
-        ctx.arc(x, y, 1.5, 0, 6.283);
-        ctx.fill();
-        if (kt >= 1) {
-          pulsos.splice(m, 1);
-          pb.b = 1;
-          if (p.al) { pb.br = true; ondas.push({ x: pb.sx, y: pb.sy, r: 2, max: 46, al: true, fraca: true }); }
-          if (p.s < 3 && Math.random() < 0.6) lancarPulso(p.b, p.s + 1);
-        }
-      }
-
-      // Anéis das ondas.
-      for (m = 0; m < ondas.length; m++) {
-        var on = ondas[m], v = 1 - on.r / on.max;
-        ctx.globalAlpha = v * (on.fraca ? 0.6 : 0.45);
-        ctx.strokeStyle = on.al ? "rgb(255,100,100)" : "rgb(" + rgb + ")";
-        ctx.lineWidth = on.fraca ? 1 : 1.4;
-        ctx.beginPath();
-        ctx.arc(on.x, on.y, on.r, 0, 6.283);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = "source-over";
-
-      // Ajuste automático de qualidade: se o aparelho não sustenta o ritmo, a rede fica mais leve.
-      if (!medidas.feito && t - t0 > 2600 && dt < 120) {
-        medidas.n++;
-        medidas.soma += dt;
-        if (medidas.n >= 120) {
-          medidas.feito = true;
-          if (medidas.soma / medidas.n > 24) {
-            qualidade *= 0.6;
-            html.classList.remove("nv-alto");
-            dimensionar(true);
-          }
-        }
-      }
-    }
-
-    dimensionar(true);
-
-    return {
-      dimensionar: dimensionar,
-      desenhar: desenhar,
-      choque: choque,
-      parar: function () { parado = true; },
-      estatico: function () { parado = true; desenhar(agora() + 5000, 16); }
+    // Sem OffscreenCanvas: o mesmo código roda na página, com laço próprio (30 quadros/s no modo leve).
+    var sc = doc.createElement("script");
+    sc.src = url;
+    sc.onload = function () {
+      if (!window.NWRede) return;
+      var r = window.NWRede.criar(telaRede, op, E, lento);
+      if (!r) return;
+      var estado = { pausado: false };
+      if (reduz) r.estatico(); else window.NWRede.laco(r, op, estado);
+      rede = { worker: false, enviar: function (m) {
+        if (m.tipo === "choque") r.choque(m.x, m.y, m.vermelho);
+        else if (m.tipo === "tamanho") { r.dimensionar(m.w, m.h, m.dpr); if (reduz) r.estatico(); }
+        else if (m.tipo === "pausa") { estado.pausado = m.pausado; if (!m.pausado && estado.retomar) estado.retomar(); }
+      } };
     };
-  }
-
-  var rede = criarRede($(".nv-rede", ambiente));
-  if (rede && reduz) rede.estatico();
-  if (rede && !reduz) noQuadro(function (t, dt) { rede.desenhar(t, dt); });
+    doc.head.appendChild(sc);
+  })();
+  // Rolagem e ponteiro chegam ao worker só quando mudam.
+  noQuadro(function () {
+    if (!rede || !rede.worker || reduz || !(E.sujoRolagem || E.sujoPonteiro)) return;
+    rede.enviar({ tipo: "estado", sy: E.sy, mx: E.mx, my: E.my, ponteiro: E.ponteiro });
+  });
+  doc.addEventListener("visibilitychange", function () { if (rede) rede.enviar({ tipo: "pausa", pausado: doc.hidden }); });
 
   /* Luz do cursor, aurora e grade acompanham o scroll em velocidades diferentes. */
   noQuadro(function () {
@@ -624,8 +328,10 @@
   }
 
   function marcarSecao(id) {
+    if (E.secao !== id && rede) rede.enviar({ tipo: "secao", id: id });
     E.secao = id;
-    html.setAttribute("data-nv-secao", id);
+    // O humor fica no próprio ambiente: mudar variáveis no :root recalculava o estilo da página inteira.
+    ambiente.setAttribute("data-nv-secao", id);
     var idx = -1;
     secoes.forEach(function (s, i) { if (s.id === id) idx = i; });
     itensTrilho.forEach(function (li, i) {
@@ -656,11 +362,14 @@
     num.setAttribute("data-n", num.textContent);
     s.insertBefore(num, s.firstChild);
     var circ = decorativo(el("span", "nv-circuito"));
-    el("i", "", circ);
-    el("b", "", circ);
+    var fio = el("i", "", circ);
+    var ponto = el("b", "", circ);
     s.insertBefore(circ, s.firstChild);
-    s._nv = { num: num, circ: circ };
+    s._nv = { num: num, circ: circ, fio: fio, ponto: ponto };
   });
+  // O circuito só aparece em telas largas (vivo.css); fora delas, nem é atualizado.
+  var largoCircuito = window.innerWidth >= 1240;
+  window.addEventListener("resize", function () { largoCircuito = window.innerWidth >= 1240; });
 
   var obsHumor = observar(function (es) {
     es.forEach(function (e) { if (e.isIntersecting) marcarSecao(e.target.id); });
@@ -700,9 +409,12 @@
       var s = par[0], r = par[1];
       var p = limitar((E.vh - r.top) / (E.vh + r.height), 0, 1);
       var p2 = limitar((E.vh * 0.55 - r.top) / Math.max(1, r.height - E.vh * 0.2), 0, 1);
-      s._nv.num.style.setProperty("--nv-p", ((p - 0.5) * 2).toFixed(3));
-      s._nv.num.style.setProperty("--nv-p2", p2.toFixed(3));
-      s._nv.circ.style.setProperty("--nv-p2", p2.toFixed(3));
+      // Só transform/translate (compositor): nada de variáveis CSS, máscaras repintadas ou "top" (que gerava layout shift).
+      s._nv.num.style.translate = "0 " + ((p - 0.5) * -180).toFixed(1) + "px";
+      if (largoCircuito) {
+        s._nv.fio.style.transform = "scaleY(" + p2.toFixed(4) + ")";
+        s._nv.ponto.style.transform = "translate3d(0," + (p2 * Math.max(0, r.height - 208)).toFixed(1) + "px,0)";
+      }
     });
     if (textura && heroiVisivel && !reduz) {
       textura.style.transform = "translate3d(" + (E.ponteiro && fino ? ((E.mx / E.vw) - 0.5) * -18 : 0).toFixed(1) + "px," +
@@ -755,6 +467,13 @@
       obsRevelar.unobserve(e.target);
     });
   }, { rootMargin: "0px 0px -9% 0px", threshold: 0.06 });
+  var obsRevelarFim = observar(function (es) {
+    es.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      ver(e.target);
+      obsRevelarFim.unobserve(e.target);
+    });
+  }, { threshold: 0 });
 
   function ver(alvo) {
     if (alvo.classList.contains("nv-visto")) return;
@@ -768,7 +487,8 @@
     if (tipo) alvo.setAttribute("data-nv", tipo);
     if (i !== undefined) alvo.style.setProperty("--nv-i", i);
     if (reduz || !obsRevelar || naTela(alvo)) { alvo.classList.add("nv-visto", "nv-feito"); return; }
-    obsRevelar.observe(alvo);
+    // No rodapé (fim da página) a margem negativa nunca seria alcançada: observador sem margem.
+    (alvo.closest(".rodape") ? obsRevelarFim : obsRevelar).observe(alvo);
   }
 
   var largo = window.innerWidth >= 860;
@@ -1034,12 +754,12 @@
       f.style.setProperty("--fy", (Math.sin(ang) * dist).toFixed(1) + "px");
       f.addEventListener("animationend", function () { this.remove(); });
     }
-    if (rede) rede.choque(x, y, vermelha);
+    if (rede) rede.enviar({ tipo: "choque", x: x, y: y, vermelho: vermelha });
   }
   doc.addEventListener("pointerdown", function (e) {
     var alvo = e.target.closest && e.target.closest(INTERATIVOS);
     if (alvo) emitir(e.clientX, e.clientY, alvo);
-    else if (!fino && rede) rede.choque(e.clientX, e.clientY, false);
+    else if (!fino && rede) rede.enviar({ tipo: "choque", x: e.clientX, y: e.clientY, vermelho: false });
   }, { passive: true });
   doc.addEventListener("click", function (e) {
     if (e.detail !== 0) return; // ativação pelo teclado: a onda nasce no centro do elemento
@@ -1214,8 +934,13 @@
       E.vh = window.innerHeight;
       E.docH = html.scrollHeight;
       E.sujoRolagem = true;
-      if (rede) rede.dimensionar(false);
-      if (rede && reduz) rede.estatico();
+      var wR = window.innerWidth, hR = alturaRede();
+      // No celular a barra de endereço muda a altura o tempo todo: só refaz a rede numa mudança real.
+      if (rede && (wR !== tamRede.w || Math.abs(hR - tamRede.h) > 140)) {
+        tamRede.w = wR; tamRede.h = hR;
+        if (telaRede) telaRede.style.height = hR + "px";
+        rede.enviar({ tipo: "tamanho", w: wR, h: hR, dpr: window.devicePixelRatio || 1 });
+      }
       medirLetras();
       medirFluxo();
     }, 140);
@@ -1231,7 +956,6 @@
       reduz = true;
       html.classList.remove("nv-anima", "nv-intro");
       $$("[data-nv]").forEach(function (n) { n.classList.add("nv-visto", "nv-feito"); });
-      if (rede) rede.estatico();
     });
   }
 

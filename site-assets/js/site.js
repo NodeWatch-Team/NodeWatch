@@ -31,6 +31,35 @@
     });
   }
 
+  /* ---------- Vídeo pitch: o player do YouTube só carrega no clique ---------- */
+  var capa = document.querySelector(".video-capa");
+  if (capa) {
+    var aquecido = false;
+    var aquecer = function () {
+      // Abre a conexão com o YouTube quando o leitor demonstra intenção: o player começa mais rápido.
+      if (aquecido) return;
+      aquecido = true;
+      ["https://www.youtube-nocookie.com", "https://www.google.com"].forEach(function (h) {
+        var l = document.createElement("link"); l.rel = "preconnect"; l.href = h; document.head.appendChild(l);
+      });
+    };
+    capa.addEventListener("pointerenter", aquecer, { passive: true });
+    capa.addEventListener("touchstart", aquecer, { passive: true });
+    capa.addEventListener("focus", aquecer);
+    capa.addEventListener("click", function (e) {
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1) return; // abrir em nova aba continua funcionando
+      e.preventDefault();
+      var f = document.createElement("iframe");
+      f.src = capa.getAttribute("data-embed") + "&autoplay=1";
+      f.title = capa.getAttribute("data-titulo");
+      f.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+      f.referrerPolicy = "strict-origin-when-cross-origin";
+      f.setAttribute("allowfullscreen", "");
+      capa.parentNode.replaceChild(f, capa);
+      f.focus();
+    });
+  }
+
   /* ---------- Capturas: aviso de pendência e ampliação ---------- */
   var lightbox = document.querySelector(".lightbox");
   var lbImg = lightbox && lightbox.querySelector(".lightbox-img");
