@@ -141,9 +141,12 @@
 
       h("svg", { className: "conv-regua", viewBox: "0 0 " + W + " 160", role: "img",
         "aria-label": "Régua de conversão: o trecho de 0 a 0,091 do predict_proba ocupa os índices de 0 a 700; o trecho de 0,091 a 1 ocupa de 701 a 1000. Valor atual " + num(bruto, 4) + " corresponde ao score " + score + "." },
-        h("polygon", { className: "cr-faixa cr-baixa", points: [xp(0), 36, xp(pIni), 36, xs(301), 114, xs(0), 114].join(" ") }),
-        h("polygon", { className: "cr-faixa cr-intermediaria", points: [xp(pIni), 36, xp(LIMIAR), 36, xs(701), 114, xs(301), 114].join(" ") }),
-        h("polygon", { className: "cr-faixa cr-alta", points: [xp(LIMIAR), 36, xp(1), 36, xs(1000), 114, xs(701), 114].join(" ") }),
+        h("polygon", { className: "cr-faixa cr-baixa" + (f.id === "baixa" ? " ativa" : ""), points: [xp(0), 36, xp(pIni), 36, xs(301), 114, xs(0), 114].join(" ") }),
+        h("polygon", { className: "cr-faixa cr-intermediaria" + (f.id === "intermediaria" ? " ativa" : ""), points: [xp(pIni), 36, xp(LIMIAR), 36, xs(701), 114, xs(301), 114].join(" ") }),
+        h("polygon", { className: "cr-faixa cr-alta" + (f.id === "alta" ? " ativa" : ""), points: [xp(LIMIAR), 36, xp(1), 36, xs(1000), 114, xs(701), 114].join(" ") }),
+        // Marcação visual do limiar (0,0910 → 701): só destaque, não muda a conversão.
+        h("line", { className: "cr-limiar-linha", x1: xp(LIMIAR) + (xs(701) - xp(LIMIAR)) * (22 / 78), y1: 58, x2: xs(701), y2: 120, "aria-hidden": "true" }),
+        h("circle", { className: "cr-limiar-pulso", cx: xs(701), cy: 114, r: 5, "aria-hidden": "true" }),
         h("line", { className: "cr-eixo", x1: X0, y1: 36, x2: X1, y2: 36 }),
         h("line", { className: "cr-eixo", x1: X0, y1: 114, x2: X1, y2: 114 }),
         h("text", { className: "cr-titulo", x: X0, y: 10 }, "predict_proba (0,0 – 1,0)"),

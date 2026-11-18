@@ -7,7 +7,9 @@ index.html          página única do artigo (raiz do repositório)
 .nojekyll           impede o Jekyll do Pages de filtrar arquivos e pastas
 site-assets/
 ├── css/site.css    estilos (tema escuro do NodeWatch)
-├── js/site.js      menu, ampliação das capturas, link ativo, entrada suave
+├── css/vivo.css    camada visual e de movimento: ambiente, abertura, revelações, superfícies e efeitos por bloco
+├── js/vivo.js      sistema de movimento: rede neural em canvas, scroll, contadores, luz dos cartões, fluxos SVG
+├── js/site.js      menu, ampliação das capturas, link ativo, entrada suave (sem a camada viva)
 ├── js/artigo.js    seção de Machine Learning em React 18 (abas e simulador de score)
 ├── vendor/         react-18.3.1 e react-dom-18.3.1 (UMD, cópia de interface/assets/vendor) + licença
 └── img/            logo, ícones, og-image e capturas tela-*.jpg
@@ -19,6 +21,8 @@ site-assets/
 - Nomes de arquivos e pastas do site em **minúsculas**: o servidor do Pages diferencia maiúsculas de minúsculas.
 - Nada depende do Flask, de `/api` ou de CDN: React vem de `site-assets/vendor/`, sem Babel (os componentes usam `React.createElement`).
 - Se o React não carregar, a seção de ML mostra a versão estática que está dentro de `#ml-interativo`.
+- A camada viva (`vivo.css` + `vivo.js`) só decora: não altera textos nem números. Contadores e rótulos "decodificados" sempre terminam no texto original do HTML. Com "reduzir movimento" no sistema, tudo aparece parado e completo; sem `vivo.js`, a abertura em CSS termina visível do mesmo jeito.
+- Para desligar a camada viva, remova as duas linhas de `vivo.*` e o trecho `nv-intro` do `<head>` do `index.html`.
 
 ## Publicar
 

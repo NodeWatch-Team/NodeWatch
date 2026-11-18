@@ -107,7 +107,9 @@
   /* ---------- Entrada suave dos blocos ---------- */
   // Só com movimento permitido. Sem JS, ou com movimento reduzido, tudo aparece de imediato.
   var semMovimento = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (!semMovimento && "IntersectionObserver" in window) {
+  // Com a camada de movimento (vivo.js, sinalizada por html.nv-intro), as revelações ficam a cargo dela.
+  var comCamadaViva = document.documentElement.classList.contains("nv-intro");
+  if (!semMovimento && !comCamadaViva && "IntersectionObserver" in window) {
     var blocos = document.querySelectorAll(
       ".bloco h2, .contraste-lado, .evolucao-lado, .pilar, .cartao, .fluxo-criacao, .rf-ficha"
     );
